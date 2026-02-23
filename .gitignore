@@ -1,0 +1,27 @@
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+env/
+
+# VSCode / IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# build / outputs
+build/
+dist/
+*.log
+
+# binary / large files
+*.bin
+*.exe
+*.so
+*.dll
