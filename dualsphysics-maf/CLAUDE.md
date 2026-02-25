@@ -27,9 +27,11 @@ Run with: `.venv/bin/python`
 | `agents/simulation_agent.py` | ✅ Agent 1，已修正 API (`client=` 不是 `chat_client=`) |
 | `cases/CaseDebrisFlow2D_Def.xml` | ✅ 从 examples/ 复制 |
 | `cases/CaseDebrisFlow2D_Points.txt` | ✅ 6 个探针点 |
-| `cases/ground_truth/` | ⬜ 目录存在，CSV 未生成（留待后续） |
+| `cases/ground_truth/` | ⬜ 目录存在（含 `.gitkeep`），CSV 未生成（留待后续） |
 | `main.py` | ✅ Agent 1 测试入口，含 `TimeMax=0.5` smoke 参数 |
 | `requirements.txt` | ✅ |
+| `.gitignore` | ✅ 排除 `.venv/`、`runs/`、`__pycache__/`、`*.log`、`.env` |
+| `README.md` | ✅ 供协作者使用的完整设置文档 |
 
 ---
 
@@ -50,7 +52,7 @@ TimeMax=0.5, TimeOut=0.1   # 5 个输出步，smoke 用
 | `run_simulation` (CPU) | ✅ **107s** 完成，生成 6 个 Part_*.bi4 |
 | `run_measuretool` | ✅ rc=0，输出 `PointsMeasure_Rhop.csv` + `PointsMeasure_Vel.csv` |
 | `compute_metrics` | ✅ ground_truth 不存在时正确返回 `{"status": "no_ground_truth"}` |
-| Agent 1 端到端 | ⬜ 未测试 |
+| Agent 1 端到端 | ✅ 通过（见下方 Agent 1 端到端结果） |
 
 ---
 
@@ -105,15 +107,38 @@ MeasureTool 输出两个 CSV：`<stem>_Vel.csv` 和 `<stem>_Rhop.csv`，用 `;` 
 `dp`, `coefh`, `cflnumber`, `Visco`, `DensityDT`, `DensityDTvalue`,
 `TimeMax`, `TimeOut`, `visco_nn`, `tau_yield`, `HBP_m`, `HBP_n`
 
+### xml_modifier.py — 自动创建输出目录（已修复）
+写出 XML 前加了 `Path(output_xml).parent.mkdir(parents=True, exist_ok=True)`。
+修复前 agent 会在 `modify_xml` 上反复重试（因目录不存在而失败），导致 XML 散落在项目根目录。
+
+---
+
+## Agent 1 端到端结果（2026-02-24）
+
+```
+ANTHROPIC_API_KEY=... .venv/bin/python main.py
+```
+
+| 步骤 | 结果 |
+|------|------|
+| `modify_xml` | ✅ 所有 8 个参数写入 |
+| `run_gencase` | ✅ 4984 粒子（bound=1720, fluid=3264） |
+| `run_simulation` (CPU) | ✅ **69s** 完成，7858 步，6 个 Part 文件 |
+| `run_measuretool` | ✅ `PointsMeasure_Rhop.csv` + `PointsMeasure_Vel.csv` |
+| `compute_metrics` | ⚠️ `no_ground_truth`（预期，CSV 尚未生成） |
+
+**已知问题（待修复）：**
+- Agent 生成的时间戳用了错误年份（`20250519` 而非 `20260224`）——agent_framework 内部时钟问题
+- 修复 `xml_modifier.py` 前，run 目录被错误放在项目根目录而非 `runs/` 下
+
 ---
 
 ## 下一步
 
-1. **Agent 1 端到端测试**：设置 `ANTHROPIC_API_KEY`，运行 `main.py`
-   ```bash
-   ANTHROPIC_API_KEY=... .venv/bin/python main.py
-   ```
+1. **生成 ground truth**：用默认参数跑一次完整模拟（`TimeMax=5.0`），把 MeasureTool 输出存为 `cases/ground_truth/PointsMeasure.csv`
+   - 方案 A：用默认参数的高精度模拟结果作为参考（最简单，随时可做）
+   - 方案 B：使用真实实验测量数据（需要外部数据）
 
-2. **生成 ground truth**：用默认参数跑一次完整模拟（TimeMax=5.0），把 MeasureTool 输出存为 `cases/ground_truth/PointsMeasure.csv`
+2. **推送到 GitHub**：`.gitignore` 和 `README.md` 已就绪；注意 `config.py` 和 `simulation_agent.py` 里有硬编码的绝对路径，协作者需手动修改
 
-3. **Agent 2 + 优化循环**（计划范围外，后续实现）
+3. **Agent 2 + 优化循环**（后续实现）
