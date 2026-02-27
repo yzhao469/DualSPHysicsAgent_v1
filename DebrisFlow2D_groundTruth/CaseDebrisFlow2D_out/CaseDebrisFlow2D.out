@@ -1,0 +1,122 @@
+
+
+ <GENCASE>  Copyright (c) 2020 by Dr Jose M. Dominguez
+ All rights reserved.
+
+ DualSPHysics is an international collaboration between University of Vigo 
+ (Spain) and University of Manchester (UK). 
+
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions
+ are met:
+ * Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+ * Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+ * Neither the name of the DualSPHysics nor the names of its contributors
+   may be used to endorse or promote products derived from this software
+   without specific prior written permission.
+
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER BE LIABLE FOR ANY
+ DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+
+
+GenCase v5.0.222 (16-11-2020) 
+===============================
+OmpThreads: 16
+
+[LoadXMLInit]
+List: MAIN
+
+Total operations: 11
+[LoadXMLInit-End  time:0.001s]
+
+[Draw]
+List of available variables: Gravity_x=[0]  Gravity_y=[0]  Gravity_z=[-9.81]  Rhop0=[1720]  Dp=[0.01]  PosMin_x=[-0.2]  PosMin_y=[1]  PosMin_z=[-0.2]  PosMax_x=[8.15]  PosMax_y=[1]  PosMax_z=[4.15]  CaseName=["CaseDebrisFlow2D"]  Data2D=[1]  Data2DPosy=[1]  H=[0.013]  MassBound=[0.172]  MassFluid=[0.172]
+
+Mk size: 1 bytes
+Case limits: (-0.2,1,-0.2) - (8.15,1,4.15)
+Distance between points (Dp): 0.01
+Case domain: (0,0,0)-(834,0,434)
+Domain points: 835 x 1 x 435 = 363225
+Case parts: 1 x 435z
+Memory: 0.00Gb 0.35Mb (363225)
+
+> MAIN
+FileShapes> _Dp.vtk  shapes:18  points:24   (time:0.002s)
+<MAIN (Operations= 7+4+1 = 12)
+
+Triangles: 64 (0 ignored)
+[Draw-End  time:0.006s]
+
+[LoadsXMLConfig]
+Execution parameters.
+Initials configuration.
+Floating bodies configuration.
+Properties configuration.
+Predefined motion configuration.
+[LoadsXMLConfig-End  time:0.000s]
+
+[PreparePoints]
+Computing Vtk-Cells data...  (time:0.002s)
+BitSizeTot: 19 (2 + 9+1+7)
+Points loaded: 7631
+Sorting points by Z...
+Sorting points by Mk...
+
+List of Points:
+Points -> Fixed-Boundary particles:
+  block[  0] (mk: 21):   1955  -->    1955
+  block[  1] (mk: 22):    630  -->     630
+  block[  2] (mk: 23):    630  -->     630
+Points -> Fluid particles:
+  block[  3] (mk:  1):   4416  -->    4416
+
+Particle summary:
+  Fixed....: 3215  id:(0-3214)   MKs:3 (21-23)
+  Moving...: 0
+  Floating.: 0
+  Fluid....: 4416  id:(3215-7630)   MKs:1 (1)
+
+Total particles: 7631 (bound=3215 (fx=3215 mv=0 ft=0) fluid=4416)
+Total MK blocks: 4 (bound=3 (fx=3 mv=0 ft=0) fluid=1)
+
+Maximum depth: 0.95 (automatic)
+Speed of system: 1 (fixed)
+Speed of sound: max(coefsound*speedsystem,10*sqrt(g*depth))
+Speed of sound: 30.5279 max(10,30.5279)
+Speed of sound: 30.5279 (automatic)
+
+Coefh:0.919240 (hdp:1.300002)
+
+[PreparePoints-End  time:0.003s]
+
+[SaveCase2D]
+CaseDebrisFlow2D_out/CaseDebrisFlow2D_MkCells.vtk  (time:0.000s, shapes:4, points:16)
+CaseDebrisFlow2D_out/CaseDebrisFlow2D.bi4<double>  (time:0.000s)
+CaseDebrisFlow2D_out/CaseDebrisFlow2D_All.vtk  (time: 0.000s)
+CaseDebrisFlow2D_out/CaseDebrisFlow2D_Bound.vtk  (time: 0.000s)
+CaseDebrisFlow2D_out/CaseDebrisFlow2D_Fluid.vtk  (time: 0.000s)
+CaseDebrisFlow2D_out/CaseDebrisFlow2D.xml  (time:0.000s)
+
+Save files time: 0.001s
+
+Particle limits:
+  X range: 0 to 4 [m]
+  Y range: 1 to 1 [m]
+  Z range: 0 to 1.25 [m]
+
+[SaveCase2D-End  time:0.003s]
+
+
+Finished execution (code=0).
+

@@ -38,24 +38,48 @@ def _preprocess_xml(content: str) -> str:
     return content
 
 
+def _find_drawbox_after_mk(
+    mainlist: ET.Element, tag: str, mk: int
+) -> Optional[ET.Element]:
+    """Return the <drawbox> immediately following <setmkfluid mk=...> or <setmkbound mk=...>.
+
+    Comment nodes are skipped. Returns None if not found.
+    """
+    children = list(mainlist)
+    for i, child in enumerate(children):
+        if isinstance(child.tag, str) and child.tag == tag and child.get("mk") == str(mk):
+            for j in range(i + 1, len(children)):
+                if isinstance(children[j].tag, str) and children[j].tag == "drawbox":
+                    return children[j]
+    return None
+
+
 def modify_xml(
     base_xml: str,
     output_xml: str,
-    # Standard SPH params
-    dp: Optional[float] = None,
+    # ---- constantsdef ----
+    gravity_z: Optional[float] = None,
+    rhop0: Optional[float] = None,
     coefh: Optional[float] = None,
     cflnumber: Optional[float] = None,
-    Visco: Optional[float] = None,
-    DensityDT: Optional[int] = None,
-    DensityDTvalue: Optional[float] = None,
-    # Simulation time control
-    TimeMax: Optional[float] = None,
-    TimeOut: Optional[float] = None,
-    # Non-Newtonian phase params
+    # ---- geometry ----
+    dp: Optional[float] = None,
+    fluid_size_x: Optional[float] = None,
+    fluid_size_z: Optional[float] = None,
+    channel_length: Optional[float] = None,
+    channel_height: Optional[float] = None,
+    # ---- non-Newtonian phase (mkfluid=0) ----
+    phase_rhop: Optional[float] = None,
     visco_nn: Optional[float] = None,
     tau_yield: Optional[float] = None,
     HBP_m: Optional[float] = None,
     HBP_n: Optional[float] = None,
+    # ---- execution/parameters ----
+    Visco: Optional[float] = None,
+    DensityDT: Optional[int] = None,
+    DensityDTvalue: Optional[float] = None,
+    TimeMax: Optional[float] = None,
+    TimeOut: Optional[float] = None,
 ) -> str:
     """Copy base_xml to output_xml and apply only the provided params.
 
@@ -68,13 +92,17 @@ def modify_xml(
     fixed = _preprocess_xml(raw)
     root = ET.fromstring(fixed)
 
-    # --- casedef/geometry/definition[@dp] ---
-    if dp is not None:
-        el = root.find("casedef/geometry/definition")
+    # --- casedef/constantsdef ---
+    if gravity_z is not None:
+        el = root.find("casedef/constantsdef/gravity")
         if el is not None:
-            el.set("dp", str(dp))
+            el.set("z", str(gravity_z))
 
-    # --- casedef/constantsdef/* ---
+    if rhop0 is not None:
+        el = root.find("casedef/constantsdef/rhop0")
+        if el is not None:
+            el.set("value", str(rhop0))
+
     if coefh is not None:
         el = root.find("casedef/constantsdef/coefh")
         if el is not None:
@@ -85,16 +113,57 @@ def modify_xml(
         if el is not None:
             el.set("value", str(cflnumber))
 
-    # --- execution/parameters/parameter[@key=...] ---
-    _set_exec_param(root, "Visco", Visco)
-    _set_exec_param(root, "DensityDT", DensityDT)
-    _set_exec_param(root, "DensityDTvalue", DensityDTvalue)
-    _set_exec_param(root, "TimeMax", TimeMax)
-    _set_exec_param(root, "TimeOut", TimeOut)
+    # --- casedef/geometry/definition[@dp] ---
+    if dp is not None:
+        el = root.find("casedef/geometry/definition")
+        if el is not None:
+            el.set("dp", str(dp))
+
+    # --- casedef/geometry/commands/mainlist (fluid box + walls) ---
+    mainlist = root.find("casedef/geometry/commands/mainlist")
+    if mainlist is not None:
+        # Fluid column dimensions (mkfluid=0)
+        if fluid_size_x is not None or fluid_size_z is not None:
+            drawbox = _find_drawbox_after_mk(mainlist, "setmkfluid", 0)
+            if drawbox is not None:
+                size = drawbox.find("size")
+                if size is not None:
+                    if fluid_size_x is not None:
+                        size.set("x", str(fluid_size_x))
+                    if fluid_size_z is not None:
+                        size.set("z", str(fluid_size_z))
+
+        # Channel floor length (mk=11)
+        if channel_length is not None:
+            drawbox = _find_drawbox_after_mk(mainlist, "setmkbound", 11)
+            if drawbox is not None:
+                size = drawbox.find("size")
+                if size is not None:
+                    size.set("x", str(channel_length))
+
+            # Right wall x-position must track channel_length (mk=13)
+            drawbox = _find_drawbox_after_mk(mainlist, "setmkbound", 13)
+            if drawbox is not None:
+                point = drawbox.find("point")
+                if point is not None:
+                    point.set("x", str(round(channel_length - 0.04, 6)))
+
+        # Wall height — both left (mk=12) and right (mk=13) walls
+        if channel_height is not None:
+            for mk in (12, 13):
+                drawbox = _find_drawbox_after_mk(mainlist, "setmkbound", mk)
+                if drawbox is not None:
+                    size = drawbox.find("size")
+                    if size is not None:
+                        size.set("z", str(channel_height))
 
     # --- execution/special/nnphases/phase[@mkfluid='0'] ---
     phase = root.find("execution/special/nnphases/phase[@mkfluid='0']")
     if phase is not None:
+        if phase_rhop is not None:
+            el = phase.find("rhop")
+            if el is not None:
+                el.set("value", str(phase_rhop))
         if visco_nn is not None:
             el = phase.find("visco")
             if el is not None:
@@ -111,6 +180,13 @@ def modify_xml(
             el = phase.find("HBP_n")
             if el is not None:
                 el.set("value", str(HBP_n))
+
+    # --- execution/parameters/parameter[@key=...] ---
+    _set_exec_param(root, "Visco", Visco)
+    _set_exec_param(root, "DensityDT", DensityDT)
+    _set_exec_param(root, "DensityDTvalue", DensityDTvalue)
+    _set_exec_param(root, "TimeMax", TimeMax)
+    _set_exec_param(root, "TimeOut", TimeOut)
 
     # Ensure output directory exists
     Path(output_xml).parent.mkdir(parents=True, exist_ok=True)
