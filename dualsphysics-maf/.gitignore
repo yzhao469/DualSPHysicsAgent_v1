@@ -1,0 +1,18 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Simulation run outputs (large binary files, generated per run)
+runs/
+run_*/
+
+# Stray XML files generated at project root during development
+CaseDebrisFlow2D_Def_run*.xml
+
+# Logs
+*.log
+
+# Secrets
+.env

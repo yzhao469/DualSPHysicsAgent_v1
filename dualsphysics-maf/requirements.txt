@@ -1,0 +1,6 @@
+agent-framework==1.0.0rc1
+agent-framework-anthropic==1.0.0rc1
+mcp[fastmcp]
+anthropic
+pandas
+numpy
