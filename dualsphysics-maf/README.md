@@ -129,3 +129,48 @@ These can be passed to `modify_xml` (and therefore to the agent):
 | `tau_yield` | Yield stress (Herschel-Bulkley) |
 | `HBP_m` | Herschel-Bulkley consistency index |
 | `HBP_n` | Herschel-Bulkley flow index |
+
+## Agent Design Review and Microsoft Agent Framework (MAF) Opportunities
+
+### Current design strengths
+
+- **Good separation of concerns**: `SimulationPlanner` does reasoning, while `SimulationCoordinator` performs deterministic tool orchestration.
+- **Structured interface**: planner output is constrained by `SimulationPlan` (Pydantic), reducing free-form tool-call errors.
+- **Human-in-the-loop (HITL) gates**: two `request_info` review points (plan review + post-GenCase visualization review) provide practical control.
+- **MCP-first integration**: simulation actions are encapsulated as MCP tools, keeping domain execution logic outside prompt text.
+
+### Current limitations
+
+- **Run continuity**: long runs currently depend on a live terminal session; there is no checkpoint/resume path in this project yet.
+- **Observability depth**: logging is present, but there is no OpenTelemetry wiring for end-to-end traces across workflow + MCP calls.
+- **Composability**: all orchestration is in one coordinator class; sub-workflows are not used yet.
+- **Environment portability**: `BASE` paths are hardcoded in `main.py` and `agents/simulation_agent.py`.
+
+### Useful MAF capabilities to adopt next
+
+1. **Workflow checkpoint + resume**
+   - MAF workflow samples include checkpoint/resume patterns, including HITL resume.
+   - Best fit here: persist state between plan approval, GenCase output, and full simulation execution.
+
+2. **OpenTelemetry observability**
+   - MAF supports OpenTelemetry instrumentation and MCP trace propagation.
+   - Best fit here: capture spans for `set_geometry`/`modify_xml`/`run_gencase`/`run_simulation`/`run_measuretool`/`compute_metrics` to improve debugging and runtime analysis.
+
+3. **Sub-workflow composition**
+   - MAF supports sub-workflows and workflow-as-agent patterns.
+   - Best fit here: split coordinator flow into reusable phases (plan/build/simulate/evaluate) and later plug in Agent 2 optimization loops.
+
+4. **Tool approval patterns**
+   - MAF includes declaration-only tool approval samples.
+   - Best fit here: add explicit approval policies for expensive or destructive steps (for example, starting full simulation).
+
+5. **Conditional routing**
+   - MAF supports edge-condition/switch-case routing.
+   - Best fit here: route by scenario complexity (quick smoke path vs full pipeline).
+
+### Recommended adoption order (minimal risk)
+
+1. Add observability wiring.
+2. Add checkpoint/resume around HITL boundaries.
+3. Refactor coordinator into sub-workflows.
+4. Add conditional routing and formal tool-approval policy.
