@@ -7,6 +7,7 @@ calls are made here, deterministically, via MCPStdioTool.call_tool().
 
 import json
 import logging
+import re
 from datetime import datetime, timezone
 
 from agent_framework import (
@@ -28,7 +29,11 @@ logger = logging.getLogger(__name__)
 
 def _is_agent_design_review_request(text: str) -> bool:
     normalized = text.lower()
-    return "agent design" in normalized and ("review" in normalized or "suggest" in normalized)
+    tokens = set(re.findall(r"\b[a-z]+\b", normalized))
+    has_review_intent = bool({"review", "suggest", "improve", "feedback"} & tokens)
+    has_agent_design = "agent" in tokens and "design" in tokens
+    mentions_simulation_flow = bool({"simulate", "simulation", "geometry", "probe", "xml"} & tokens)
+    return has_review_intent and has_agent_design and not mentions_simulation_flow
 
 
 def _build_agent_design_review() -> dict:
