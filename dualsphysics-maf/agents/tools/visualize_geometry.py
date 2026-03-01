@@ -17,15 +17,20 @@ def _is_wsl() -> bool:
 def _find_vtk_file(vtk_dir: str) -> Path | None:
     """Find the main VTK file in GenCase output directory.
 
-    Prefers _Actual.vtk (full particle config), falls back to _Dp.vtk,
-    then any .vtk file.
+    GenCase outputs:
+      - Case_Def_All.vtk    — all particles (bound + fluid)  ← preferred
+      - Case_Def_Bound.vtk  — boundary only
+      - Case_Def_Fluid.vtk  — fluid only
+      - Case_Def__Dp.vtk    — just dp bounding box (NOT useful)
     """
     d = Path(vtk_dir)
-    for pattern in ["*_Actual.vtk", "*_Dp.vtk"]:
+    # Prefer _All.vtk (everything), then _Actual.vtk (legacy name)
+    for pattern in ["*_All.vtk", "*_Actual.vtk"]:
         matches = sorted(d.glob(pattern))
         if matches:
             return matches[0]
-    matches = sorted(d.glob("*.vtk"))
+    # Fallback: any VTK except _Dp (which is just the bounding box grid)
+    matches = [f for f in sorted(d.glob("*.vtk")) if "_Dp.vtk" not in f.name]
     return matches[0] if matches else None
 
 
