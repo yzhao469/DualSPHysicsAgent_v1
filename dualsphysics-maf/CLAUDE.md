@@ -9,136 +9,153 @@ Run with: `.venv/bin/python`
 
 ---
 
-## 已完成文件
+## 架构（2026-03-01 重构 — Workflow-Based + HITL）
 
-| 文件 | 状态 |
-|------|------|
-| `mcp_server/config.py` | ✅ 完成 |
-| `mcp_server/__init__.py` | ✅ |
-| `mcp_server/tools/__init__.py` | ✅ |
-| `mcp_server/tools/_subprocess.py` | ✅ 共享异步子进程 helper |
-| `mcp_server/tools/xml_modifier.py` | ✅ 含非标准 XML 预处理（见下） |
-| `mcp_server/tools/run_gencase.py` | ✅ |
-| `mcp_server/tools/run_simulation.py` | ✅ |
-| `mcp_server/tools/run_measuretool.py` | ✅ |
-| `mcp_server/tools/metrics.py` | ✅ |
-| `mcp_server/server.py` | ✅ FastMCP，5 个工具 |
-| `agents/__init__.py` | ✅ |
-| `agents/simulation_agent.py` | ✅ Agent 1，已修正 API (`client=` 不是 `chat_client=`) |
-| `cases/CaseDebrisFlow2D_Def.xml` | ✅ 从 examples/ 复制 |
-| `cases/CaseDebrisFlow2D_Points.txt` | ✅ 6 个探针点 |
-| `cases/ground_truth/` | ⬜ 目录存在（含 `.gitkeep`），CSV 未生成（留待后续） |
-| `main.py` | ✅ Agent 1 测试入口，含 `TimeMax=0.5` smoke 参数 |
-| `requirements.txt` | ✅ |
-| `.gitignore` | ✅ 排除 `.venv/`、`runs/`、`__pycache__/`、`*.log`、`.env` |
-| `README.md` | ✅ 供协作者使用的完整设置文档 |
+**核心模式**：LLM 只做推理（返回结构化 SimulationPlan JSON），
+Python 代码确定性地编排所有 MCP 工具调用。
+
+```
+main.py → WorkflowBuilder
+  ├─ SimulationCoordinator (Executor) — 确定性编排器
+  └─ AgentExecutor(SimulationPlanner) — GPT-4o 推理 + 结构化输出
+```
+
+HITL 通过 workflow `request_info` / `response_handler` 模式实现：
+1. Coordinator 调用 `ctx.request_info(ReviewRequest(...))`
+2. Workflow 暂停，main.py 事件循环提示用户 `input()`
+3. `workflow.run(responses={request_id: user_reply})` 恢复
 
 ---
 
-## Smoke Test 结果
+## 项目文件清单
 
-### 运行参数
-```python
-dp=0.015, Visco=0.1, DensityDT=3, DensityDTvalue=0.1,
-coefh=0.91924, cflnumber=0.1,
-TimeMax=0.5, TimeOut=0.1   # 5 个输出步，smoke 用
-```
+### MCP Server（7 个工具，无变化）
+| 文件 | 状态 | 说明 |
+|------|------|------|
+| `mcp_server/config.py` | ✅ | 路径配置 |
+| `mcp_server/__init__.py` | ✅ | |
+| `mcp_server/tools/__init__.py` | ✅ | |
+| `mcp_server/tools/_subprocess.py` | ✅ | 共享异步子进程 helper |
+| `mcp_server/tools/_xml_utils.py` | ✅ | 共享 XML 预处理（`preprocess_xml`） |
+| `mcp_server/tools/xml_modifier.py` | ✅ | 物理/执行参数修改（constantsdef + nnphases + execution） |
+| `mcp_server/tools/set_geometry.py` | ✅ | 几何替换工具：验证并拼接 `<geometry>` XML 到 case 文件 |
+| `mcp_server/tools/generate_points.py` | ✅ | 从 probe_points 或 probe_xs × probe_zs 生成 POINTSLIST 文件 |
+| `mcp_server/tools/run_gencase.py` | ✅ | |
+| `mcp_server/tools/run_simulation.py` | ✅ | |
+| `mcp_server/tools/run_measuretool.py` | ✅ | |
+| `mcp_server/tools/metrics.py` | ✅ | |
+| `mcp_server/server.py` | ✅ | FastMCP，7 个工具 |
 
-### 各步结果
-| 步骤 | 结果 |
+### Workflow + Agent
+| 文件 | 状态 | 说明 |
+|------|------|------|
+| `agents/__init__.py` | ✅ | |
+| `agents/schemas.py` | ✅ | Pydantic 模型：SimulationPlan, PhysicsParams, ReviewRequest |
+| `agents/coordinator.py` | ✅ | SimulationCoordinator (Executor)：确定性编排 + HITL |
+| `agents/simulation_agent.py` | ✅ | SimulationPlanner (Agent)：OpenAI GPT-4o + 结构化输出 |
+| `agents/prompts/simulation_agent.j2` | ✅ | 简化模板：仅几何 DSL + 物理推理 + JSON schema |
+| `agents/tools/__init__.py` | ✅ | |
+| `agents/tools/visualize_geometry.py` | ✅ | ParaView VTK 可视化（WSL2 兼容），由 coordinator 直接调用 |
+
+### 已删除
+| 文件 | 说明 |
 |------|------|
-| `modify_xml` | ✅ 正常，dp/TimeMax 已写入 |
-| `run_gencase` | ✅ 0.1s，4984 粒子（fluid=3264, bound=1720） |
-| `run_simulation` (CPU) | ✅ **107s** 完成，生成 6 个 Part_*.bi4 |
-| `run_measuretool` | ✅ rc=0，输出 `PointsMeasure_Rhop.csv` + `PointsMeasure_Vel.csv` |
-| `compute_metrics` | ✅ ground_truth 不存在时正确返回 `{"status": "no_ground_truth"}` |
-| Agent 1 端到端 | ✅ 通过（见下方 Agent 1 端到端结果） |
+| `agents/tools/user_review.py` | ❌ 已删除，HITL 由 workflow request_info 取代 |
+
+### 案例 & 技能文件
+| 文件 | 状态 | 说明 |
+|------|------|------|
+| `cases/BaseCase_Def.xml` | ✅ | 通用基础 XML 模板（clean XML，几何由 set_geometry 替换） |
+| `cases/CaseDebrisFlow2D_Def.xml` | ✅ | 旧版 DebrisFlow2D 模板（保留作参考） |
+| `cases/CaseDebrisFlow2D_Points.txt` | ✅ | 静态探针点（保留作参考） |
+| `cases/ground_truth/` | ⬜ | 目录存在（含 `.gitkeep`），CSV 未生成 |
+| `skills/dualsphysics_xml_guide.md` | ✅ | 全面的 GenCase 几何 DSL 参考 + 物理参数 + 材料原型 |
+
+### 入口 & 配置
+| 文件 | 状态 | 说明 |
+|------|------|------|
+| `main.py` | ✅ | Workflow 事件循环 + HITL（terminal input） |
+| `main_smoke.py` | ✅ | 显式数值参数烟雾测试 |
+| `requirements.txt` | ✅ | 含 jinja2, openai, pydantic |
+| `.gitignore` | ✅ | 排除 `.venv/`、`runs/`、`__pycache__/`、`*.log`、`.env` |
+| `README.md` | ✅ | |
+
+---
+
+## Workflow 四阶段
+
+### Phase 1 — 自然语言 → LLM 推理
+Coordinator 收到场景描述 → 发给 AgentExecutor → GPT-4o 返回 SimulationPlan JSON
+
+### Phase 2 — HITL 审核 #1（执行前）
+Coordinator 展示几何 XML、参数表、探针坐标。用户可以批准或请求修改（修改 → 回到 Phase 1）。
+
+### Phase 3 — 构建 & 可视化
+Coordinator 确定性调用：
+`set_geometry` → `modify_xml` → `generate_points_file` → `run_gencase` → `visualize_geometry`（ParaView）
+
+### Phase 4 — HITL 审核 #2（GenCase 后）
+用户查看 ParaView 可视化，批准后 Coordinator 执行：
+`run_simulation` → `run_measuretool` → `compute_metrics` → yield_output(JSON 摘要)
+
+---
+
+## 工具分工
+
+| 工具 | 职责 |
+|------|------|
+| `set_geometry` | 替换 `<geometry>` 块（验证 + 拼接），处理 dp、drawbox 等所有绘图命令 |
+| `modify_xml` | 修改物理/执行参数（constantsdef、nnphases、execution/parameters） |
+| `generate_points_file` | 支持 `probe_points`（显式三元组）和 `probe_xs × probe_zs`（交叉积）两种模式 |
+
+### modify_xml 支持的参数（15 个，不含几何）
+
+**constantsdef**: `gravity_z`, `rhop0`, `coefh`, `cflnumber`
+**nnphases** (mkfluid=0): `phase_rhop`, `visco_nn`, `tau_yield`, `HBP_m`, `HBP_n`
+**execution/parameters**: `Visco`, `DensityDT`, `DensityDTvalue`, `TimeMax`, `TimeOut`
 
 ---
 
 ## Stub Chrono Libraries
 
-DualSPHysics CPU/GPU 二进制在 `bin/linux/` 里没有附带：
-- `libdsphchrono.so`
-- `libChronoEngine.so`
-- `libChronoEngine_parallel.so`
-
-**解决方案**：在 `bin/linux/` 创建了三个 stub `.so`（空函数体汇编），包含二进制所需的 31 个 Chrono C++ 符号。DebrisFlow2D 不调用刚体模拟功能，所以 stub 不会被实际调用。
-
-验证：
-```bash
-env LD_LIBRARY_PATH=/home/danrong/projects/DualSPHysics_NN_v5.0.1/bin/linux \
-  .../DualSPHysics5.0_NNewtonianCPU_linux64
-# 正常输出版权信息，加载成功
-```
-
-`run_simulation.py` 通过 `os.environ.copy()` + 设置 `LD_LIBRARY_PATH=BIN_DIR` 传递给子进程。
+DualSPHysics CPU/GPU 二进制在 `bin/linux/` 里没有附带 `libdsphchrono.so` 等。
+已在 `bin/linux/` 创建三个 stub `.so`（空函数体汇编，31 个符号）。
+`run_simulation.py` 通过 `LD_LIBRARY_PATH=BIN_DIR` 传递给子进程。
 
 ---
 
 ## 关键实现细节
 
-### XML 预处理（非标准 XML）
-`CaseDebrisFlow2D_Def.xml` 含两处非标准内容，标准 Python ElementTree 无法直接解析：
-1. 三连横线注释 `<!---Phase 1--->` → 注释内容含 `--`，违反 XML 规范
-2. 属性值内的未转义 `<`/`>` (如 `comment="<1 for shear thinning"`)
+### XML 预处理（_xml_utils.py）
+`CaseDebrisFlow2D_Def.xml` 含非标准内容（三连横线注释、属性值内未转义 `<`/`>`、`%` 注释）。
+`preprocess_xml()` 修复这些问题。`BaseCase_Def.xml` 是 clean XML，无需预处理但仍兼容。
 
-`xml_modifier.py` 在解析前用正则预处理修复这两个问题。写出的 XML 是标准 XML，GenCase 可以正常读取。
-
-### agent_framework RC1 正确 API
+### agent_framework RC1 API — Workflow 模式
 ```python
-Agent(client=AnthropicClient(...), ...)   # 不是 chat_client=
-agent.run(messages, tools=[mcp_tool])      # tools 在 run() 里传
-MCPStdioTool(..., cwd=BASE)               # cwd 通过 **kwargs 传给 StdioServerParameters
+# Coordinator: Executor with @handler and @response_handler
+# Agent: Agent(client=OpenAIChatClient(...), default_options={"response_format": SimulationPlan})
+# Workflow: WorkflowBuilder(start_executor=coordinator).add_edge(...).build()
+# HITL: ctx.request_info(ReviewRequest(...)) → workflow pauses → responses={id: reply}
+# MCP: mcp.call_tool("tool_name", **kwargs) → str
 ```
-venv 中 `opentelemetry-semantic-conventions-ai` 需固定为 `==0.4.13`（0.4.14 有 API 破坏）。
+- `opentelemetry-semantic-conventions-ai` 需固定 `==0.4.13`
+- 需要 `OPENAI_API_KEY` 环境变量
 
-### MeasureTool Points 文件格式（已踩坑）
-每个探针点用一个 `POINTSLIST` 块，格式为 origin / step / count：
-```
-POINTSLIST
-0.4 1.0 0.5    <- origin (x y z)
-0 0 0          <- step (单点时全为0)
-1 1 1          <- count (单点时全为1)
-```
-MeasureTool 输出两个 CSV：`<stem>_Vel.csv` 和 `<stem>_Rhop.csv`，用 `;` 分隔，前3行是位置元数据（以 ` ;` 开头，需跳过）。
+### WSL2 可视化
+`visualize_geometry.py` 检测 WSL2，用 `wslpath -w` + `cmd.exe /c start` 打开 VTK 文件。
 
-### 可配置的 XML 参数（modify_xml 支持）
-`dp`, `coefh`, `cflnumber`, `Visco`, `DensityDT`, `DensityDTvalue`,
-`TimeMax`, `TimeOut`, `visco_nn`, `tau_yield`, `HBP_m`, `HBP_n`
-
-### xml_modifier.py — 自动创建输出目录（已修复）
-写出 XML 前加了 `Path(output_xml).parent.mkdir(parents=True, exist_ok=True)`。
-修复前 agent 会在 `modify_xml` 上反复重试（因目录不存在而失败），导致 XML 散落在项目根目录。
-
----
-
-## Agent 1 端到端结果（2026-02-24）
-
-```
-ANTHROPIC_API_KEY=... .venv/bin/python main.py
-```
-
-| 步骤 | 结果 |
-|------|------|
-| `modify_xml` | ✅ 所有 8 个参数写入 |
-| `run_gencase` | ✅ 4984 粒子（bound=1720, fluid=3264） |
-| `run_simulation` (CPU) | ✅ **69s** 完成，7858 步，6 个 Part 文件 |
-| `run_measuretool` | ✅ `PointsMeasure_Rhop.csv` + `PointsMeasure_Vel.csv` |
-| `compute_metrics` | ⚠️ `no_ground_truth`（预期，CSV 尚未生成） |
-
-**已知问题（待修复）：**
-- Agent 生成的时间戳用了错误年份（`20250519` 而非 `20260224`）——agent_framework 内部时钟问题
-- 修复 `xml_modifier.py` 前，run 目录被错误放在项目根目录而非 `runs/` 下
+### MeasureTool Points 文件格式
+每个探针点用一个 `POINTSLIST` 块（origin / step / count）。
+MeasureTool 输出 `_Vel.csv` + `_Rhop.csv`，`;` 分隔，前 3 行是元数据。
 
 ---
 
 ## 下一步
 
-1. **生成 ground truth**：用默认参数跑一次完整模拟（`TimeMax=5.0`），把 MeasureTool 输出存为 `cases/ground_truth/PointsMeasure.csv`
-   - 方案 A：用默认参数的高精度模拟结果作为参考（最简单，随时可做）
-   - 方案 B：使用真实实验测量数据（需要外部数据）
+1. **生成 ground truth**：用默认参数跑完整模拟（`TimeMax=5.0`），MeasureTool 输出存为 `cases/ground_truth/PointsMeasure.csv`
 
-2. **推送到 GitHub**：`.gitignore` 和 `README.md` 已就绪；注意 `config.py` 和 `simulation_agent.py` 里有硬编码的绝对路径，协作者需手动修改
+2. **完善 skill file**：请领域专家扩充材料原型表
 
-3. **Agent 2 + 优化循环**（后续实现）
+3. **推送到 GitHub**：注意 `config.py` 和 `simulation_agent.py` 里有硬编码绝对路径
+
+4. **Agent 2 + 优化循环**：后续实现

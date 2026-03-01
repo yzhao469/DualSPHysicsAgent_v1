@@ -1,57 +1,13 @@
 """XML modifier for DualSPHysics case files.
 
-The base XML uses a few non-standard features (triple-dash comments, unescaped
-< and > inside attribute values) that standard parsers reject.  We fix them
-in memory before parsing, then write clean XML back.  GenCase reads the
-output XML and is lenient, so the cleaned version works fine.
+Modifies physics and execution parameters (constantsdef, nnphases,
+execution/parameters).  Use ``set_geometry`` for geometry changes.
 """
-import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Optional
 
-
-def _preprocess_xml(content: str) -> str:
-    """Fix non-standard XML features used in DualSPHysics case files.
-
-    Handles:
-    - Triple-dash XML comments: <!---...--->  →  <!-- ... -->
-    - Unescaped < and > inside quoted attribute values
-    """
-    # Fix triple-dash comments
-    content = re.sub(
-        r'<!---+(.*?)-+-->',
-        lambda m: '<!-- ' + re.sub(r'-{2,}', '-', m.group(1).strip()) + ' -->',
-        content,
-        flags=re.DOTALL,
-    )
-
-    # Fix unescaped < and > inside quoted attribute values
-    def _fix_attr(m: re.Match) -> str:
-        quote = m.group(1)
-        val = m.group(2)
-        val = re.sub(r'<', '&lt;', val)
-        val = re.sub(r'>', '&gt;', val)
-        return f'={quote}{val}{quote}'
-
-    content = re.sub(r'=([\"\'])(.*?)\1', _fix_attr, content, flags=re.DOTALL)
-    return content
-
-
-def _find_drawbox_after_mk(
-    mainlist: ET.Element, tag: str, mk: int
-) -> Optional[ET.Element]:
-    """Return the <drawbox> immediately following <setmkfluid mk=...> or <setmkbound mk=...>.
-
-    Comment nodes are skipped. Returns None if not found.
-    """
-    children = list(mainlist)
-    for i, child in enumerate(children):
-        if isinstance(child.tag, str) and child.tag == tag and child.get("mk") == str(mk):
-            for j in range(i + 1, len(children)):
-                if isinstance(children[j].tag, str) and children[j].tag == "drawbox":
-                    return children[j]
-    return None
+from ._xml_utils import preprocess_xml
 
 
 def modify_xml(
@@ -62,12 +18,6 @@ def modify_xml(
     rhop0: Optional[float] = None,
     coefh: Optional[float] = None,
     cflnumber: Optional[float] = None,
-    # ---- geometry ----
-    dp: Optional[float] = None,
-    fluid_size_x: Optional[float] = None,
-    fluid_size_z: Optional[float] = None,
-    channel_length: Optional[float] = None,
-    channel_height: Optional[float] = None,
     # ---- non-Newtonian phase (mkfluid=0) ----
     phase_rhop: Optional[float] = None,
     visco_nn: Optional[float] = None,
@@ -81,7 +31,9 @@ def modify_xml(
     TimeMax: Optional[float] = None,
     TimeOut: Optional[float] = None,
 ) -> str:
-    """Copy base_xml to output_xml and apply only the provided params.
+    """Copy base_xml to output_xml and apply only the provided physics params.
+
+    Geometry is NOT handled here — use set_geometry instead.
 
     Returns the path to the output XML file.
     """
@@ -89,7 +41,7 @@ def modify_xml(
     with open(base_xml, "r", encoding="utf-8", errors="replace") as fh:
         raw = fh.read()
 
-    fixed = _preprocess_xml(raw)
+    fixed = preprocess_xml(raw)
     root = ET.fromstring(fixed)
 
     # --- casedef/constantsdef ---
@@ -112,50 +64,6 @@ def modify_xml(
         el = root.find("casedef/constantsdef/cflnumber")
         if el is not None:
             el.set("value", str(cflnumber))
-
-    # --- casedef/geometry/definition[@dp] ---
-    if dp is not None:
-        el = root.find("casedef/geometry/definition")
-        if el is not None:
-            el.set("dp", str(dp))
-
-    # --- casedef/geometry/commands/mainlist (fluid box + walls) ---
-    mainlist = root.find("casedef/geometry/commands/mainlist")
-    if mainlist is not None:
-        # Fluid column dimensions (mkfluid=0)
-        if fluid_size_x is not None or fluid_size_z is not None:
-            drawbox = _find_drawbox_after_mk(mainlist, "setmkfluid", 0)
-            if drawbox is not None:
-                size = drawbox.find("size")
-                if size is not None:
-                    if fluid_size_x is not None:
-                        size.set("x", str(fluid_size_x))
-                    if fluid_size_z is not None:
-                        size.set("z", str(fluid_size_z))
-
-        # Channel floor length (mk=11)
-        if channel_length is not None:
-            drawbox = _find_drawbox_after_mk(mainlist, "setmkbound", 11)
-            if drawbox is not None:
-                size = drawbox.find("size")
-                if size is not None:
-                    size.set("x", str(channel_length))
-
-            # Right wall x-position must track channel_length (mk=13)
-            drawbox = _find_drawbox_after_mk(mainlist, "setmkbound", 13)
-            if drawbox is not None:
-                point = drawbox.find("point")
-                if point is not None:
-                    point.set("x", str(round(channel_length - 0.04, 6)))
-
-        # Wall height — both left (mk=12) and right (mk=13) walls
-        if channel_height is not None:
-            for mk in (12, 13):
-                drawbox = _find_drawbox_after_mk(mainlist, "setmkbound", mk)
-                if drawbox is not None:
-                    size = drawbox.find("size")
-                    if size is not None:
-                        size.set("z", str(channel_height))
 
     # --- execution/special/nnphases/phase[@mkfluid='0'] ---
     phase = root.find("execution/special/nnphases/phase[@mkfluid='0']")

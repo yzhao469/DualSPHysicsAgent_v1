@@ -1,4 +1,4 @@
-"""DualSPHysics MCP Server — 5 tools for SPH simulation control."""
+"""DualSPHysics MCP Server — 7 tools for SPH simulation control."""
 import logging
 import os
 import sys
@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from mcp.server.fastmcp import FastMCP
 
 from tools.xml_modifier import modify_xml as _modify_xml
+from tools.set_geometry import set_geometry as _set_geometry
 from tools.generate_points import generate_points_file as _generate_points_file
 from tools.run_gencase import run_gencase as _run_gencase
 from tools.run_simulation import run_simulation as _run_simulation
@@ -37,6 +38,38 @@ mcp = FastMCP("dualsphysics")
 
 
 @mcp.tool()
+def set_geometry(
+    base_xml: str,
+    output_xml: str,
+    geometry_xml: str,
+) -> str:
+    """Replace the <geometry> block in the case XML with a new one.
+
+    The agent generates the full <geometry> XML (including <definition>,
+    <commands><mainlist>, drawing commands, etc.) and this tool validates
+    and splices it into the case file.
+
+    Validation checks:
+    - Root tag is <geometry>
+    - Contains <definition dp="..."> with positive numeric dp
+    - Contains <commands><mainlist> with at least one child
+    - Contains <pointmin> and <pointmax>
+
+    Args:
+        base_xml:     Path to the source case XML file.
+        output_xml:   Path to write the modified XML.
+        geometry_xml: The full <geometry>...</geometry> XML string.
+
+    Returns a descriptive success or error string.
+    """
+    logger.info("set_geometry: base=%s output=%s geom_len=%d",
+                base_xml, output_xml, len(geometry_xml))
+    result = _set_geometry(base_xml, output_xml, geometry_xml)
+    logger.info("set_geometry: %s", result)
+    return result
+
+
+@mcp.tool()
 def modify_xml(
     base_xml: str,
     output_xml: str,
@@ -45,12 +78,6 @@ def modify_xml(
     rhop0: float | None = None,
     coefh: float | None = None,
     cflnumber: float | None = None,
-    # geometry
-    dp: float | None = None,
-    fluid_size_x: float | None = None,
-    fluid_size_z: float | None = None,
-    channel_length: float | None = None,
-    channel_height: float | None = None,
     # non-Newtonian phase (mkfluid=0)
     phase_rhop: float | None = None,
     visco_nn: float | None = None,
@@ -64,16 +91,10 @@ def modify_xml(
     TimeMax: float | None = None,
     TimeOut: float | None = None,
 ) -> str:
-    """Copy base_xml to output_xml and apply the provided simulation parameters.
+    """Modify physics and execution parameters in a case XML.
 
+    Use set_geometry for geometry changes (dp, drawing commands, domain bounds).
     Only parameters that are explicitly provided (non-None) are modified.
-
-    Geometry (DebrisFlow2D fixed topology):
-      dp             - particle spacing (resolution)
-      fluid_size_x   - fluid column width (m)
-      fluid_size_z   - fluid column height (m)
-      channel_length - channel floor length (m); also updates right wall position
-      channel_height - wall height for both left and right walls (m)
 
     constantsdef:
       gravity_z  - gravitational acceleration z-component (default -9.81 m/s²)
@@ -101,11 +122,6 @@ def modify_xml(
         rhop0=rhop0,
         coefh=coefh,
         cflnumber=cflnumber,
-        dp=dp,
-        fluid_size_x=fluid_size_x,
-        fluid_size_z=fluid_size_z,
-        channel_length=channel_length,
-        channel_height=channel_height,
         phase_rhop=phase_rhop,
         visco_nn=visco_nn,
         tau_yield=tau_yield,
@@ -117,36 +133,46 @@ def modify_xml(
         TimeMax=TimeMax,
         TimeOut=TimeOut,
     )
-    logger.info("modify_xml: done → %s", result)
+    logger.info("modify_xml: done -> %s", result)
     return result
 
 
 @mcp.tool()
 def generate_points_file(
     output_path: str,
-    probe_xs: list,
-    probe_zs: list,
+    probe_xs: list | None = None,
+    probe_zs: list | None = None,
     y: float = 1.0,
+    probe_points: list | None = None,
 ) -> str:
     """Write a MeasureTool POINTSLIST file for the given probe coordinates.
 
-    One POINTSLIST block is written per (x, z) combination (all z values for
-    each x, ordered x-major).
+    Two modes:
+    1. Explicit triples (preferred for general geometry):
+       Pass probe_points as a list of [x, y, z] triples.
+    2. Cross-product (legacy, for 2D channel cases):
+       Pass probe_xs and probe_zs; one block per (x, z) at fixed y.
+
+    If both are provided, probe_points takes precedence.
 
     Args:
-        output_path: Path to write the points file.
-        probe_xs:    List of x coordinates (m).
-        probe_zs:    List of z coordinates (m); each x gets every z value.
-        y:           Fixed y coordinate (m); default 1.0 (centre of 2D domain).
+        output_path:  Path to write the points file.
+        probe_xs:     List of x coordinates (m) — cross-product mode.
+        probe_zs:     List of z coordinates (m) — cross-product mode.
+        y:            Fixed y coordinate (m); default 1.0.
+        probe_points: List of [x, y, z] triples — explicit mode.
 
     Returns:
         The path to the written file.
     """
-    logger.info("generate_points_file: output=%s xs=%s zs=%s y=%s",
-                output_path, probe_xs, probe_zs, y)
-    result = _generate_points_file(output_path, probe_xs, probe_zs, y)
-    logger.info("generate_points_file: wrote %d probes to %s",
-                len(probe_xs) * len(probe_zs), result)
+    n = len(probe_points) if probe_points else (
+        len(probe_xs or []) * len(probe_zs or []))
+    logger.info("generate_points_file: output=%s n_probes=%d", output_path, n)
+    result = _generate_points_file(
+        output_path, probe_xs=probe_xs, probe_zs=probe_zs, y=y,
+        probe_points=probe_points,
+    )
+    logger.info("generate_points_file: wrote %d probes to %s", n, result)
     return result
 
 
