@@ -1,13 +1,18 @@
-"""Agent 1 — SimulationRunner: interprets natural language scenario descriptions
-and drives a full DebrisFlow2D simulation end-to-end with human-in-the-loop review."""
+"""Agent 1 — SimulationPlanner: reasons about physics and geometry from a
+natural-language scenario description.  Returns structured SimulationPlan JSON.
+
+The agent has NO tools — it only reasons.  All tool orchestration is handled
+by SimulationCoordinator (see coordinator.py).
+
+Uses OpenAI GPT-4o for native structured output (response_format)."""
+
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 from agent_framework import Agent, MCPStdioTool
-from agent_framework.anthropic import AnthropicClient
+from agent_framework.openai import OpenAIChatClient
 
-from agents.tools.user_review import request_user_review
-from agents.tools.visualize_geometry import visualize_geometry
+from agents.schemas import SimulationPlan
 
 BASE = "/home/danrong/projects/DualSPHysics_NN_v5.0.1/dualsphysics-maf"
 
@@ -28,18 +33,21 @@ def make_mcp_tool() -> MCPStdioTool:
 
 
 def make_simulation_agent() -> Agent:
-    """Create Agent 1 (SimulationRunner) with two-phase reasoning instructions."""
+    """Create the SimulationPlanner agent with structured output.
+
+    The agent receives a scenario description, reasons about geometry and
+    physics, and returns a SimulationPlan JSON via OpenAI structured output.
+    It has no tools — only reasoning capability.
+    """
     skill_content = _SKILL_FILE.read_text(encoding="utf-8")
     template = _jinja_env.get_template("simulation_agent.j2")
     instructions = template.render(base=BASE, skill_content=skill_content)
 
+    client = OpenAIChatClient(model_id="gpt-4o")
+
     return Agent(
-        client=AnthropicClient(model_id="claude-sonnet-4-6"),
-        name="SimulationRunner",
+        client=client,
+        name="SimulationPlanner",
         instructions=instructions,
+        default_options={"response_format": SimulationPlan},
     )
-
-
-def get_agent_tools(mcp: MCPStdioTool) -> list:
-    """Return the full tool list: MCP tools + Python callable HITL tools."""
-    return [mcp, request_user_review, visualize_geometry]
