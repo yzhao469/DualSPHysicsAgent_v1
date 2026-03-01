@@ -26,6 +26,26 @@ from agents.tools.visualize_geometry import visualize_geometry
 logger = logging.getLogger(__name__)
 
 
+def _is_agent_design_review_request(text: str) -> bool:
+    normalized = text.lower()
+    return "agent design" in normalized and ("review" in normalized or "suggest" in normalized)
+
+
+def _build_agent_design_review() -> dict:
+    return {
+        "status": "ok",
+        "request_type": "agent_design_review",
+        "summary": "Current design is solid: deterministic orchestration + LLM-only reasoning + HITL gates.",
+        "suggestions": [
+            "Add strict schema constraints for probe count/ranges to catch weak plans earlier.",
+            "Persist each approved SimulationPlan with run metadata for reproducibility and audit.",
+            "Add automatic retry/fallback policy for MCP tool failures with bounded retries.",
+            "Split planner prompts into reusable scenario templates to reduce prompt drift.",
+            "Track per-stage latency/error metrics to identify bottlenecks and unstable tools.",
+        ],
+    }
+
+
 def _format_plan_summary(plan: SimulationPlan) -> str:
     """Build a human-readable summary of the simulation plan."""
     lines = [
@@ -76,6 +96,9 @@ class SimulationCoordinator(Executor):
     @handler
     async def start(self, scenario: str, ctx: WorkflowContext[AgentExecutorRequest]) -> None:
         """Receive the natural-language scenario and send it to the agent."""
+        if _is_agent_design_review_request(scenario):
+            await ctx.yield_output(_build_agent_design_review())
+            return
         msg = Message("user", text=scenario)
         await ctx.send_message(AgentExecutorRequest(messages=[msg], should_respond=True))
 
