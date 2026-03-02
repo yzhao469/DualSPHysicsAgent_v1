@@ -18,7 +18,7 @@ from agent_framework import (
     response_handler,
 )
 
-from agents.intent import classify_intent
+from agents.intent import answer_question, classify_intent
 from agents.schemas import BuildResult, ReviewRequest, ReviewResult, SimulationPlan
 
 logger = logging.getLogger(__name__)
@@ -107,9 +107,30 @@ class ReviewExecutor(Executor):
         feedback: str,
         ctx: WorkflowContext[ReviewResult],
     ) -> None:
-        """Classify user feedback and send ReviewResult."""
-        approved = await classify_intent(feedback)
-        logger.info("ReviewExecutor: phase=%s, approved=%s", request.phase, approved)
+        """Classify user feedback: approve, revise, or answer a question and re-prompt."""
+        intent = await classify_intent(feedback)
+        logger.info("ReviewExecutor: phase=%s, intent=%s", request.phase, intent)
+
+        if intent == "question":
+            plan_data = ctx.get_state("plan")
+            if plan_data:
+                plan = SimulationPlan.model_validate(plan_data)
+                plan_context = _format_plan_summary(plan)
+            else:
+                plan_context = request.summary
+
+            answer = await answer_question(feedback, plan_context)
+
+            await ctx.request_info(
+                request_data=ReviewRequest(
+                    phase=request.phase,
+                    summary=f"{answer}\n\n{'=' * 64}\nApprove or describe changes:",
+                ),
+                response_type=str,
+            )
+            return
+
+        approved = intent == "approve"
         await ctx.send_message(
             ReviewResult(approved=approved, feedback=feedback, phase=request.phase)
         )
