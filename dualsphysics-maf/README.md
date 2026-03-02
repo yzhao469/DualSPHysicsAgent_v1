@@ -2,6 +2,22 @@
 
 LLM-assisted workflow for DualSPHysics non-Newtonian simulations.
 
+## Quick start
+
+1. Create a virtual environment and install dependencies:
+   ```bash
+   cd dualsphysics-maf
+   python3.12 -m venv .venv
+   .venv/bin/pip install -r requirements.txt
+   ```
+2. Update local absolute paths in:
+   - `mcp_server/config.py` (`BASE_DIR`)
+   - `agents/simulation_agent.py` (`BASE`)
+3. Run the interactive workflow:
+   ```bash
+   .venv/bin/python main.py
+   ```
+
 ## Folder READMEs
 
 Each folder under `dualsphysics-maf` has its own README that documents every file in that folder and the file's main logic:

@@ -15,3 +15,8 @@ Executors, workflow graph, schemas, and LLM integration for the simulation plann
 | `sim_executor.py` | Deterministic simulation stage: runs solver, runs MeasureTool, computes metrics, and yields final output payload. |
 | `simulation_agent.py` | Builds the planning agent and MCP tool binding, loading prompt template + XML skill reference. |
 | `workflow.py` | Defines and wires the 5-executor workflow graph and switch/case transitions. |
+
+## Subfolders
+
+- [`prompts/README.md`](prompts/README.md)
+- [`tools/README.md`](tools/README.md)
