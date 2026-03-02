@@ -42,3 +42,21 @@ class ReviewRequest:
 
     phase: str  # "plan" or "viz"
     summary: str  # Formatted text to show user
+
+
+@dataclass
+class ReviewResult:
+    """Output of ReviewExecutor after classifying user feedback."""
+
+    approved: bool
+    feedback: str
+    phase: str  # "plan" or "viz"
+
+
+@dataclass
+class BuildResult:
+    """Output of BuildExecutor after the build pipeline."""
+
+    run_dir: str
+    success: bool
+    message: str

@@ -16,14 +16,15 @@ Python 代码确定性地编排所有 MCP 工具调用。
 
 ```
 main.py → WorkflowBuilder
-  ├─ SimulationCoordinator (Executor) — 确定性编排器
-  └─ AgentExecutor(SimulationPlanner) — GPT-4o 推理 + 结构化输出
+  ├─ PlanningExecutor → AgentExecutor(GPT-4o) → ReviewExecutor → BuildExecutor / SimExecutor
+  └─ ReviewExecutor: 3-way intent (approve/revise/question) — conversational Q&A loop
 ```
 
 HITL 通过 workflow `request_info` / `response_handler` 模式实现：
-1. Coordinator 调用 `ctx.request_info(ReviewRequest(...))`
+1. ReviewExecutor 调用 `ctx.request_info(ReviewRequest(...))`
 2. Workflow 暂停，main.py 事件循环提示用户 `input()`
 3. `workflow.run(responses={request_id: user_reply})` 恢复
+4. 用户提问时，`answer_question()` 用 GPT-4o-mini 回答（上下文：plan + skill file），然后 re-prompt
 
 ---
 
@@ -46,20 +47,26 @@ HITL 通过 workflow `request_info` / `response_handler` 模式实现：
 | `mcp_server/tools/metrics.py` | ✅ | |
 | `mcp_server/server.py` | ✅ | FastMCP，7 个工具 |
 
-### Workflow + Agent
+### Workflow + Agent（5-Executor 架构）
 | 文件 | 状态 | 说明 |
 |------|------|------|
 | `agents/__init__.py` | ✅ | |
-| `agents/schemas.py` | ✅ | Pydantic 模型：SimulationPlan, PhysicsParams, ReviewRequest |
-| `agents/coordinator.py` | ✅ | SimulationCoordinator (Executor)：确定性编排 + HITL |
+| `agents/schemas.py` | ✅ | Pydantic 模型：SimulationPlan, PhysicsParams, ReviewRequest, ReviewResult, BuildResult |
+| `agents/intent.py` | ✅ | 3-way intent classification (approve/revise/question) + `answer_question()` Q&A |
+| `agents/planning_executor.py` | ✅ | PlanningExecutor：包装场景/修改意见 → AgentExecutorRequest |
+| `agents/review_executor.py` | ✅ | ReviewExecutor：HITL 审核门 + 对话式问答循环 |
+| `agents/build_executor.py` | ✅ | BuildExecutor：set_geometry → modify_xml → generate_points → run_gencase → visualize |
+| `agents/sim_executor.py` | ✅ | SimExecutor：run_simulation → run_measuretool → compute_metrics → yield_output |
 | `agents/simulation_agent.py` | ✅ | SimulationPlanner (Agent)：OpenAI GPT-4o + 结构化输出 |
 | `agents/prompts/simulation_agent.j2` | ✅ | 简化模板：仅几何 DSL + 物理推理 + JSON schema |
+| `agents/workflow.py` | ✅ | WorkflowBuilder 配置：executor 注册 + switch_case 路由 |
 | `agents/tools/__init__.py` | ✅ | |
-| `agents/tools/visualize_geometry.py` | ✅ | ParaView VTK 可视化（WSL2 兼容），由 coordinator 直接调用 |
+| `agents/tools/visualize_geometry.py` | ✅ | ParaView VTK 可视化（WSL2 兼容） |
 
 ### 已删除
 | 文件 | 说明 |
 |------|------|
+| `agents/coordinator.py` | ❌ 已删除，逻辑拆分为 4 个 executor |
 | `agents/tools/user_review.py` | ❌ 已删除，HITL 由 workflow request_info 取代 |
 
 ### 案例 & 技能文件
@@ -88,7 +95,10 @@ HITL 通过 workflow `request_info` / `response_handler` 模式实现：
 Coordinator 收到场景描述 → 发给 AgentExecutor → GPT-4o 返回 SimulationPlan JSON
 
 ### Phase 2 — HITL 审核 #1（执行前）
-Coordinator 展示几何 XML、参数表、探针坐标。用户可以批准或请求修改（修改 → 回到 Phase 1）。
+Coordinator 展示几何 XML、参数表、探针坐标。用户可以：
+- 批准 → 进入 Phase 3
+- 请求修改 → 回到 Phase 1
+- 提问（如"why this density?"、"what is HBP_n?"）→ GPT-4o-mini 回答后重新提示，循环直到批准/修改
 
 ### Phase 3 — 构建 & 可视化
 Coordinator 确定性调用：
