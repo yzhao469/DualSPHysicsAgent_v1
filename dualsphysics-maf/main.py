@@ -1,10 +1,4 @@
-"""Workflow-based simulation driver with HITL review gates.
-
-Uses agent_framework's Workflow system:
-  - SimulationCoordinator (Executor): deterministic orchestrator
-  - SimulationPlanner (Agent via AgentExecutor): LLM reasoning only
-  - HITL via workflow request_info / response_handler pattern
-"""
+"""Simulation driver — HITL event loop for the 5-executor workflow."""
 
 import asyncio
 import json
@@ -19,20 +13,16 @@ load_dotenv(Path(__file__).resolve().parent / ".env")
 
 from agent_framework import (
     AgentExecutor,
-    WorkflowBuilder,
     WorkflowEvent,
     WorkflowRunResult,
     WorkflowRunState,
 )
 from agent_framework._types import ResponseStream
 
-from agents.coordinator import SimulationCoordinator
 from agents.schemas import ReviewRequest
 from agents.simulation_agent import make_mcp_tool, make_simulation_agent
+from agents.workflow import build_workflow
 
-# ---------------------------------------------------------------------------
-# Logging
-# ---------------------------------------------------------------------------
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
@@ -41,9 +31,6 @@ logging.basicConfig(
 logging.getLogger("agent_framework").setLevel(logging.WARNING)
 logger = logging.getLogger("dualsphysics_main")
 
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
 BASE = "/home/danrong/projects/DualSPHysics_NN_v5.0.1/dualsphysics-maf"
 
 SCENARIO = (
@@ -54,9 +41,6 @@ SCENARIO = (
 )
 
 
-# ---------------------------------------------------------------------------
-# Event processing
-# ---------------------------------------------------------------------------
 async def process_events(
     stream: ResponseStream[WorkflowEvent, WorkflowRunResult],
 ) -> dict[str, Any] | None:
@@ -69,7 +53,6 @@ async def process_events(
 
     async for event in stream:
         if event.type == "request_info":
-            # The request data is a ReviewRequest dataclass
             req_data = event.data
             request_id = event.request_id
 
@@ -88,11 +71,6 @@ async def process_events(
                 response = "yes"
 
             pending_requests[request_id] = response
-
-        elif event.type == "output":
-            # Only log final outputs from the coordinator (not agent streaming tokens)
-            if event.executor_id == "coordinator":
-                logger.info("Workflow output received")
 
         elif event.type == "executor_failed":
             logger.error("Executor %s failed: %s", event.executor_id, event.details)
@@ -119,21 +97,12 @@ async def process_events(
     return None
 
 
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
 async def main() -> None:
     mcp = make_mcp_tool()
     agent = make_simulation_agent()
     agent_executor = AgentExecutor(agent)
-    coordinator = SimulationCoordinator(mcp=mcp, base_dir=BASE)
 
-    workflow = (
-        WorkflowBuilder(start_executor=coordinator)
-        .add_edge(coordinator, agent_executor)  # coordinator → agent (reasoning request)
-        .add_edge(agent_executor, coordinator)  # agent → coordinator (plan response)
-        .build()
-    )
+    workflow = build_workflow(mcp=mcp, agent_executor=agent_executor, base_dir=BASE)
 
     async with mcp:
         # Initial run with scenario
