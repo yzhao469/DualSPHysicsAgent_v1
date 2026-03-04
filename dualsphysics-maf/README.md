@@ -27,6 +27,7 @@ Each folder under `dualsphysics-maf` has its own README that documents every fil
 - [`agents/tools/README.md`](agents/tools/README.md)
 - [`cases/README.md`](cases/README.md)
 - [`cases/ground_truth/README.md`](cases/ground_truth/README.md)
+- [`datalake/README.md`](datalake/README.md)
 - [`mcp_server/README.md`](mcp_server/README.md)
 - [`mcp_server/tools/README.md`](mcp_server/tools/README.md)
 - [`skills/README.md`](skills/README.md)
