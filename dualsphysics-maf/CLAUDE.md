@@ -9,18 +9,84 @@ Run with: `.venv/bin/python`
 
 ---
 
-## 架构（2026-03-01 重构 — Workflow-Based + HITL）
+## 架构（2026-03-03 — 7-Executor Flexible Workflow）
 
 **核心模式**：LLM 只做推理（返回结构化 SimulationPlan JSON），
 Python 代码确定性地编排所有 MCP 工具调用。
 
+### Workflow Diagram
+
+ReviewExecutor is a single node in the workflow graph, but handles two internal
+phases (`plan` and `viz`). Both phases offer the same 5-way intent routing.
+The only difference: "approve" in plan phase → Build; "approve" in viz phase → Sim.
+
 ```
-main.py → WorkflowBuilder
-  ├─ PlanningExecutor → AgentExecutor(GPT-4o) → ReviewExecutor → BuildExecutor / SimExecutor
-  └─ ReviewExecutor: 3-way intent (approve/revise/question) — conversational Q&A loop
+                         ┌──────────────────────────────────────────────┐
+                         │                                              │
+                         ▼                                              │
+                  ┌──────────────┐                                      │
+                  │  Planning    │                                      │
+                  │  Executor    │                                      │
+                  └──────┬───────┘                                      │
+                         │                                              │
+                         ▼                                              │
+                  ┌──────────────┐                                      │
+                  │    Agent     │  (GPT-4o → SimulationPlan JSON)      │
+                  │   Executor   │                                      │
+                  └──────┬───────┘                                      │
+                         │                                              │
+                         ▼                                              │
+                  ┌──────────────┐                                      │
+                  │   Review     │  HITL gate #1: "plan" phase          │
+                  │  (plan)      │  User sees plan summary              │
+                  └──────┬───────┘                                      │
+                         │                                              │
+                   5-way switch_case                                    │
+          ┌────────┬─────┼──────────┬───────────┐                       │
+          ▼        ▼     ▼          ▼           ▼                       │
+        Build    Patch  ManualEdit  Question   Planning ────────────────┘
+        Exec     Exec    Exec      (Q&A loop)  (full replan)
+          │        │       │
+          │        │       │
+          ▼        ▼       ▼
+        ┌─────────────────────┐
+        │       Review        │  HITL gate #2: "viz" phase
+        │      (viz)          │  User sees ParaView visualization
+        └─────────┬───────────┘
+                  │
+            5-way switch_case
+          ┌───────┼──────────┬───────────┬──────────────┐
+          ▼       ▼          ▼           ▼              ▼
+        Sim     Patch    ManualEdit   Question       Planning
+        Exec    Exec      Exec       (Q&A loop)    (full replan)
+       (done)     │          │
+                  │          │
+                  └──────────┘
+                  back to Review (viz)
 ```
 
-HITL 通过 workflow `request_info` / `response_handler` 模式实现：
+### 5-Way Intent Routes (available at BOTH HITL gates)
+
+| Intent | Condition | Action |
+|--------|-----------|--------|
+| **approve** | `ReviewResult.route == "build"` (plan) or `"sim"` (viz) | Proceed to next stage |
+| **agent_patch** | `PatchRequest` | LLM-driven targeted XML patch → rebuild → back to Review |
+| **manual_edit** | `ManualEditRequest` | User manually edits XML → rebuild → back to Review |
+| **question** | Q&A loop | GPT-4o-mini answers, then re-prompts same gate |
+| **full_replan** | `Default` → PlanningExecutor | Agent re-generates plan from scratch |
+
+### 7 Executors
+
+1. `PlanningExecutor` (id="planning") — wraps scenario/revision → AgentExecutorRequest; detects datalake files
+2. `AgentExecutor` (MAF built-in) — GPT-4o + `response_format=SimulationPlan`
+3. `ReviewExecutor` (id="review") — dual-phase HITL gate + 5-way intent classification
+4. `BuildExecutor` (id="build") — set_geometry → modify_xml → generate_points → run_gencase → visualize
+5. `SimExecutor` (id="sim") — run_simulation → run_measuretool → compute_metrics → yield_output (terminal)
+6. `PatchExecutor` (id="patch") — LLM-driven targeted patching of current case XML
+7. `ManualEditExecutor` (id="manual_edit") — HITL manual XML editing + rebuild
+
+### HITL Mechanism
+
 1. ReviewExecutor 调用 `ctx.request_info(ReviewRequest(...))`
 2. Workflow 暂停，main.py 事件循环提示用户 `input()`
 3. `workflow.run(responses={request_id: user_reply})` 恢复

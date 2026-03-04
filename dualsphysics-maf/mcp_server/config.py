@@ -1,6 +1,7 @@
 import os
+from pathlib import Path
 
-BASE_DIR        = "/home/danrong/projects/DualSPHysics_NN_v5.0.1"
+BASE_DIR        = str(Path(__file__).resolve().parents[2])
 BIN_DIR         = f"{BASE_DIR}/bin/linux"
 
 GENCASE_BIN     = f"{BIN_DIR}/GenCase_linux64"

@@ -37,15 +37,17 @@ class BuildExecutor(Executor):
             await ctx.send_message(BuildResult(run_dir="", success=False, message="No plan in workflow state"))
             return
 
+        base_xml = ctx.get_state("base_xml") or f"{self.base_dir}/cases/BaseCase_Def.xml"
+
         try:
-            run_dir = await self._build(plan_data)
+            run_dir = await self._build(plan_data, base_xml)
             ctx.set_state("run_dir", run_dir)
             await ctx.send_message(BuildResult(run_dir=run_dir, success=True, message="Build complete"))
         except Exception as exc:
             logger.exception("Build pipeline failed")
             await ctx.send_message(BuildResult(run_dir="", success=False, message=str(exc)))
 
-    async def _build(self, plan_data: dict) -> str:
+    async def _build(self, plan_data: dict, base_xml: str) -> str:
         """set_geometry → modify_xml → generate_points → run_gencase → visualize."""
         from agents.schemas import PhysicsParams
 
@@ -61,7 +63,7 @@ class BuildExecutor(Executor):
         logger.info(">>> set_geometry")
         r = await self.mcp.call_tool(
             "set_geometry",
-            base_xml=f"{self.base_dir}/cases/BaseCase_Def.xml",
+            base_xml=base_xml,
             output_xml=case_xml,
             geometry_xml=geometry_xml,
         )

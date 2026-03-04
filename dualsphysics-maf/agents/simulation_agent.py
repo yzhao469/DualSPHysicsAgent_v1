@@ -6,6 +6,7 @@ by SimulationCoordinator (see coordinator.py).
 
 Uses OpenAI GPT-4o for native structured output (response_format)."""
 
+import os
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
@@ -14,7 +15,7 @@ from agent_framework.openai import OpenAIChatClient
 
 from agents.schemas import SimulationPlan
 
-BASE = "/home/danrong/projects/DualSPHysics_NN_v5.0.1/dualsphysics-maf"
+BASE = str(Path(__file__).resolve().parents[1])
 
 _PROMPTS_DIR = Path(BASE) / "agents/prompts"
 _SKILL_FILE = Path(BASE) / "skills/dualsphysics_xml_guide.md"
@@ -43,7 +44,7 @@ def make_simulation_agent() -> Agent:
     template = _jinja_env.get_template("simulation_agent.j2")
     instructions = template.render(base=BASE, skill_content=skill_content)
 
-    client = OpenAIChatClient(model_id="gpt-4o")
+    client = OpenAIChatClient(model_id=os.getenv("PLANNER_MODEL", "gpt-4o"))
 
     return Agent(
         client=client,

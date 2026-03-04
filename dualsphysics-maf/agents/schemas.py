@@ -1,6 +1,7 @@
 """Pydantic models for the simulation workflow."""
 
 from dataclasses import dataclass
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -30,7 +31,7 @@ class PhysicsParams(BaseModel):
 class SimulationPlan(BaseModel):
     """Structured output from the reasoning agent."""
 
-    geometry_xml: str  # Full <geometry>...</geometry> XML
+    geometry_xml: str | None = None  # Full <geometry>...</geometry> XML
     params: PhysicsParams
     probe_points: list[list[float]]  # [[x, y, z], ...]
     reasoning: str  # Brief explanation of choices
@@ -48,9 +49,32 @@ class ReviewRequest:
 class ReviewResult:
     """Output of ReviewExecutor after classifying user feedback."""
 
-    approved: bool
+    route: Literal["build", "sim", "full_replan"]
     feedback: str
     phase: str  # "plan" or "viz"
+
+
+@dataclass
+class PatchRequest:
+    """Request to LLM-patch the current case XML."""
+
+    feedback: str
+    phase: str  # "plan" or "viz"
+
+
+@dataclass
+class ManualEditRequest:
+    """Request for user to manually edit the case XML."""
+
+    phase: str  # "plan" or "viz"
+
+
+@dataclass
+class ManualEditAck:
+    """Data attached to request_info when waiting for manual edit completion."""
+
+    file_path: str
+    message: str
 
 
 @dataclass
