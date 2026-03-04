@@ -2,10 +2,9 @@
 
 Handles two review phases:
   1. Plan review (after agent produces SimulationPlan)
-  2. Viz review (after BuildExecutor generates geometry + ParaView)
+  2. Viz review (after BuildExecutor/PatchExecutor/ManualEditExecutor)
 
-Uses classify_intent() to determine approval vs revision instead of
-rigid string matching.
+Uses 5-way classify_intent() to route user feedback.
 """
 
 import logging
@@ -19,7 +18,14 @@ from agent_framework import (
 )
 
 from agents.intent import answer_question, classify_intent
-from agents.schemas import BuildResult, ReviewRequest, ReviewResult, SimulationPlan
+from agents.schemas import (
+    BuildResult,
+    ManualEditRequest,
+    PatchRequest,
+    ReviewRequest,
+    ReviewResult,
+    SimulationPlan,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -34,13 +40,16 @@ def _format_plan_summary(plan: SimulationPlan) -> str:
         "### Reasoning",
         plan.reasoning,
         "",
-        "### Geometry XML",
-        "```xml",
-        plan.geometry_xml,
-        "```",
-        "",
-        "### Physics Parameters",
     ]
+    if plan.geometry_xml:
+        lines += [
+            "### Geometry XML",
+            "```xml",
+            plan.geometry_xml,
+            "```",
+            "",
+        ]
+    lines.append("### Physics Parameters")
     for field, value in plan.params.model_dump().items():
         lines.append(f"  {field:20s} = {value}")
     lines += [
@@ -52,7 +61,7 @@ def _format_plan_summary(plan: SimulationPlan) -> str:
     lines += [
         "",
         "=" * 64,
-        "Approve or describe changes:",
+        "Approve, request changes, or ask a question:",
     ]
     return "\n".join(lines)
 
@@ -64,7 +73,7 @@ class ReviewExecutor(Executor):
         super().__init__(id="review")
 
     @handler
-    async def on_plan(self, result: AgentExecutorResponse, ctx: WorkflowContext[ReviewResult]) -> None:
+    async def on_plan(self, result: AgentExecutorResponse, ctx: WorkflowContext[ReviewResult | PatchRequest | ManualEditRequest]) -> None:
         """Receive the agent's SimulationPlan and request user review."""
         raw_text = result.agent_response.text
         logger.info("ReviewExecutor: agent response length: %d chars", len(raw_text))
@@ -79,12 +88,12 @@ class ReviewExecutor(Executor):
         )
 
     @handler
-    async def on_build_complete(self, result: BuildResult, ctx: WorkflowContext[ReviewResult]) -> None:
+    async def on_build_complete(self, result: BuildResult, ctx: WorkflowContext[ReviewResult | PatchRequest | ManualEditRequest]) -> None:
         """After build pipeline: show viz prompt or auto-route to revision on failure."""
         if not result.success:
-            logger.warning("Build failed: %s — auto-routing to revision", result.message)
+            logger.warning("Build failed: %s — auto-routing to full replan", result.message)
             await ctx.send_message(
-                ReviewResult(approved=False, feedback=f"Build failed: {result.message}", phase="plan")
+                ReviewResult(route="full_replan", feedback=f"Build failed: {result.message}", phase="plan")
             )
             return
 
@@ -94,7 +103,7 @@ class ReviewExecutor(Executor):
                 summary=(
                     "ParaView should be open with the particle configuration.\n"
                     "Does the geometry look correct?\n"
-                    "Approve or describe changes:"
+                    "Approve, request changes, or ask a question:"
                 ),
             ),
             response_type=str,
@@ -105,9 +114,9 @@ class ReviewExecutor(Executor):
         self,
         request: ReviewRequest,
         feedback: str,
-        ctx: WorkflowContext[ReviewResult],
+        ctx: WorkflowContext[ReviewResult | PatchRequest | ManualEditRequest],
     ) -> None:
-        """Classify user feedback: approve, revise, or answer a question and re-prompt."""
+        """5-way classification of user feedback."""
         intent = await classify_intent(feedback)
         logger.info("ReviewExecutor: phase=%s, intent=%s", request.phase, intent)
 
@@ -124,13 +133,26 @@ class ReviewExecutor(Executor):
             await ctx.request_info(
                 request_data=ReviewRequest(
                     phase=request.phase,
-                    summary=f"{answer}\n\n{'=' * 64}\nApprove or describe changes:",
+                    summary=f"{answer}\n\n{'=' * 64}\nApprove, request changes, or ask a question:",
                 ),
                 response_type=str,
             )
             return
 
-        approved = intent == "approve"
-        await ctx.send_message(
-            ReviewResult(approved=approved, feedback=feedback, phase=request.phase)
-        )
+        if intent == "approve":
+            route = "build" if request.phase == "plan" else "sim"
+            await ctx.send_message(
+                ReviewResult(route=route, feedback=feedback, phase=request.phase)
+            )
+        elif intent == "agent_patch":
+            await ctx.send_message(
+                PatchRequest(feedback=feedback, phase=request.phase)
+            )
+        elif intent == "manual_edit":
+            await ctx.send_message(
+                ManualEditRequest(phase=request.phase)
+            )
+        else:  # full_replan
+            await ctx.send_message(
+                ReviewResult(route="full_replan", feedback=feedback, phase=request.phase)
+            )

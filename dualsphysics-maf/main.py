@@ -1,4 +1,4 @@
-"""Simulation driver — HITL event loop for the 5-executor workflow."""
+"""Simulation driver — HITL event loop for the 7-executor workflow."""
 
 import asyncio
 import json
@@ -19,7 +19,7 @@ from agent_framework import (
 )
 from agent_framework._types import ResponseStream
 
-from agents.schemas import ReviewRequest
+from agents.schemas import ManualEditAck, ReviewRequest
 from agents.simulation_agent import make_mcp_tool, make_simulation_agent
 from agents.workflow import build_workflow
 
@@ -31,9 +31,9 @@ logging.basicConfig(
 logging.getLogger("agent_framework").setLevel(logging.WARNING)
 logger = logging.getLogger("dualsphysics_main")
 
-BASE = "/home/danrong/projects/DualSPHysics_NN_v5.0.1/dualsphysics-maf"
+BASE = str(Path(__file__).resolve().parent)
 
-SCENARIO = (
+DEFAULT_SCENARIO = (
     "Simulate a moderately dense debris flow: shear-thinning non-Newtonian material "
     "with a yield stress. The initial fluid column is 0.8 m wide and 1.0 m tall in a "
     "4 m long channel. Density is around 1500 kg/m3. Run for 2 seconds with output "
@@ -58,6 +58,8 @@ async def process_events(
 
             if isinstance(req_data, ReviewRequest):
                 print(req_data.summary, flush=True)
+            elif isinstance(req_data, ManualEditAck):
+                print(f"\n{req_data.message}", flush=True)
             else:
                 print(f"\n[Request from {event.source_executor_id}]: {req_data}", flush=True)
 
@@ -104,9 +106,12 @@ async def main() -> None:
 
     workflow = build_workflow(mcp=mcp, agent_executor=agent_executor, base_dir=BASE)
 
+    print("Enter your simulation scenario (press Enter for default):")
+    scenario = input("> ").strip() or DEFAULT_SCENARIO
+
     async with mcp:
         # Initial run with scenario
-        stream = workflow.run(SCENARIO, stream=True)
+        stream = workflow.run(scenario, stream=True)
         responses = await process_events(stream)
 
         # HITL loop: keep resuming until workflow completes

@@ -74,7 +74,7 @@ class SimExecutor(Executor):
         metrics = json.loads(r) if isinstance(r, str) else r
         logger.info("compute_metrics: %s", metrics)
 
-        ctx.yield_output({
+        await ctx.yield_output({
             "geometry_xml": plan_data["geometry_xml"],
             "params": plan_data["params"],
             "probe_points": plan_data["probe_points"],
