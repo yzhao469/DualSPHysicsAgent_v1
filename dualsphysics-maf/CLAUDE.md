@@ -113,26 +113,36 @@ The only difference: "approve" in plan phase → Build; "approve" in viz phase �
 | `mcp_server/tools/metrics.py` | ✅ | |
 | `mcp_server/server.py` | ✅ | FastMCP，7 个工具 |
 
-### Workflow + Agent（5-Executor 架构）
+### Workflow + Agent（7-Executor 架构）
 | 文件 | 状态 | 说明 |
 |------|------|------|
 | `agents/__init__.py` | ✅ | |
-| `agents/schemas.py` | ✅ | Pydantic 模型：SimulationPlan, PhysicsParams, ReviewRequest, ReviewResult, BuildResult |
-| `agents/intent.py` | ✅ | 3-way intent classification (approve/revise/question) + `answer_question()` Q&A |
-| `agents/planning_executor.py` | ✅ | PlanningExecutor：包装场景/修改意见 → AgentExecutorRequest |
-| `agents/review_executor.py` | ✅ | ReviewExecutor：HITL 审核门 + 对话式问答循环 |
-| `agents/build_executor.py` | ✅ | BuildExecutor：set_geometry → modify_xml → generate_points → run_gencase → visualize |
-| `agents/sim_executor.py` | ✅ | SimExecutor：run_simulation → run_measuretool → compute_metrics → yield_output |
+| `agents/schemas.py` | ✅ | Pydantic 模型：SimulationPlan, PhysicsParams, ReviewRequest, ReviewResult, BuildResult, PatchRequest, ManualEditRequest, ManualEditAck |
 | `agents/simulation_agent.py` | ✅ | SimulationPlanner (Agent)：OpenAI GPT-4o + 结构化输出 |
+| `agents/workflow.py` | ✅ | WorkflowBuilder 配置：7 executor 注册 + 5-way switch_case 路由 |
+| `agents/executors/__init__.py` | ✅ | Re-exports all 6 executor classes |
+| `agents/executors/planning.py` | ✅ | PlanningExecutor：包装场景/修改意见 → AgentExecutorRequest; LLM-based datalake detection |
+| `agents/executors/review.py` | ✅ | ReviewExecutor：双阶段 HITL 审核门（plan + viz）+ 5-way 路由 |
+| `agents/executors/build.py` | ✅ | BuildExecutor：set_geometry → modify_xml → generate_points → run_gencase → visualize |
+| `agents/executors/sim.py` | ✅ | SimExecutor：run_simulation → run_measuretool → compute_metrics → yield_output |
+| `agents/executors/patch.py` | ✅ | PatchExecutor：LLM-driven targeted XML patching + rebuild |
+| `agents/executors/manual_edit.py` | ✅ | ManualEditExecutor：HITL manual XML editing + rebuild |
+| `agents/utils/__init__.py` | ✅ | |
+| `agents/utils/build_utils.py` | ✅ | 共享 `rebuild_gencase_viz()`，PatchExecutor 和 ManualEditExecutor 复用 |
+| `agents/utils/intent.py` | ✅ | 5-way intent classification + `answer_question()` Q&A + `resolve_datalake_file()` LLM file resolver |
 | `agents/prompts/simulation_agent.j2` | ✅ | 简化模板：仅几何 DSL + 物理推理 + JSON schema |
-| `agents/workflow.py` | ✅ | WorkflowBuilder 配置：executor 注册 + switch_case 路由 |
 | `agents/tools/__init__.py` | ✅ | |
 | `agents/tools/visualize_geometry.py` | ✅ | ParaView VTK 可视化（WSL2 兼容） |
+
+### Datalake
+| 文件 | 状态 | 说明 |
+|------|------|------|
+| `datalake/` | ✅ | 用户提供的 XML cases；PlanningExecutor 通过 LLM 自动检测并注入为 base_xml |
 
 ### 已删除
 | 文件 | 说明 |
 |------|------|
-| `agents/coordinator.py` | ❌ 已删除，逻辑拆分为 4 个 executor |
+| `agents/coordinator.py` | ❌ 已删除，逻辑拆分为 7 个 executor |
 | `agents/tools/user_review.py` | ❌ 已删除，HITL 由 workflow request_info 取代 |
 
 ### 案例 & 技能文件
@@ -155,23 +165,29 @@ The only difference: "approve" in plan phase → Build; "approve" in viz phase �
 
 ---
 
-## Workflow 四阶段
+## Workflow Phases (see diagram above for full routing)
 
-### Phase 1 — 自然语言 → LLM 推理
-Coordinator 收到场景描述 → 发给 AgentExecutor → GPT-4o 返回 SimulationPlan JSON
+### Phase 1 — PlanningExecutor + AgentExecutor
+PlanningExecutor 接收场景描述。若 datalake/ 有 XML 文件，用 GPT-4o-mini (`resolve_datalake_file()`)
+判断用户是否引用了某个文件（支持模糊匹配）。匹配则注入 XML 上下文 + 设置 `base_xml` 状态。
+然后发给 AgentExecutor → GPT-4o 返回 SimulationPlan JSON。
 
-### Phase 2 — HITL 审核 #1（执行前）
-Coordinator 展示几何 XML、参数表、探针坐标。用户可以：
-- 批准 → 进入 Phase 3
-- 请求修改 → 回到 Phase 1
-- 提问（如"why this density?"、"what is HBP_n?"）→ GPT-4o-mini 回答后重新提示，循环直到批准/修改
+### Phase 2 — ReviewExecutor HITL gate #1（plan phase）
+展示几何 XML、参数表、探针坐标。用户 5 种选择：
+- **approve** → BuildExecutor
+- **agent_patch** → PatchExecutor（LLM 修改 XML）
+- **manual_edit** → ManualEditExecutor（用户手动编辑）
+- **question** → GPT-4o-mini 回答，循环
+- **full_replan** → PlanningExecutor 重新生成
 
-### Phase 3 — 构建 & 可视化
-Coordinator 确定性调用：
-`set_geometry` → `modify_xml` → `generate_points_file` → `run_gencase` → `visualize_geometry`（ParaView）
+### Phase 3 — BuildExecutor
+确定性调用：`set_geometry` → `modify_xml` → `generate_points_file` → `run_gencase` → `visualize_geometry`（ParaView）
+（PatchExecutor/ManualEditExecutor 完成后也回到 ReviewExecutor）
 
-### Phase 4 — HITL 审核 #2（GenCase 后）
-用户查看 ParaView 可视化，批准后 Coordinator 执行：
+### Phase 4 — ReviewExecutor HITL gate #2（viz phase）
+用户查看 ParaView 可视化，同样 5 种选择。approve → SimExecutor。
+
+### Phase 5 — SimExecutor (terminal)
 `run_simulation` → `run_measuretool` → `compute_metrics` → yield_output(JSON 摘要)
 
 ---

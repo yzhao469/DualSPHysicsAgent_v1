@@ -18,12 +18,12 @@ from agent_framework import (
     handler,
 )
 
-from agents.build_utils import rebuild_gencase_viz
+from agents.utils.build_utils import rebuild_gencase_viz
 from agents.schemas import BuildResult, PatchRequest
 
 logger = logging.getLogger(__name__)
 
-_SKILL_FILE = Path(__file__).resolve().parent.parent / "skills" / "dualsphysics_xml_guide.md"
+_SKILL_FILE = Path(__file__).resolve().parent.parent.parent / "skills" / "dualsphysics_xml_guide.md"
 
 _PATCH_SYSTEM_PROMPT = """\
 You are an expert DualSPHysics simulation engineer. You will be given:

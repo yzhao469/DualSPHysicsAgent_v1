@@ -22,13 +22,13 @@ from agent_framework import (
     WorkflowBuilder,
 )
 
-from agents.build_executor import BuildExecutor
-from agents.manual_edit_executor import ManualEditExecutor
-from agents.patch_executor import PatchExecutor
-from agents.planning_executor import PlanningExecutor
-from agents.review_executor import ReviewExecutor
+from agents.executors.build import BuildExecutor
+from agents.executors.manual_edit import ManualEditExecutor
+from agents.executors.patch import PatchExecutor
+from agents.executors.planning import PlanningExecutor
+from agents.executors.review import ReviewExecutor
 from agents.schemas import ManualEditRequest, PatchRequest, ReviewResult
-from agents.sim_executor import SimExecutor
+from agents.executors.sim import SimExecutor
 
 
 def build_workflow(mcp: MCPStdioTool, agent_executor: AgentExecutor, base_dir: str) -> Workflow:

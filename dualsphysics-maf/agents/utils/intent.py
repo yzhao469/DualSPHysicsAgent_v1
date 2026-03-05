@@ -48,7 +48,7 @@ _CLASSIFY_SYSTEM_PROMPT = (
     "'forget this, simulate something completely different', 'redo everything'."
 )
 
-_SKILL_FILE = Path(__file__).resolve().parent.parent / "skills" / "dualsphysics_xml_guide.md"
+_SKILL_FILE = Path(__file__).resolve().parent.parent.parent / "skills" / "dualsphysics_xml_guide.md"
 
 
 _VALID_INTENTS = {"approve", "agent_patch", "manual_edit", "question", "full_replan"}
