@@ -11,9 +11,10 @@ Uses GPT-4o-mini to classify user feedback into five intents:
 import json
 import logging
 import os
-from pathlib import Path
 
 from openai import AsyncOpenAI
+
+from agents.utils.skill_loader import get_skill_content
 
 logger = logging.getLogger(__name__)
 
@@ -47,8 +48,6 @@ _CLASSIFY_SYSTEM_PROMPT = (
     "Examples: 'start over', 'scrap this', 'let's do a dam break instead', "
     "'forget this, simulate something completely different', 'redo everything'."
 )
-
-_SKILL_FILE = Path(__file__).resolve().parent.parent.parent / "skills" / "dualsphysics_xml_guide.md"
 
 
 _VALID_INTENTS = {"approve", "agent_patch", "manual_edit", "question", "full_replan"}
@@ -137,9 +136,7 @@ async def answer_question(question: str, plan_context: str) -> str:
 
     Provides the plan context and the skill file as reference material.
     """
-    skill_text = ""
-    if _SKILL_FILE.exists():
-        skill_text = _SKILL_FILE.read_text()
+    skill_text = get_skill_content()
 
     system_parts = [
         "You are a helpful assistant that answers questions about a DualSPHysics "
@@ -147,12 +144,9 @@ async def answer_question(question: str, plan_context: str) -> str:
         "give a clear, concise answer.\n",
         "### Current Simulation Plan\n",
         plan_context,
+        "\n\n### Reference Material (DualSPHysics XML Guide)\n",
+        skill_text,
     ]
-    if skill_text:
-        system_parts += [
-            "\n\n### Reference Material (DualSPHysics XML Guide)\n",
-            skill_text,
-        ]
 
     client = AsyncOpenAI()
     response = await client.chat.completions.create(

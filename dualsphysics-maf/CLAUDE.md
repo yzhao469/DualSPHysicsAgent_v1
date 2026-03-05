@@ -118,7 +118,7 @@ The only difference: "approve" in plan phase → Build; "approve" in viz phase �
 |------|------|------|
 | `agents/__init__.py` | ✅ | |
 | `agents/schemas.py` | ✅ | Pydantic 模型：SimulationPlan, PhysicsParams, ReviewRequest, ReviewResult, BuildResult, PatchRequest, ManualEditRequest, ManualEditAck |
-| `agents/simulation_agent.py` | ✅ | SimulationPlanner (Agent)：OpenAI GPT-4o + 结构化输出 |
+| `agents/simulation_agent.py` | ✅ | SimulationPlanner (Agent)：OpenAI GPT-4o + SkillsProvider + 结构化输出 |
 | `agents/workflow.py` | ✅ | WorkflowBuilder 配置：7 executor 注册 + 5-way switch_case 路由 |
 | `agents/executors/__init__.py` | ✅ | Re-exports all 6 executor classes |
 | `agents/executors/planning.py` | ✅ | PlanningExecutor：包装场景/修改意见 → AgentExecutorRequest; LLM-based datalake detection |
@@ -130,7 +130,8 @@ The only difference: "approve" in plan phase → Build; "approve" in viz phase �
 | `agents/utils/__init__.py` | ✅ | |
 | `agents/utils/build_utils.py` | ✅ | 共享 `rebuild_gencase_viz()`，PatchExecutor 和 ManualEditExecutor 复用 |
 | `agents/utils/intent.py` | ✅ | 5-way intent classification + `answer_question()` Q&A + `resolve_datalake_file()` LLM file resolver |
-| `agents/prompts/simulation_agent.j2` | ✅ | 简化模板：仅几何 DSL + 物理推理 + JSON schema |
+| `agents/utils/skill_loader.py` | ✅ | 共享 skill content loader（给 patch/intent 等非 Agent 调用者使用） |
+| `agents/prompts/simulation_agent.j2` | ✅ | 简化模板：JSON schema + 工作流步骤（skill content 由 SkillsProvider 注入） |
 | `agents/tools/__init__.py` | ✅ | |
 | `agents/tools/visualize_geometry.py` | ✅ | ParaView VTK 可视化（WSL2 兼容） |
 
@@ -148,11 +149,14 @@ The only difference: "approve" in plan phase → Build; "approve" in viz phase �
 ### 案例 & 技能文件
 | 文件 | 状态 | 说明 |
 |------|------|------|
+| `skills/dualsphysics-xml/SKILL.md` | ✅ | 核心 skill：XML 结构、MK 系统、物理参数、材料原型、探针放置、推理指南 |
+| `skills/dualsphysics-xml/drawing-primitives.md` | ✅ | resource：所有 GenCase 绘图命令 + fill 操作 |
+| `skills/dualsphysics-xml/transforms-and-advanced.md` | ✅ | resource：变换栈、变量、可复用列表、绘图模式 |
+| `skills/dualsphysics-xml/composition-patterns.md` | ✅ | resource：9 个完整几何示例（dam break、tank、obstacle 等） |
 | `cases/BaseCase_Def.xml` | ✅ | 通用基础 XML 模板（clean XML，几何由 set_geometry 替换） |
 | `cases/CaseDebrisFlow2D_Def.xml` | ✅ | 旧版 DebrisFlow2D 模板（保留作参考） |
 | `cases/CaseDebrisFlow2D_Points.txt` | ✅ | 静态探针点（保留作参考） |
 | `cases/ground_truth/` | ⬜ | 目录存在（含 `.gitkeep`），CSV 未生成 |
-| `skills/dualsphysics_xml_guide.md` | ✅ | 全面的 GenCase 几何 DSL 参考 + 物理参数 + 材料原型 |
 
 ### 入口 & 配置
 | 文件 | 状态 | 说明 |
@@ -170,7 +174,13 @@ The only difference: "approve" in plan phase → Build; "approve" in viz phase �
 ### Phase 1 — PlanningExecutor + AgentExecutor
 PlanningExecutor 接收场景描述。若 datalake/ 有 XML 文件，用 GPT-4o-mini (`resolve_datalake_file()`)
 判断用户是否引用了某个文件（支持模糊匹配）。匹配则注入 XML 上下文 + 设置 `base_xml` 状态。
-然后发给 AgentExecutor → GPT-4o 返回 SimulationPlan JSON。
+然后发给 AgentExecutor → GPT-4o 调用 `load_skill` + `read_skill_resource` 获取领域知识，
+最后返回 SimulationPlan JSON。
+
+**SkillsProvider 渐进式披露**：
+系统提示仅注入技能名称和描述（~100 tokens）。Agent 通过 `load_skill("dualsphysics-xml")` 获取
+核心参考（XML 结构、物理参数、材料原型），再按需调用 `read_skill_resource` 获取绘图命令、
+组合模式或变换等资源文件。
 
 ### Phase 2 — ReviewExecutor HITL gate #1（plan phase）
 展示几何 XML、参数表、探针坐标。用户 5 种选择：
@@ -222,13 +232,15 @@ DualSPHysics CPU/GPU 二进制在 `bin/linux/` 里没有附带 `libdsphchrono.so
 `CaseDebrisFlow2D_Def.xml` 含非标准内容（三连横线注释、属性值内未转义 `<`/`>`、`%` 注释）。
 `preprocess_xml()` 修复这些问题。`BaseCase_Def.xml` 是 clean XML，无需预处理但仍兼容。
 
-### agent_framework RC1 API — Workflow 模式
+### agent_framework RC3 API — Workflow 模式 + SkillsProvider
 ```python
 # Coordinator: Executor with @handler and @response_handler
-# Agent: Agent(client=OpenAIChatClient(...), default_options={"response_format": SimulationPlan})
+# Agent: Agent(client=OpenAIChatClient(...), default_options={"response_format": SimulationPlan},
+#              context_providers=[SkillsProvider(skill_paths="./skills")])
 # Workflow: WorkflowBuilder(start_executor=coordinator).add_edge(...).build()
 # HITL: ctx.request_info(ReviewRequest(...)) → workflow pauses → responses={id: reply}
 # MCP: mcp.call_tool("tool_name", **kwargs) → str
+# Skills: SkillsProvider discovers SKILL.md + resource files, injects load_skill/read_skill_resource tools
 ```
 - `opentelemetry-semantic-conventions-ai` 需固定 `==0.4.13`
 - 需要 `OPENAI_API_KEY` 环境变量

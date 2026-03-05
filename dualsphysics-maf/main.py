@@ -29,6 +29,8 @@ logging.basicConfig(
 )
 # Keep agent_framework at WARNING to suppress per-token streaming noise
 logging.getLogger("agent_framework").setLevel(logging.WARNING)
+# …but let skills discovery & load/read_skill_resource calls through
+logging.getLogger("agent_framework._skills").setLevel(logging.INFO)
 logger = logging.getLogger("dualsphysics_main")
 
 BASE = str(Path(__file__).resolve().parent)

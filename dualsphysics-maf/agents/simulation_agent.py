@@ -1,16 +1,18 @@
 """Agent 1 — SimulationPlanner: reasons about physics and geometry from a
 natural-language scenario description.  Returns structured SimulationPlan JSON.
 
-The agent has NO tools — it only reasons.  All tool orchestration is handled
-by SimulationCoordinator (see coordinator.py).
+The agent uses SkillsProvider for progressive-disclosure of the DualSPHysics
+reference material.  The LLM calls load_skill / read_skill_resource tools to
+retrieve only the sections it needs, then produces a SimulationPlan JSON via
+OpenAI structured output.
 
-Uses OpenAI GPT-4o for native structured output (response_format)."""
+All tool orchestration (MCP) is handled by the executor pipeline."""
 
 import os
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
-from agent_framework import Agent, MCPStdioTool
+from agent_framework import Agent, MCPStdioTool, SkillsProvider
 from agent_framework.openai import OpenAIChatClient
 
 from agents.schemas import SimulationPlan
@@ -18,7 +20,7 @@ from agents.schemas import SimulationPlan
 BASE = str(Path(__file__).resolve().parents[1])
 
 _PROMPTS_DIR = Path(BASE) / "agents/prompts"
-_SKILL_FILE = Path(BASE) / "skills/dualsphysics_xml_guide.md"
+_SKILLS_DIR = Path(BASE) / "skills"
 
 _jinja_env = Environment(loader=FileSystemLoader(str(_PROMPTS_DIR)), keep_trailing_newline=True)
 
@@ -38,17 +40,23 @@ def make_simulation_agent() -> Agent:
 
     The agent receives a scenario description, reasons about geometry and
     physics, and returns a SimulationPlan JSON via OpenAI structured output.
-    It has no tools — only reasoning capability.
+
+    Domain knowledge is provided via SkillsProvider (progressive disclosure):
+    the system prompt advertises the skill name/description (~100 tokens), and
+    the agent calls load_skill + read_skill_resource to fetch only the
+    reference sections it needs.
     """
-    skill_content = _SKILL_FILE.read_text(encoding="utf-8")
     template = _jinja_env.get_template("simulation_agent.j2")
-    instructions = template.render(base=BASE, skill_content=skill_content)
+    instructions = template.render(base=BASE)
 
     client = OpenAIChatClient(model_id=os.getenv("PLANNER_MODEL", "gpt-4o"))
+
+    skills_provider = SkillsProvider(skill_paths=str(_SKILLS_DIR))
 
     return Agent(
         client=client,
         name="SimulationPlanner",
         instructions=instructions,
         default_options={"response_format": SimulationPlan},
+        context_providers=[skills_provider],
     )
