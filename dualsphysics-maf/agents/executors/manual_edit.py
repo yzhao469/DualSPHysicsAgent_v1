@@ -14,7 +14,7 @@ from agent_framework import (
     response_handler,
 )
 
-from agents.build_utils import rebuild_gencase_viz
+from agents.utils.build_utils import rebuild_gencase_viz
 from agents.schemas import BuildResult, ManualEditAck, ManualEditRequest
 
 logger = logging.getLogger(__name__)

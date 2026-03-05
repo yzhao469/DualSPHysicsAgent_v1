@@ -13,7 +13,7 @@ from agent_framework import (
     response_handler,
 )
 
-from agents.intent import resolve_datalake_file
+from agents.utils.intent import resolve_datalake_file
 from agents.schemas import ReviewResult
 
 logger = logging.getLogger(__name__)

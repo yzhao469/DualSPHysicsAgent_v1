@@ -17,7 +17,7 @@ from agent_framework import (
     response_handler,
 )
 
-from agents.intent import answer_question, classify_intent
+from agents.utils.intent import answer_question, classify_intent
 from agents.schemas import (
     BuildResult,
     ManualEditRequest,
