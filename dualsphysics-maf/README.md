@@ -10,9 +10,10 @@ LLM-assisted workflow for DualSPHysics non-Newtonian simulations.
    python3.12 -m venv .venv
    .venv/bin/pip install -r requirements.txt
    ```
-2. Update local absolute paths in:
-   - `mcp_server/config.py` (`BASE_DIR`)
-   - `agents/simulation_agent.py` (`BASE`)
+2. Add your OpenAI API key to `dualsphysics-maf/.env`:
+   ```bash
+   echo "OPENAI_API_KEY=your_key_here" > .env
+   ```
 3. Run the interactive workflow:
    ```bash
    .venv/bin/python main.py
@@ -20,7 +21,7 @@ LLM-assisted workflow for DualSPHysics non-Newtonian simulations.
 
 ## Folder READMEs
 
-Each folder under `dualsphysics-maf` has its own README that documents every file in that folder and the file's main logic:
+Key folders under `dualsphysics-maf` have README files that document file responsibilities:
 
 - [`agents/README.md`](agents/README.md)
 - [`agents/prompts/README.md`](agents/prompts/README.md)
@@ -38,6 +39,7 @@ Each folder under `dualsphysics-maf` has its own README that documents every fil
 | `.gitignore` | Ignores local runtime artifacts (`.venv`, `runs`, caches, logs, `.env`) from version control. |
 | `CLAUDE.md` | Internal project notes describing the current workflow architecture and file responsibilities. |
 | `README.md` | This index README for `dualsphysics-maf` folder-level documentation. |
+| `datalake/` | Runtime working data folder used by the workflow to store/edit the active case XML (`Case_Def.xml`). |
 | `main.py` | Main interactive workflow runner (planning → review → build → simulation) using event-driven HITL responses. |
-| `main_smoke.py` | Smoke test entrypoint that injects explicit parameters to validate the deterministic pipeline quickly. |
+| `main_smoke.py` | Alternate smoke entrypoint for explicit-parameter runs that bypass scenario-to-parameter reasoning. |
 | `requirements.txt` | Python dependencies required by the agent framework, MCP server tooling, and metric/visualization utilities. |
