@@ -19,11 +19,10 @@ from agent_framework import (
 )
 
 from agents.utils.build_utils import rebuild_gencase_viz
+from agents.utils.skill_loader import get_skill_content
 from agents.schemas import BuildResult, PatchRequest
 
 logger = logging.getLogger(__name__)
-
-_SKILL_FILE = Path(__file__).resolve().parent.parent.parent / "skills" / "dualsphysics_xml_guide.md"
 
 _PATCH_SYSTEM_PROMPT = """\
 You are an expert DualSPHysics simulation engineer. You will be given:
@@ -47,9 +46,7 @@ async def _generate_patch(
     feedback: str,
 ) -> dict:
     """Call LLM to produce a targeted patch."""
-    skill_text = ""
-    if _SKILL_FILE.exists():
-        skill_text = f"\n\n### Reference Material\n{_SKILL_FILE.read_text()}"
+    skill_text = f"\n\n### Reference Material\n{get_skill_content()}"
 
     user_content = (
         f"### Current Plan\n```json\n{json.dumps(plan_data, indent=2)}\n```\n\n"

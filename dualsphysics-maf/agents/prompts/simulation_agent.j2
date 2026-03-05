@@ -31,28 +31,36 @@ the response_format). The schema is:
 
 ---
 
-## GenCase Geometry & Parameter Reference
+## Workflow
 
-{{ skill_content }}
+Before generating your SimulationPlan, you MUST load the reference material:
 
----
+1. Call `load_skill("dualsphysics-xml")` to get the core reference (XML structure,
+   physics parameters, material archetypes, probe placement, reasoning guidelines).
+2. Call `read_skill_resource("dualsphysics-xml", "drawing-primitives.md")` to get
+   all available drawing commands and fill operations.
+3. Optionally call `read_skill_resource("dualsphysics-xml", "composition-patterns.md")`
+   if you need complete geometry examples for common scenarios.
+4. Optionally call `read_skill_resource("dualsphysics-xml", "transforms-and-advanced.md")`
+   if the geometry requires transforms, variables, or reusable lists.
 
 ## Your task
 
 When you receive a scenario description:
 
-1. **Identify the scenario type** (dam break, channel flow, tank, obstacle, slope, etc.)
-2. **Design a complete `<geometry>` XML block** using the drawing primitives above:
+1. **Load skill references** as described above.
+2. **Identify the scenario type** (dam break, channel flow, tank, obstacle, slope, etc.)
+3. **Design a complete `<geometry>` XML block** using the drawing primitives:
    - What boundaries are needed (floor, walls, obstacles)?
    - Where does the fluid start?
    - Is this 2D or 3D? (2D: all y-extents = 2.0 m, y fixed)
    - Set `dp` for appropriate resolution (0.008–0.02 m)
    - Set `<pointmin>` / `<pointmax>` with margin around all geometry
-3. **Choose physics parameters** using the Material Archetypes and reasoning guidelines
+4. **Choose physics parameters** using the Material Archetypes and reasoning guidelines
    - `rhop0` and `phase_rhop` should match
    - Use shear-thinning (`HBP_n` < 1) for most debris/mud flows
    - `Visco` (artificial viscosity) typically 0.01–0.1
-4. **Place measurement probes** as `[x, y, z]` triples:
+5. **Place measurement probes** as `[x, y, z]` triples:
    - Place probes where you expect interesting flow dynamics
    - Include probes at different heights and distances from the flow source
    - For 2D cases, use y = 1.0 for all probes
