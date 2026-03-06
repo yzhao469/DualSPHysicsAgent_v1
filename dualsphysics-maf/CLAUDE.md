@@ -9,16 +9,18 @@ Run with: `.venv/bin/python`
 
 ---
 
-## 架构（2026-03-03 — 7-Executor Flexible Workflow）
+## 架构（2026-03-05 — 8-Executor End-to-End Workflow）
 
-**核心模式**：LLM 只做推理（返回结构化 SimulationPlan JSON），
+**核心模式**：LLM 只做推理（返回结构化 JSON），
 Python 代码确定性地编排所有 MCP 工具调用。
 
 ### Workflow Diagram
 
-ReviewExecutor is a single node in the workflow graph, but handles two internal
-phases (`plan` and `viz`). Both phases offer the same 5-way intent routing.
-The only difference: "approve" in plan phase → Build; "approve" in viz phase → Sim.
+ReviewExecutor is a single node in the workflow graph, but handles three internal
+phases (`plan`, `viz`, `results`). All phases offer 5-way intent routing.
+- "approve" in plan phase → Build
+- "approve" in viz phase → Sim
+- "approve" in results phase → terminal (workflow done)
 
 ```
                          ┌──────────────────────────────────────────────┐
@@ -47,7 +49,6 @@ The only difference: "approve" in plan phase → Build; "approve" in viz phase �
         Build    Patch  ManualEdit  Question   Planning ────────────────┘
         Exec     Exec    Exec      (Q&A loop)  (full replan)
           │        │       │
-          │        │       │
           ▼        ▼       ▼
         ┌─────────────────────┐
         │       Review        │  HITL gate #2: "viz" phase
@@ -59,31 +60,51 @@ The only difference: "approve" in plan phase → Build; "approve" in viz phase �
           ▼       ▼          ▼           ▼              ▼
         Sim     Patch    ManualEdit   Question       Planning
         Exec    Exec      Exec       (Q&A loop)    (full replan)
-       (done)     │          │
-                  │          │
-                  └──────────┘
-                  back to Review (viz)
+          │       │          │
+          │       └──────────┘
+          │       back to Review (viz)
+          ▼
+        ┌──────────────┐
+        │   Analyze    │  Default: PartVTK + MeasureTool + ParaView
+        │   Executor   │
+        └──────┬───────┘
+               │
+               ▼
+        ┌──────────────┐
+        │    Review    │  HITL gate #3: "results" phase
+        │  (results)   │  User sees post-processing summary
+        └──────┬───────┘
+               │
+         5-way routing
+        ┌──────┼──────────┬───────────┐
+        ▼      ▼          ▼           ▼
+      Done   Analyze    Question   Planning
+    (terminal) (user     (Q&A)   (full replan
+               request)           with warning)
+               │
+               └──→ Review (results)
 ```
 
-### 5-Way Intent Routes (available at BOTH HITL gates)
+### 5-Way Intent Routes
 
-| Intent | Condition | Action |
-|--------|-----------|--------|
-| **approve** | `ReviewResult.route == "build"` (plan) or `"sim"` (viz) | Proceed to next stage |
-| **agent_patch** | `PatchRequest` | LLM-driven targeted XML patch → rebuild → back to Review |
-| **manual_edit** | `ManualEditRequest` | User manually edits XML → rebuild → back to Review |
-| **question** | Q&A loop | GPT-4o-mini answers, then re-prompts same gate |
-| **full_replan** | `Default` → PlanningExecutor | Agent re-generates plan from scratch |
+| Intent | Plan phase | Viz phase | Results phase |
+|--------|-----------|-----------|---------------|
+| **approve** | → Build | → Sim | → Done (terminal) |
+| **agent_patch** | → PatchExecutor | → PatchExecutor | → AnalyzeExecutor (analysis) |
+| **manual_edit** | → ManualEditExecutor | → ManualEditExecutor | → AnalyzeExecutor (analysis) |
+| **question** | Q&A loop | Q&A loop | Q&A loop |
+| **full_replan** | → Planning | → Planning | → Planning (with cost warning) |
 
-### 7 Executors
+### 8 Executors
 
 1. `PlanningExecutor` (id="planning") — wraps scenario/revision → AgentExecutorRequest; detects datalake files
 2. `AgentExecutor` (MAF built-in) — GPT-4o + `response_format=SimulationPlan`
-3. `ReviewExecutor` (id="review") — dual-phase HITL gate + 5-way intent classification
+3. `ReviewExecutor` (id="review") — tri-phase HITL gate (plan + viz + results) + 5-way intent routing
 4. `BuildExecutor` (id="build") — set_geometry → modify_xml → generate_points → run_gencase → visualize
-5. `SimExecutor` (id="sim") — run_simulation → run_measuretool → compute_metrics → yield_output (terminal)
-6. `PatchExecutor` (id="patch") — LLM-driven targeted patching of current case XML
-7. `ManualEditExecutor` (id="manual_edit") — HITL manual XML editing + rebuild
+5. `SimExecutor` (id="sim") — run_simulation (auto GPU/CPU detection) → passes to AnalyzeExecutor
+6. `AnalyzeExecutor` (id="analyze") — default post-processing + LLM-driven analysis
+7. `PatchExecutor` (id="patch") — LLM-driven targeted patching of current case XML
+8. `ManualEditExecutor` (id="manual_edit") — HITL manual XML editing + rebuild
 
 ### HITL Mechanism
 
@@ -96,170 +117,147 @@ The only difference: "approve" in plan phase → Build; "approve" in viz phase �
 
 ## 项目文件清单
 
-### MCP Server（7 个工具，无变化）
+### MCP Server（9 个工具）
 | 文件 | 状态 | 说明 |
 |------|------|------|
-| `mcp_server/config.py` | ✅ | 路径配置 |
+| `mcp_server/config.py` | ✅ | 路径配置（含所有后处理二进制） |
 | `mcp_server/__init__.py` | ✅ | |
 | `mcp_server/tools/__init__.py` | ✅ | |
 | `mcp_server/tools/_subprocess.py` | ✅ | 共享异步子进程 helper |
 | `mcp_server/tools/_xml_utils.py` | ✅ | 共享 XML 预处理（`preprocess_xml`） |
-| `mcp_server/tools/xml_modifier.py` | ✅ | 物理/执行参数修改（constantsdef + nnphases + execution） |
-| `mcp_server/tools/set_geometry.py` | ✅ | 几何替换工具：验证并拼接 `<geometry>` XML 到 case 文件 |
-| `mcp_server/tools/generate_points.py` | ✅ | 从 probe_points 或 probe_xs × probe_zs 生成 POINTSLIST 文件 |
+| `mcp_server/tools/xml_modifier.py` | ✅ | 物理/执行参数修改 |
+| `mcp_server/tools/set_geometry.py` | ✅ | 几何替换工具 |
+| `mcp_server/tools/generate_points.py` | ✅ | 探针点文件生成 |
 | `mcp_server/tools/run_gencase.py` | ✅ | |
 | `mcp_server/tools/run_simulation.py` | ✅ | |
 | `mcp_server/tools/run_measuretool.py` | ✅ | |
 | `mcp_server/tools/metrics.py` | ✅ | |
-| `mcp_server/server.py` | ✅ | FastMCP，7 个工具 |
+| `mcp_server/tools/postprocess.py` | ✅ | 通用后处理工具包装器（PartVTK, IsoSurface, ComputeForces 等） |
+| `mcp_server/tools/run_analysis.py` | ✅ | Python 分析脚本执行器（CSV 解析、绘图等） |
+| `mcp_server/server.py` | ✅ | FastMCP，9 个工具 |
 
-### Workflow + Agent（7-Executor 架构）
+### Workflow + Agent（8-Executor 架构）
 | 文件 | 状态 | 说明 |
 |------|------|------|
 | `agents/__init__.py` | ✅ | |
-| `agents/schemas.py` | ✅ | Pydantic 模型：SimulationPlan, PhysicsParams, ReviewRequest, ReviewResult, BuildResult, PatchRequest, ManualEditRequest, ManualEditAck |
-| `agents/simulation_agent.py` | ✅ | SimulationPlanner (Agent)：OpenAI GPT-4o + SkillsProvider + 结构化输出 |
-| `agents/workflow.py` | ✅ | WorkflowBuilder 配置：7 executor 注册 + 5-way switch_case 路由 |
-| `agents/executors/__init__.py` | ✅ | Re-exports all 6 executor classes |
-| `agents/executors/planning.py` | ✅ | PlanningExecutor：包装场景/修改意见 → AgentExecutorRequest; LLM-based datalake detection |
-| `agents/executors/review.py` | ✅ | ReviewExecutor：双阶段 HITL 审核门（plan + viz）+ 5-way 路由 |
-| `agents/executors/build.py` | ✅ | BuildExecutor：set_geometry → modify_xml → generate_points → run_gencase → visualize |
-| `agents/executors/sim.py` | ✅ | SimExecutor：run_simulation → run_measuretool → compute_metrics → yield_output |
-| `agents/executors/patch.py` | ✅ | PatchExecutor：LLM-driven targeted XML patching + rebuild |
-| `agents/executors/manual_edit.py` | ✅ | ManualEditExecutor：HITL manual XML editing + rebuild |
+| `agents/schemas.py` | ✅ | SimulationPlan, PhysicsParams, ReviewRequest, ReviewResult, BuildResult, PatchRequest, ManualEditRequest, ManualEditAck, AnalysisRequest, AnalysisResult |
+| `agents/simulation_agent.py` | ✅ | SimulationPlanner Agent |
+| `agents/workflow.py` | ✅ | WorkflowBuilder：8 executor + switch_case 路由 |
+| `agents/executors/__init__.py` | ✅ | Re-exports all 7 executor classes |
+| `agents/executors/planning.py` | ✅ | PlanningExecutor |
+| `agents/executors/review.py` | ✅ | ReviewExecutor：三阶段 HITL（plan + viz + results） |
+| `agents/executors/build.py` | ✅ | BuildExecutor |
+| `agents/executors/sim.py` | ✅ | SimExecutor：run_simulation（自动 GPU 检测）→ AnalyzeExecutor |
+| `agents/executors/analyze.py` | ✅ | AnalyzeExecutor：默认后处理 + LLM 驱动分析 |
+| `agents/executors/patch.py` | ✅ | PatchExecutor |
+| `agents/executors/manual_edit.py` | ✅ | ManualEditExecutor |
 | `agents/utils/__init__.py` | ✅ | |
-| `agents/utils/build_utils.py` | ✅ | 共享 `rebuild_gencase_viz()`，PatchExecutor 和 ManualEditExecutor 复用 |
-| `agents/utils/intent.py` | ✅ | 5-way intent classification + `answer_question()` Q&A + `resolve_datalake_file()` LLM file resolver |
-| `agents/utils/skill_loader.py` | ✅ | 共享 skill content loader（给 patch/intent 等非 Agent 调用者使用） |
-| `agents/prompts/simulation_agent.j2` | ✅ | 简化模板：JSON schema + 工作流步骤（skill content 由 SkillsProvider 注入） |
+| `agents/utils/build_utils.py` | ✅ | 共享 `rebuild_gencase_viz()` |
+| `agents/utils/intent.py` | ✅ | 5-way intent classification + Q&A + datalake resolution |
+| `agents/utils/skill_loader.py` | ✅ | 共享 skill loader（xml + postprocess 两套技能文件） |
+| `agents/prompts/simulation_agent.j2` | ✅ | Jinja 模板 |
 | `agents/tools/__init__.py` | ✅ | |
 | `agents/tools/visualize_geometry.py` | ✅ | ParaView VTK 可视化（WSL2 兼容） |
 
-### Datalake
+### 技能文件
 | 文件 | 状态 | 说明 |
 |------|------|------|
-| `datalake/` | ✅ | 用户提供的 XML cases；PlanningExecutor 通过 LLM 自动检测并注入为 base_xml |
+| `skills/dualsphysics-xml/SKILL.md` | ✅ | 核心 skill：XML 结构、物理参数、材料原型、探针放置 |
+| `skills/dualsphysics-xml/drawing-primitives.md` | ✅ | resource：GenCase 绘图命令 |
+| `skills/dualsphysics-xml/transforms-and-advanced.md` | ✅ | resource：变换栈、变量、绘图模式 |
+| `skills/dualsphysics-xml/composition-patterns.md` | ✅ | resource：9 个完整几何示例 |
+| `skills/dualsphysics-postprocess/SKILL.md` | ✅ | 后处理 skill：工具概览、常用模式、分析指南 |
+| `skills/dualsphysics-postprocess/partvtk-help.md` | ✅ | resource：PartVTK CLI 参考 |
+| `skills/dualsphysics-postprocess/isosurface-help.md` | ✅ | resource：IsoSurface CLI 参考 |
+| `skills/dualsphysics-postprocess/other-tools-help.md` | ✅ | resource：ComputeForces, FlowTool, BoundaryVTK, FloatingInfo, PartVTKOut, MeasureTool |
 
-### 已删除
-| 文件 | 说明 |
-|------|------|
-| `agents/coordinator.py` | ❌ 已删除，逻辑拆分为 7 个 executor |
-| `agents/tools/user_review.py` | ❌ 已删除，HITL 由 workflow request_info 取代 |
-
-### 案例 & 技能文件
+### 其他
 | 文件 | 状态 | 说明 |
 |------|------|------|
-| `skills/dualsphysics-xml/SKILL.md` | ✅ | 核心 skill：XML 结构、MK 系统、物理参数、材料原型、探针放置、推理指南 |
-| `skills/dualsphysics-xml/drawing-primitives.md` | ✅ | resource：所有 GenCase 绘图命令 + fill 操作 |
-| `skills/dualsphysics-xml/transforms-and-advanced.md` | ✅ | resource：变换栈、变量、可复用列表、绘图模式 |
-| `skills/dualsphysics-xml/composition-patterns.md` | ✅ | resource：9 个完整几何示例（dam break、tank、obstacle 等） |
-| `cases/BaseCase_Def.xml` | ✅ | 通用基础 XML 模板（clean XML，几何由 set_geometry 替换） |
-| `cases/CaseDebrisFlow2D_Def.xml` | ✅ | 旧版 DebrisFlow2D 模板（保留作参考） |
-| `cases/CaseDebrisFlow2D_Points.txt` | ✅ | 静态探针点（保留作参考） |
-| `cases/ground_truth/` | ⬜ | 目录存在（含 `.gitkeep`），CSV 未生成 |
-
-### 入口 & 配置
-| 文件 | 状态 | 说明 |
-|------|------|------|
-| `main.py` | ✅ | Workflow 事件循环 + HITL（terminal input） |
-| `main_smoke.py` | ✅ | 显式数值参数烟雾测试 |
-| `requirements.txt` | ✅ | 含 jinja2, openai, pydantic |
-| `.gitignore` | ✅ | 排除 `.venv/`、`runs/`、`__pycache__/`、`*.log`、`.env` |
-| `README.md` | ✅ | |
+| `cases/BaseCase_Def.xml` | ✅ | 通用基础 XML 模板 |
+| `cases/ground_truth/` | ⬜ | CSV 未生成 |
+| `datalake/` | ✅ | 用户提供的 XML cases |
+| `main.py` | ✅ | Workflow 事件循环 + HITL |
+| `main_smoke.py` | ✅ | 烟雾测试 |
 
 ---
 
-## Workflow Phases (see diagram above for full routing)
+## Workflow Phases
 
-### Phase 1 — PlanningExecutor + AgentExecutor
-PlanningExecutor 接收场景描述。若 datalake/ 有 XML 文件，用 GPT-4o-mini (`resolve_datalake_file()`)
-判断用户是否引用了某个文件（支持模糊匹配）。匹配则注入 XML 上下文 + 设置 `base_xml` 状态。
-然后发给 AgentExecutor → GPT-4o 调用 `load_skill` + `read_skill_resource` 获取领域知识，
-最后返回 SimulationPlan JSON。
+### Phase 1 — Planning + Agent
+PlanningExecutor 接收场景描述，检测 datalake 文件，发给 AgentExecutor 生成 SimulationPlan。
 
-**SkillsProvider 渐进式披露**：
-系统提示仅注入技能名称和描述（~100 tokens）。Agent 通过 `load_skill("dualsphysics-xml")` 获取
-核心参考（XML 结构、物理参数、材料原型），再按需调用 `read_skill_resource` 获取绘图命令、
-组合模式或变换等资源文件。
+### Phase 2 — Review(plan) → Build
+用户审核计划，5 种选择。approve → BuildExecutor 确定性构建。
 
-### Phase 2 — ReviewExecutor HITL gate #1（plan phase）
-展示几何 XML、参数表、探针坐标。用户 5 种选择：
-- **approve** → BuildExecutor
-- **agent_patch** → PatchExecutor（LLM 修改 XML）
-- **manual_edit** → ManualEditExecutor（用户手动编辑）
-- **question** → GPT-4o-mini 回答，循环
-- **full_replan** → PlanningExecutor 重新生成
+### Phase 3 — Review(viz) → Sim
+用户审核 ParaView 可视化，5 种选择。approve → SimExecutor 运行求解器。
 
-### Phase 3 — BuildExecutor
-确定性调用：`set_geometry` → `modify_xml` → `generate_points_file` → `run_gencase` → `visualize_geometry`（ParaView）
-（PatchExecutor/ManualEditExecutor 完成后也回到 ReviewExecutor）
+### Phase 4 — Sim → Analyze (default)
+SimExecutor 运行求解器（自动检测 GPU），然后 AnalyzeExecutor 自动执行：
+- PartVTK：导出流体粒子 VTK（ParaView 可视化）
+- PartVTK：导出边界粒子 VTK
+- MeasureTool：探针数据提取
+- compute_metrics：与 ground truth 对比（如果存在）
+- 打开 ParaView 显示结果
 
-### Phase 4 — ReviewExecutor HITL gate #2（viz phase）
-用户查看 ParaView 可视化，同样 5 种选择。approve → SimExecutor。
-
-### Phase 5 — SimExecutor (terminal)
-`run_simulation` → `run_measuretool` → `compute_metrics` → yield_output(JSON 摘要)
+### Phase 5 — Review(results) — Analysis Loop
+用户查看后处理结果。可以：
+- **approve** → 工作流结束
+- **分析请求** → AnalyzeExecutor（LLM 驱动）：
+  1. LLM 根据用户请求 + 后处理技能文件，规划分析步骤
+  2. 执行 `run_postprocess`（PartVTK/IsoSurface/ComputeForces 等）
+  3. 执行 `run_analysis`（Python 脚本解析 CSV、计算导出量、绘图）
+  4. 返回结果 → 回到 Review(results) 循环
+- **question** → Q&A
+- **full_replan** → 警告用户代价高，确认后回到 Planning
 
 ---
 
 ## 工具分工
 
+### 预处理工具（7 个）
 | 工具 | 职责 |
 |------|------|
-| `set_geometry` | 替换 `<geometry>` 块（验证 + 拼接），处理 dp、drawbox 等所有绘图命令 |
-| `modify_xml` | 修改物理/执行参数（constantsdef、nnphases、execution/parameters） |
-| `generate_points_file` | 支持 `probe_points`（显式三元组）和 `probe_xs × probe_zs`（交叉积）两种模式 |
+| `set_geometry` | 替换 `<geometry>` 块 |
+| `modify_xml` | 修改物理/执行参数（15 个参数） |
+| `generate_points_file` | 生成探针点文件 |
+| `run_gencase` | 生成粒子配置 |
+| `run_simulation` | 运行 DualSPHysics 求解器 |
+| `run_measuretool` | 探针数据提取 |
+| `compute_metrics` | RMSE/相关性计算 |
 
-### modify_xml 支持的参数（15 个，不含几何）
-
-**constantsdef**: `gravity_z`, `rhop0`, `coefh`, `cflnumber`
-**nnphases** (mkfluid=0): `phase_rhop`, `visco_nn`, `tau_yield`, `HBP_m`, `HBP_n`
-**execution/parameters**: `Visco`, `DensityDT`, `DensityDTvalue`, `TimeMax`, `TimeOut`
-
----
-
-## Stub Chrono Libraries
-
-DualSPHysics CPU/GPU 二进制在 `bin/linux/` 里没有附带 `libdsphchrono.so` 等。
-已在 `bin/linux/` 创建三个 stub `.so`（空函数体汇编，31 个符号）。
-`run_simulation.py` 通过 `LD_LIBRARY_PATH=BIN_DIR` 传递给子进程。
+### 后处理工具（2 个 MCP 工具，包装 8 个 CLI 二进制）
+| 工具 | 职责 |
+|------|------|
+| `run_postprocess` | 通用包装器：partvtk, partvtkout, isosurface, computeforces, flowtool, boundaryvtk, floatinginfo, measuretool |
+| `run_analysis` | 执行 Python 分析脚本（numpy/matplotlib/pandas） |
 
 ---
 
 ## 关键实现细节
 
-### XML 预处理（_xml_utils.py）
-`CaseDebrisFlow2D_Def.xml` 含非标准内容（三连横线注释、属性值内未转义 `<`/`>`、`%` 注释）。
-`preprocess_xml()` 修复这些问题。`BaseCase_Def.xml` 是 clean XML，无需预处理但仍兼容。
+### GPU 自动检测
+SimExecutor 通过 `shutil.which("nvidia-smi")` 检测 GPU 可用性，自动选择 CPU 或 GPU 求解器。
 
-### agent_framework RC3 API — Workflow 模式 + SkillsProvider
-```python
-# Coordinator: Executor with @handler and @response_handler
-# Agent: Agent(client=OpenAIChatClient(...), default_options={"response_format": SimulationPlan},
-#              context_providers=[SkillsProvider(skill_paths="./skills")])
-# Workflow: WorkflowBuilder(start_executor=coordinator).add_edge(...).build()
-# HITL: ctx.request_info(ReviewRequest(...)) → workflow pauses → responses={id: reply}
-# MCP: mcp.call_tool("tool_name", **kwargs) → str
-# Skills: SkillsProvider discovers SKILL.md + resource files, injects load_skill/read_skill_resource tools
-```
-- `opentelemetry-semantic-conventions-ai` 需固定 `==0.4.13`
-- 需要 `OPENAI_API_KEY` 环境变量
+### AnalyzeExecutor 双模式
+- **默认模式**（`ReviewResult` 触发）：确定性，无 LLM 调用
+- **分析模式**（`AnalysisRequest` 触发）：LLM 规划分析步骤，返回 JSON `{"steps": [...]}`
+  - `{"type": "postprocess", "tool_name": "...", "args": [...]}`
+  - `{"type": "python", "code": "...", "description": "..."}`
 
-### WSL2 可视化
-`visualize_geometry.py` 检测 WSL2，用 `wslpath -w` + `cmd.exe /c start` 打开 VTK 文件。
-
-### MeasureTool Points 文件格式
-每个探针点用一个 `POINTSLIST` 块（origin / step / count）。
-MeasureTool 输出 `_Vel.csv` + `_Rhop.csv`，`;` 分隔，前 3 行是元数据。
+### 环境变量
+- `OPENAI_API_KEY`：必需
+- `PLANNER_MODEL`：SimulationPlanner 模型（默认 `gpt-4o`）
+- `PATCH_MODEL`：PatchExecutor 模型（默认 `gpt-4o`）
+- `INTENT_MODEL`：intent classification + Q&A（默认 `gpt-4o-mini`）
+- `ANALYSIS_MODEL`：AnalyzeExecutor 分析规划（默认 `gpt-4o`）
 
 ---
 
 ## 下一步
 
-1. **生成 ground truth**：用默认参数跑完整模拟（`TimeMax=5.0`），MeasureTool 输出存为 `cases/ground_truth/PointsMeasure.csv`
-
+1. **生成 ground truth**：用默认参数跑完整模拟，MeasureTool 输出存为 `cases/ground_truth/PointsMeasure.csv`
 2. **完善 skill file**：请领域专家扩充材料原型表
-
-3. **推送到 GitHub**：注意 `config.py` 和 `simulation_agent.py` 里有硬编码绝对路径
-
+3. **推送到 GitHub**：注意硬编码绝对路径
 4. **Agent 2 + 优化循环**：后续实现
