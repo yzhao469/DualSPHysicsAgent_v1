@@ -15,10 +15,11 @@ Executors, workflow graph, schemas, and LLM integration for the simulation plann
 
 ### [`executors/`](executors/)
 
-The 6 executor classes that implement the workflow stages.
+The 6 package executors that implement the workflow stages.
 
 | File | Description |
 |---|---|
+| `__init__.py` | Package marker for executor modules. |
 | `build.py` | Deterministic build stage: applies geometry and params, generates probe points, runs GenCase, and creates geometry visualization. |
 | `review.py` | HITL gate for plan review and post-visualization review; routes flow based on intent classification. |
 | `planning.py` | Converts initial scenario text or revision feedback into an `AgentExecutorRequest` for the planner agent. |
@@ -32,8 +33,10 @@ Support modules shared across executors.
 
 | File | Description |
 |---|---|
+| `__init__.py` | Package marker for utility modules. |
 | `build_utils.py` | Shared `rebuild_gencase_viz()` helper used by PatchExecutor and ManualEditExecutor. |
 | `intent.py` | Classifies user feedback (`approve`/`agent_patch`/`manual_edit`/`question`/`full_replan`), answers user questions, and resolves datalake files. |
+| `skill_loader.py` | Loads and validates planner skill resources from the `skills/` directory. |
 
 ### [`prompts/`](prompts/)
 
