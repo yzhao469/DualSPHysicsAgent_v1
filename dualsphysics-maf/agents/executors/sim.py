@@ -6,6 +6,7 @@ Reads plan + run_dir from workflow state and runs:
 
 import json
 import logging
+import shutil
 
 from agent_framework import (
     Executor,
@@ -17,6 +18,11 @@ from agent_framework import (
 from agents.schemas import ReviewResult
 
 logger = logging.getLogger(__name__)
+
+
+def _has_gpu() -> bool:
+    """Check whether an NVIDIA GPU is available via nvidia-smi."""
+    return shutil.which("nvidia-smi") is not None
 
 
 class SimExecutor(Executor):
@@ -35,13 +41,14 @@ class SimExecutor(Executor):
         assert plan_data is not None, "No plan in workflow state"
         assert run_dir is not None, "No run_dir in workflow state"
 
-        # 1. Run simulation (CPU)
-        logger.info(">>> run_simulation")
+        # 1. Run simulation (GPU if available, else CPU)
+        use_gpu = _has_gpu()
+        logger.info(">>> run_simulation (gpu=%s)", use_gpu)
         r = await self.mcp.call_tool(
             "run_simulation",
             case_path=f"{run_dir}/out/Case_Def",
             output_dir=f"{run_dir}/out",
-            gpu=False,
+            gpu=use_gpu,
         )
         sim_result = json.loads(r) if isinstance(r, str) else r
         if sim_result.get("returncode", -1) != 0:
