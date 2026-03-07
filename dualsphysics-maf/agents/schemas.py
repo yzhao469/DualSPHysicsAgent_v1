@@ -38,49 +38,24 @@ class SimulationPlan(BaseModel):
 
 
 @dataclass
-class ReviewRequest:
-    """Data attached to a HITL request_info call."""
+class SetupReviewRequest:
+    """Data attached to a HITL request_info call in the setup review loop."""
 
-    phase: str  # "plan" or "viz"
-    summary: str  # Formatted text to show user
+    summary: str
+
+
+@dataclass
+class ResultsLoopRequest:
+    """Data attached to a HITL request_info call in the results loop."""
+
+    summary: str
 
 
 @dataclass
 class ReviewResult:
-    """Output of ReviewExecutor after classifying user feedback."""
+    """Output of review executors for routing decisions."""
 
-    route: Literal["build", "sim", "analyze", "full_replan", "done"]
-    feedback: str
-    phase: str  # "plan", "viz", or "results"
-
-
-@dataclass
-class PatchRequest:
-    """Request to LLM-patch the current case XML."""
-
-    feedback: str
-    phase: str  # "plan" or "viz"
-
-
-@dataclass
-class ManualEditRequest:
-    """Request for user to manually edit the case XML."""
-
-    phase: str  # "plan" or "viz"
-
-
-@dataclass
-class ManualEditAck:
-    """Data attached to request_info when waiting for manual edit completion."""
-
-    file_path: str
-    message: str
-
-
-@dataclass
-class AnalysisRequest:
-    """User-requested post-processing analysis."""
-
+    route: Literal["sim", "full_replan"]
     feedback: str
 
 

@@ -1,7 +1,7 @@
 """BuildExecutor — deterministic build pipeline.
 
-Reads the SimulationPlan from workflow state and runs:
-  set_geometry → modify_xml → generate_points → run_gencase → visualize
+Triggered automatically after the agent produces a SimulationPlan.
+Runs: set_geometry -> modify_xml -> generate_points -> run_gencase -> visualize
 """
 
 import json
@@ -9,20 +9,21 @@ import logging
 from datetime import datetime, timezone
 
 from agent_framework import (
+    AgentExecutorResponse,
     Executor,
     MCPStdioTool,
     WorkflowContext,
     handler,
 )
 
-from agents.schemas import BuildResult, ReviewResult
+from agents.schemas import BuildResult, SimulationPlan
 from agents.tools.visualize_geometry import visualize_geometry
 
 logger = logging.getLogger(__name__)
 
 
 class BuildExecutor(Executor):
-    """Deterministic: builds the simulation case from an approved plan."""
+    """Deterministic: builds the simulation case from the agent's plan."""
 
     def __init__(self, mcp: MCPStdioTool, base_dir: str) -> None:
         super().__init__(id="build")
@@ -30,17 +31,18 @@ class BuildExecutor(Executor):
         self.base_dir = base_dir
 
     @handler
-    async def on_approved(self, trigger: ReviewResult, ctx: WorkflowContext[BuildResult]) -> None:
-        """Run the 5-step build pipeline using the plan from workflow state."""
-        plan_data = ctx.get_state("plan")
-        if plan_data is None:
-            await ctx.send_message(BuildResult(run_dir="", success=False, message="No plan in workflow state"))
-            return
+    async def on_plan(self, result: AgentExecutorResponse, ctx: WorkflowContext[BuildResult]) -> None:
+        """Parse the agent's SimulationPlan and run the 5-step build pipeline."""
+        raw_text = result.agent_response.text
+        logger.info("BuildExecutor: agent response length: %d chars", len(raw_text))
+
+        plan = SimulationPlan.model_validate_json(raw_text)
+        ctx.set_state("plan", plan.model_dump())
 
         base_xml = ctx.get_state("base_xml") or f"{self.base_dir}/cases/BaseCase_Def.xml"
 
         try:
-            run_dir = await self._build(plan_data, base_xml)
+            run_dir = await self._build(plan.model_dump(), base_xml)
             ctx.set_state("run_dir", run_dir)
             await ctx.send_message(BuildResult(run_dir=run_dir, success=True, message="Build complete"))
         except Exception as exc:
@@ -48,7 +50,7 @@ class BuildExecutor(Executor):
             await ctx.send_message(BuildResult(run_dir="", success=False, message=str(exc)))
 
     async def _build(self, plan_data: dict, base_xml: str) -> str:
-        """set_geometry → modify_xml → generate_points → run_gencase → visualize."""
+        """set_geometry -> modify_xml -> generate_points -> run_gencase -> visualize."""
         from agents.schemas import PhysicsParams
 
         geometry_xml: str = plan_data["geometry_xml"]
