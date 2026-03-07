@@ -317,6 +317,7 @@ class ResultsLoopExecutor(Executor):
                 elif fn_name == "run_python_analysis":
                     code = fn_args["code"]
                     desc = fn_args.get("description", "Python analysis")
+                    print(f"\n>>> Python: {desc}\n```python\n{code}\n```\n", flush=True)
                     logger.info(">>> results_loop python: %s", desc)
                     try:
                         r = await self.mcp.call_tool(
