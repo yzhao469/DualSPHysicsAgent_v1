@@ -4,6 +4,9 @@ __pycache__/
 *.pyc
 *.pyo
 *.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
 
 # Simulation run outputs (large binary files, generated per run)
 runs/

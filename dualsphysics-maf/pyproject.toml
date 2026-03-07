@@ -19,6 +19,11 @@ dependencies = [
     "opentelemetry-semantic-conventions-ai==0.4.13",
 ]
 
+[project.optional-dependencies]
+test = [
+    "pytest>=8.4,<9",
+]
+
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
@@ -28,3 +33,12 @@ py-modules = ["main", "main_smoke"]
 
 [tool.setuptools.packages.find]
 include = ["agents*", "mcp_server*"]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+markers = [
+    "unit: fast, isolated tests for pure helpers and local file transformations",
+    "integration: tests that require MCP, external binaries, or live services",
+]
