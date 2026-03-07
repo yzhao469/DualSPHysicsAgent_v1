@@ -209,18 +209,43 @@ class SetupReviewExecutor(Executor):
         self.base_dir = base_dir
 
     @staticmethod
-    def _reset_recovery_state(ctx: WorkflowContext) -> None:
-        """Reset bounded recovery state after a successful build or rebuild."""
-        ctx.set_state("setup_review_retry_count", 0)
-        ctx.set_state("setup_review_last_error", None)
+    def _set_recovery_state(
+        ctx: WorkflowContext,
+        error_message: str | None = None,
+        retry_count: int = 0,
+    ) -> None:
+        """Store the current bounded recovery state."""
+        ctx.set_state("setup_review_retry_count", retry_count)
+        ctx.set_state("setup_review_last_error", error_message)
 
     @staticmethod
     def _record_recovery_failure(ctx: WorkflowContext, error_message: str) -> int:
         """Track a failed recovery attempt and return the updated count."""
         retry_count = (ctx.get_state("setup_review_retry_count") or 0) + 1
-        ctx.set_state("setup_review_retry_count", retry_count)
-        ctx.set_state("setup_review_last_error", error_message)
+        SetupReviewExecutor._set_recovery_state(ctx, error_message, retry_count)
         return retry_count
+
+    @staticmethod
+    def _refresh_system_prompt(
+        ctx: WorkflowContext,
+        plan_data: dict,
+        run_dir: str,
+    ) -> list[dict]:
+        """Regenerate the system prompt to reflect the latest recovery state."""
+        history = ctx.get_state("setup_review_history") or []
+        system_prompt = _build_system_prompt(
+            plan_data,
+            run_dir,
+            build_error=ctx.get_state("setup_review_last_error"),
+            retry_count=ctx.get_state("setup_review_retry_count") or 0,
+        )
+        system_message = {"role": "system", "content": system_prompt}
+        if history and history[0].get("role") == "system":
+            history[0] = system_message
+        else:
+            history.insert(0, system_message)
+        ctx.set_state("setup_review_history", history)
+        return history
 
     @handler
     async def on_build_complete(
@@ -243,17 +268,11 @@ class SetupReviewExecutor(Executor):
 
         # Initialize conversation history
         run_dir = ctx.get_state("run_dir") or result.run_dir
-        self._reset_recovery_state(ctx)
         if not result.success:
-            ctx.set_state("setup_review_last_error", result.message)
-        system_prompt = _build_system_prompt(
-            plan_data,
-            run_dir,
-            build_error=result.message if not result.success else None,
-        )
-        ctx.set_state("setup_review_history", [
-            {"role": "system", "content": system_prompt},
-        ])
+            self._set_recovery_state(ctx, result.message, retry_count=0)
+        else:
+            self._set_recovery_state(ctx)
+        self._refresh_system_prompt(ctx, plan_data, run_dir)
 
         await ctx.request_info(
             request_data=SetupReviewRequest(summary=summary),
@@ -278,7 +297,8 @@ class SetupReviewExecutor(Executor):
             ctx.set_state("pending_manual_edit", False)
             try:
                 await rebuild_gencase_viz(self.mcp, run_dir)
-                self._reset_recovery_state(ctx)
+                self._set_recovery_state(ctx)
+                history = self._refresh_system_prompt(ctx, plan_data, run_dir)
                 history.append({
                     "role": "tool",
                     "tool_call_id": pending_manual_edit,
@@ -287,6 +307,7 @@ class SetupReviewExecutor(Executor):
             except Exception as exc:
                 logger.exception("Manual edit rebuild failed")
                 retry_count = self._record_recovery_failure(ctx, str(exc))
+                history = self._refresh_system_prompt(ctx, plan_data, run_dir)
                 history.append({
                     "role": "tool",
                     "tool_call_id": pending_manual_edit,
@@ -341,6 +362,18 @@ class SetupReviewExecutor(Executor):
                 fn_args = json.loads(tc.function.arguments)
 
                 if fn_name == "approve":
+                    last_error = ctx.get_state("setup_review_last_error")
+                    if last_error:
+                        history.append({
+                            "role": "tool",
+                            "tool_call_id": tc.id,
+                            "content": (
+                                "Cannot approve yet because the current setup still has an "
+                                f"unresolved build error: {last_error}. "
+                                "Fix it first with `patch_and_rebuild`, `manual_edit`, or `replan`."
+                            ),
+                        })
+                        continue
                     ctx.set_state("setup_review_history", history)
                     await ctx.send_message(
                         ReviewResult(route="sim", feedback="approved")
@@ -363,7 +396,8 @@ class SetupReviewExecutor(Executor):
                         result_text = await self._patch_and_rebuild(
                             changes, plan_data, run_dir, ctx
                         )
-                        self._reset_recovery_state(ctx)
+                        self._set_recovery_state(ctx)
+                        history = self._refresh_system_prompt(ctx, plan_data, run_dir)
                         history.append({
                             "role": "tool",
                             "tool_call_id": tc.id,
@@ -372,6 +406,7 @@ class SetupReviewExecutor(Executor):
                     except Exception as exc:
                         logger.exception("patch_and_rebuild failed")
                         retry_count = self._record_recovery_failure(ctx, str(exc))
+                        history = self._refresh_system_prompt(ctx, plan_data, run_dir)
                         history.append({
                             "role": "tool",
                             "tool_call_id": tc.id,
@@ -427,6 +462,7 @@ class SetupReviewExecutor(Executor):
         ctx: WorkflowContext,
     ) -> str:
         """Apply LLM patch, rebuild gencase, reopen ParaView."""
+        Path(run_dir).mkdir(parents=True, exist_ok=True)
         case_xml = f"{run_dir}/Case_Def.xml"
         if Path(case_xml).exists():
             current_xml = Path(case_xml).read_text()

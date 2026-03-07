@@ -272,6 +272,170 @@ class SetupReviewExecutorTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("### Current Build Error", system_prompt)
         self.assertIn("GenCase stderr: malformed XML", system_prompt)
         self.assertEqual(ctx.get_state("setup_review_retry_count"), 0)
+        self.assertEqual(
+            ctx.get_state("setup_review_last_error"),
+            "GenCase stderr: malformed XML",
+        )
+
+    async def test_patch_success_refreshes_prompt_and_clears_error_state(self):
+        class FakeToolCall:
+            def __init__(self):
+                self.id = "call_patch"
+                self.function = types.SimpleNamespace(
+                    name="patch_and_rebuild",
+                    arguments=json.dumps({"changes": "Fix the XML"}),
+                )
+
+        class FakePatchMessage:
+            content = None
+            tool_calls = [FakeToolCall()]
+
+            def model_dump(self, exclude_none=True):
+                return {"role": "assistant", "tool_calls": ["patch_and_rebuild"]}
+
+        class FakeTextMessage:
+            content = "Recovered successfully"
+            tool_calls = []
+
+            def model_dump(self, exclude_none=True):
+                return {"role": "assistant", "content": self.content}
+
+        class FakeCompletions:
+            def __init__(self):
+                self.calls = 0
+
+            async def create(self, **kwargs):
+                self.calls += 1
+                if self.calls == 1:
+                    return types.SimpleNamespace(
+                        choices=[types.SimpleNamespace(message=FakePatchMessage())]
+                    )
+                return types.SimpleNamespace(
+                    choices=[types.SimpleNamespace(message=FakeTextMessage())]
+                )
+
+        class FakeAsyncOpenAI:
+            def __init__(self):
+                self.chat = types.SimpleNamespace(completions=FakeCompletions())
+
+        self.setup_review_module.AsyncOpenAI = FakeAsyncOpenAI
+
+        ctx = FakeWorkflowContext({
+            "plan": {
+                "geometry_xml": "<geometry/>",
+                "params": {"rhop0": 1000},
+                "probe_points": [],
+                "reasoning": "test plan",
+            },
+            "run_dir": "/tmp/run_dir",
+            "setup_review_history": [{
+                "role": "system",
+                "content": self.setup_review_module._build_system_prompt(
+                    {
+                        "geometry_xml": "<geometry/>",
+                        "params": {"rhop0": 1000},
+                        "probe_points": [],
+                        "reasoning": "test plan",
+                    },
+                    "/tmp/run_dir",
+                    build_error="GenCase stderr: malformed XML",
+                ),
+            }],
+            "setup_review_retry_count": 2,
+            "setup_review_last_error": "GenCase stderr: malformed XML",
+        })
+        executor = self.setup_review_module.SetupReviewExecutor(mcp=None, base_dir="/tmp/project")
+
+        async def succeed_patch(changes, plan_data, run_dir, ctx):
+            return "Patch applied successfully. ParaView should reopen with the updated geometry."
+
+        executor._patch_and_rebuild = succeed_patch
+
+        await executor.on_user_reply(
+            self.schemas.SetupReviewRequest(summary="summary"),
+            "please fix it",
+            ctx,
+        )
+
+        self.assertEqual(ctx.get_state("setup_review_retry_count"), 0)
+        self.assertIsNone(ctx.get_state("setup_review_last_error"))
+        system_prompt = ctx.get_state("setup_review_history")[0]["content"]
+        self.assertIn("Build completed successfully.", system_prompt)
+        self.assertNotIn("### Current Build Error", system_prompt)
+        self.assertEqual(len(ctx.requests), 1)
+        self.assertEqual(ctx.requests[0][0].summary, "Recovered successfully")
+
+    async def test_approve_is_blocked_while_build_error_remains(self):
+        class FakeApproveToolCall:
+            def __init__(self):
+                self.id = "call_approve"
+                self.function = types.SimpleNamespace(
+                    name="approve",
+                    arguments=json.dumps({}),
+                )
+
+        class FakeApproveMessage:
+            content = None
+            tool_calls = [FakeApproveToolCall()]
+
+            def model_dump(self, exclude_none=True):
+                return {"role": "assistant", "tool_calls": ["approve"]}
+
+        class FakeTextMessage:
+            content = "Please fix the build error first."
+            tool_calls = []
+
+            def model_dump(self, exclude_none=True):
+                return {"role": "assistant", "content": self.content}
+
+        class FakeCompletions:
+            def __init__(self):
+                self.calls = 0
+
+            async def create(self, **kwargs):
+                self.calls += 1
+                if self.calls == 1:
+                    return types.SimpleNamespace(
+                        choices=[types.SimpleNamespace(message=FakeApproveMessage())]
+                    )
+                return types.SimpleNamespace(
+                    choices=[types.SimpleNamespace(message=FakeTextMessage())]
+                )
+
+        class FakeAsyncOpenAI:
+            def __init__(self):
+                self.chat = types.SimpleNamespace(completions=FakeCompletions())
+
+        self.setup_review_module.AsyncOpenAI = FakeAsyncOpenAI
+
+        ctx = FakeWorkflowContext({
+            "plan": {
+                "geometry_xml": "<geometry/>",
+                "params": {"rhop0": 1000},
+                "probe_points": [],
+                "reasoning": "test plan",
+            },
+            "run_dir": "/tmp/run_dir",
+            "setup_review_history": [{"role": "system", "content": "prompt"}],
+            "setup_review_last_error": "GenCase stderr: malformed XML",
+        })
+        executor = self.setup_review_module.SetupReviewExecutor(mcp=None, base_dir="/tmp/project")
+
+        await executor.on_user_reply(
+            self.schemas.SetupReviewRequest(summary="summary"),
+            "looks good",
+            ctx,
+        )
+
+        self.assertEqual(ctx.messages, [])
+        self.assertEqual(len(ctx.requests), 1)
+        self.assertEqual(ctx.requests[0][0].summary, "Please fix the build error first.")
+        tool_messages = [
+            entry for entry in ctx.get_state("setup_review_history")
+            if entry.get("role") == "tool"
+        ]
+        self.assertEqual(len(tool_messages), 1)
+        self.assertIn("Cannot approve yet", tool_messages[0]["content"])
 
     async def test_patch_retry_limit_routes_to_replan(self):
         class FakeToolCall:
