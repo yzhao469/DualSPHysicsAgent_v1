@@ -19,6 +19,20 @@ LLM-assisted workflow for DualSPHysics non-Newtonian simulations.
    .venv/bin/python main.py
    ```
 
+## Testing
+
+Install the project with test dependencies and run the unit suite:
+
+```bash
+.venv/bin/pip install -e .[test]
+.venv/bin/pytest
+```
+
+The initial pytest bootstrap focuses on fast unit coverage for pure helpers and
+local file transformations under `agents/` and `mcp_server/tools/`. External
+workflow paths that require MCP, OpenAI, or DualSPHysics binaries are left for
+future mocked integration tests.
+
 ## Folder READMEs
 
 Key folders under `dualsphysics-maf` have README files that document file responsibilities:
@@ -31,6 +45,7 @@ Key folders under `dualsphysics-maf` have README files that document file respon
 - [`mcp_server/README.md`](mcp_server/README.md)
 - [`mcp_server/tools/README.md`](mcp_server/tools/README.md)
 - [`skills/README.md`](skills/README.md)
+- [`tests/README.md`](tests/README.md)
 
 ## Files in this folder
 
@@ -44,3 +59,4 @@ Key folders under `dualsphysics-maf` have README files that document file respon
 | `main_smoke.py` | Alternate smoke entrypoint for explicit-parameter runs that bypass scenario-to-parameter reasoning. |
 | `pyproject.toml` | Project metadata and pinned Python dependencies. |
 | `requirements.txt` | Legacy dependency list (prefer `pip install -e .` via `pyproject.toml`). |
+| `tests/` | Pytest-based test suite for unit coverage of schemas, XML helpers, file generation, skills loading, and metrics. |
