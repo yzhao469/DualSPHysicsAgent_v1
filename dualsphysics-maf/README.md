@@ -4,11 +4,11 @@ LLM-assisted workflow for DualSPHysics non-Newtonian simulations.
 
 ## Quick start
 
-1. Create a virtual environment and install dependencies:
+1. Create a virtual environment and install the project:
    ```bash
    cd dualsphysics-maf
    python3.12 -m venv .venv
-   .venv/bin/pip install -r requirements.txt
+   .venv/bin/pip install -e .
    ```
 2. Add your OpenAI API key to `dualsphysics-maf/.env`:
    ```bash
@@ -42,4 +42,5 @@ Key folders under `dualsphysics-maf` have README files that document file respon
 | `datalake/` | Runtime working data folder used by the workflow to store/edit the active case XML (`Case_Def.xml`). |
 | `main.py` | Main interactive workflow runner (planning → review → build → simulation) using event-driven HITL responses. |
 | `main_smoke.py` | Alternate smoke entrypoint for explicit-parameter runs that bypass scenario-to-parameter reasoning. |
-| `requirements.txt` | Python dependencies required by the agent framework, MCP server tooling, and metric/visualization utilities. |
+| `pyproject.toml` | Project metadata and pinned Python dependencies. |
+| `requirements.txt` | Legacy dependency list (prefer `pip install -e .` via `pyproject.toml`). |

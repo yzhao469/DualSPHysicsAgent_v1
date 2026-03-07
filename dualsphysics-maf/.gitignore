@@ -3,6 +3,7 @@
 __pycache__/
 *.pyc
 *.pyo
+*.egg-info/
 
 # Simulation run outputs (large binary files, generated per run)
 runs/
