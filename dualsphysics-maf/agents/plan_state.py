@@ -2,13 +2,19 @@
 
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from typing import Callable, TypeVar
 
 from mcp_server.tools._xml_utils import preprocess_xml
+
+_T = TypeVar("_T")
 
 
 def extract_plan_update(case_xml: str) -> dict[str, object]:
     """Extract the current geometry and physics params from a case XML file."""
-    raw = Path(case_xml).read_text(encoding="utf-8", errors="replace")
+    try:
+        raw = Path(case_xml).read_text(encoding="utf-8")
+    except UnicodeDecodeError as exc:
+        raise ValueError(f"Could not decode XML file {case_xml} as UTF-8") from exc
     root = ET.fromstring(preprocess_xml(raw))
 
     geometry = root.find("casedef/geometry")
@@ -29,7 +35,7 @@ def extract_plan_update(case_xml: str) -> dict[str, object]:
             "HBP_m": _read_required_attr(phase, "HBP_m", "value", float),
             "HBP_n": _read_required_attr(phase, "HBP_n", "value", float),
             "Visco": _read_exec_param(root, "Visco", float),
-            "DensityDT": _read_exec_param(root, "DensityDT", lambda value: int(float(value))),
+            "DensityDT": _read_exec_param(root, "DensityDT", _parse_int_from_float),
             "DensityDTvalue": _read_exec_param(root, "DensityDTvalue", float),
             "TimeMax": _read_exec_param(root, "TimeMax", float),
             "TimeOut": _read_exec_param(root, "TimeOut", float),
@@ -37,13 +43,23 @@ def extract_plan_update(case_xml: str) -> dict[str, object]:
     }
 
 
-def _read_exec_param(root: ET.Element, key: str, caster) -> float | int:
+def _read_exec_param(root: ET.Element, key: str, caster: Callable[[str], _T]) -> _T:
     """Read execution/parameters/parameter[@key=...] value as a typed scalar."""
     return _read_required_attr(root, f"execution/parameters/parameter[@key='{key}']", "value", caster)
 
 
-def _read_required_attr(node: ET.Element, path: str, attr: str, caster):
-    """Read a required attribute from the selected XML element."""
+def _parse_int_from_float(value: str) -> int:
+    """Parse integer-like XML values that may be serialized as floats."""
+    return int(float(value))
+
+
+def _read_required_attr(
+    node: ET.Element,
+    path: str,
+    attr: str,
+    caster: Callable[[str], _T],
+) -> _T:
+    """Read a required attribute from a child element selected relative to *node*."""
     element = node.find(path)
     if element is None:
         raise ValueError(f"Missing XML element: {path}")

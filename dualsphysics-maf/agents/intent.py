@@ -140,7 +140,11 @@ async def resolve_datalake_file(scenario: str, available_files: list[str]) -> st
 
 
 def _load_skill_reference(skill_type: str) -> tuple[str, str]:
-    """Load the selected skill reference text, defaulting to the XML guide."""
+    """Load the selected skill reference text, defaulting to the XML guide.
+
+    If the selected skill file is missing, returns an empty reference payload so
+    question answering continues using only the plan context.
+    """
     normalized = skill_type if skill_type in _SKILL_FILES else "xml"
     if normalized != skill_type:
         logger.warning("Unknown skill_type %r, defaulting to 'xml'", skill_type)

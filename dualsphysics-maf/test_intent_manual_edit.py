@@ -49,6 +49,7 @@ if "pydantic" not in sys.modules:
     pydantic_stub = types.ModuleType("pydantic")
 
     class BaseModel:
+        """Minimal stub used only to import schemas in test environments."""
         pass
 
     pydantic_stub.BaseModel = BaseModel
@@ -110,8 +111,10 @@ class IntentAndManualEditTests(unittest.IsolatedAsyncioTestCase):
             post_skill = Path(tmpdir) / "post.md"
             post_skill.write_text("postprocess reference", encoding="utf-8")
 
-            with patch("agents.intent._SKILL_FILES", {"xml": xml_skill, "postprocess": post_skill}), \
-                    patch("agents.intent.AsyncOpenAI", return_value=fake_client):
+            with (
+                patch("agents.intent._SKILL_FILES", {"xml": xml_skill, "postprocess": post_skill}),
+                patch("agents.intent.AsyncOpenAI", return_value=fake_client),
+            ):
                 answer = await answer_question(
                     "What does this result mean?",
                     "plan context",
