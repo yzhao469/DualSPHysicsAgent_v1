@@ -1,4 +1,4 @@
-"""Simulation driver — HITL event loop for the 7-executor workflow."""
+"""Simulation driver — HITL event loop for the 6-executor workflow."""
 
 import asyncio
 import json
@@ -19,7 +19,7 @@ from agent_framework import (
 )
 from agent_framework._types import ResponseStream
 
-from agents.schemas import ManualEditAck, ReviewRequest
+from agents.schemas import SetupReviewRequest, ResultsLoopRequest
 from agents.simulation_agent import make_mcp_tool, make_simulation_agent
 from agents.workflow import build_workflow
 
@@ -58,10 +58,8 @@ async def process_events(
             req_data = event.data
             request_id = event.request_id
 
-            if isinstance(req_data, ReviewRequest):
+            if isinstance(req_data, (SetupReviewRequest, ResultsLoopRequest)):
                 print(req_data.summary, flush=True)
-            elif isinstance(req_data, ManualEditAck):
-                print(f"\n{req_data.message}", flush=True)
             else:
                 print(f"\n[Request from {event.source_executor_id}]: {req_data}", flush=True)
 

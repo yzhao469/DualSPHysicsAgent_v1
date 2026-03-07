@@ -61,5 +61,5 @@ class SimExecutor(Executor):
 
         # Pass to AnalyzeExecutor (default post-processing)
         await ctx.send_message(
-            ReviewResult(route="analyze", feedback="", phase="sim")
+            ReviewResult(route="sim", feedback="")
         )

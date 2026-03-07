@@ -77,10 +77,7 @@ class PlanningExecutor(Executor):
     @handler
     async def on_revision(self, review: ReviewResult, ctx: WorkflowContext[AgentExecutorRequest]) -> None:
         """Full replan: the user wants to start over with a different scenario."""
-        if review.phase == "plan":
-            text = f"Please revise the plan: {review.feedback}"
-        else:
-            text = f"Revise the geometry based on visual inspection: {review.feedback}"
+        text = f"Please revise the simulation: {review.feedback}"
         logger.info("PlanningExecutor: revision request — %s", text)
         msg = Message("user", text=text)
         await ctx.send_message(AgentExecutorRequest(messages=[msg], should_respond=True))
