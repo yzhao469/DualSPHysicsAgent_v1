@@ -11,6 +11,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BUILD_PATH = REPO_ROOT / "agents/executors/build.py"
 SETUP_REVIEW_PATH = REPO_ROOT / "agents/executors/setup_review.py"
+GENCASE_XML_ERROR = "GenCase stderr: malformed XML"
 
 
 def _install_module_stubs(modules: dict[str, types.ModuleType]) -> callable:
@@ -257,7 +258,7 @@ class SetupReviewExecutorTests(unittest.IsolatedAsyncioTestCase):
         result = self.schemas.BuildResult(
             run_dir="/tmp/run_dir",
             success=False,
-            message="GenCase stderr: malformed XML",
+            message=GENCASE_XML_ERROR,
         )
 
         await executor.on_build_complete(result, ctx)
@@ -267,14 +268,14 @@ class SetupReviewExecutorTests(unittest.IsolatedAsyncioTestCase):
         request, response_type = ctx.requests[0]
         self.assertIs(response_type, str)
         self.assertIn("Build failed before the setup could be reviewed.", request.summary)
-        self.assertIn("GenCase stderr: malformed XML", request.summary)
+        self.assertIn(GENCASE_XML_ERROR, request.summary)
         system_prompt = ctx.get_state("setup_review_history")[0]["content"]
         self.assertIn("### Current Build Error", system_prompt)
-        self.assertIn("GenCase stderr: malformed XML", system_prompt)
+        self.assertIn(GENCASE_XML_ERROR, system_prompt)
         self.assertEqual(ctx.get_state("setup_review_retry_count"), 0)
         self.assertEqual(
             ctx.get_state("setup_review_last_error"),
-            "GenCase stderr: malformed XML",
+            GENCASE_XML_ERROR,
         )
 
     async def test_patch_success_refreshes_prompt_and_clears_error_state(self):
@@ -338,11 +339,11 @@ class SetupReviewExecutorTests(unittest.IsolatedAsyncioTestCase):
                         "reasoning": "test plan",
                     },
                     "/tmp/run_dir",
-                    build_error="GenCase stderr: malformed XML",
+                    build_error=GENCASE_XML_ERROR,
                 ),
             }],
             "setup_review_retry_count": 2,
-            "setup_review_last_error": "GenCase stderr: malformed XML",
+            "setup_review_last_error": GENCASE_XML_ERROR,
         })
         executor = self.setup_review_module.SetupReviewExecutor(mcp=None, base_dir="/tmp/project")
 
@@ -417,7 +418,7 @@ class SetupReviewExecutorTests(unittest.IsolatedAsyncioTestCase):
             },
             "run_dir": "/tmp/run_dir",
             "setup_review_history": [{"role": "system", "content": "prompt"}],
-            "setup_review_last_error": "GenCase stderr: malformed XML",
+            "setup_review_last_error": GENCASE_XML_ERROR,
         })
         executor = self.setup_review_module.SetupReviewExecutor(mcp=None, base_dir="/tmp/project")
 
@@ -479,7 +480,7 @@ class SetupReviewExecutorTests(unittest.IsolatedAsyncioTestCase):
         executor = self.setup_review_module.SetupReviewExecutor(mcp=None, base_dir="/tmp/project")
 
         async def fail_patch(changes, plan_data, run_dir, ctx):
-            raise RuntimeError("GenCase stderr: malformed XML")
+            raise RuntimeError(GENCASE_XML_ERROR)
 
         executor._patch_and_rebuild = fail_patch
 
@@ -491,7 +492,7 @@ class SetupReviewExecutorTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(len(ctx.messages), 1)
         self.assertEqual(ctx.messages[0].route, "full_replan")
-        self.assertIn("GenCase stderr: malformed XML", ctx.messages[0].feedback)
+        self.assertIn(GENCASE_XML_ERROR, ctx.messages[0].feedback)
         self.assertEqual(
             ctx.get_state("setup_review_retry_count"),
             self.setup_review_module.MAX_BUILD_RECOVERY_ATTEMPTS,
