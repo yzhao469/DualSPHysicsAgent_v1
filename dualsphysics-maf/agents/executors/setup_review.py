@@ -36,6 +36,7 @@ from agents.utils.patch_utils import generate_patch, merge_patch
 from agents.utils.skill_loader import get_skill_content
 
 logger = logging.getLogger(__name__)
+MAX_BUILD_RECOVERY_ATTEMPTS = 3
 
 # OpenAI function definitions for the setup review LLM
 _TOOLS = [
@@ -120,21 +121,42 @@ _TOOLS = [
 ]
 
 
-def _build_system_prompt(plan_data: dict, run_dir: str) -> str:
+def _build_system_prompt(
+    plan_data: dict,
+    run_dir: str,
+    build_error: str | None = None,
+    retry_count: int = 0,
+    max_retry_count: int = MAX_BUILD_RECOVERY_ATTEMPTS,
+) -> str:
     """Build the system prompt for the setup review LLM."""
     plan_summary = json.dumps(plan_data, indent=2)
+    build_status = (
+        "Build failed before review started."
+        if build_error
+        else "Build completed successfully."
+    )
+    failure_guidance = ""
+    if build_error:
+        failure_guidance = (
+            f"### Current Build Error\n{build_error}\n\n"
+            f"### Recovery Attempts\n{retry_count} of {max_retry_count}\n\n"
+        )
     return (
         "You are a helpful assistant reviewing a DualSPHysics simulation setup. "
         "The user has been shown the simulation plan and a ParaView visualization "
         "of the particle geometry.\n\n"
+        f"### Build Status\n{build_status}\n\n"
+        f"{failure_guidance}"
         f"### Current Simulation Plan\n```json\n{plan_summary}\n```\n\n"
         f"### Run Directory\n{run_dir}\n\n"
         "### Your Role\n"
+        "- If the build status is failed, do not call `approve` until the setup has been rebuilt successfully.\n"
         "- If the user is happy with the setup, call `approve` to proceed to simulation.\n"
         "- If the user wants changes (geometry, parameters, probes), call `patch_and_rebuild`.\n"
         "- If the user wants to edit the XML file themselves, call `manual_edit`.\n"
         "- If the user asks a question, call `answer_question`.\n"
         "- If the user wants to start over entirely, call `replan`.\n"
+        f"- If recovery keeps failing and you have already used {max_retry_count} rebuild attempts, call `replan`.\n"
         "- Always be concise and helpful.\n"
         "- When the user gives short affirmative responses like 'yes', 'ok', 'looks good', "
         "'go ahead', 'proceed', or just presses Enter, call `approve`.\n"
@@ -186,6 +208,20 @@ class SetupReviewExecutor(Executor):
         self.mcp = mcp
         self.base_dir = base_dir
 
+    @staticmethod
+    def _reset_recovery_state(ctx: WorkflowContext) -> None:
+        """Reset bounded recovery state after a successful build or rebuild."""
+        ctx.set_state("setup_review_retry_count", 0)
+        ctx.set_state("setup_review_last_error", None)
+
+    @staticmethod
+    def _record_recovery_failure(ctx: WorkflowContext, error_message: str) -> int:
+        """Track a failed recovery attempt and return the updated count."""
+        retry_count = (ctx.get_state("setup_review_retry_count") or 0) + 1
+        ctx.set_state("setup_review_retry_count", retry_count)
+        ctx.set_state("setup_review_last_error", error_message)
+        return retry_count
+
     @handler
     async def on_build_complete(
         self,
@@ -193,20 +229,28 @@ class SetupReviewExecutor(Executor):
         ctx: WorkflowContext[ReviewResult],
     ) -> None:
         """After auto-build: show plan + viz, start review loop."""
-        if not result.success:
-            logger.warning("Build failed: %s — routing to full replan", result.message)
-            await ctx.send_message(
-                ReviewResult(route="full_replan", feedback=f"Build failed: {result.message}")
-            )
-            return
-
         plan_data = ctx.get_state("plan")
         plan = SimulationPlan.model_validate(plan_data)
         summary = _format_plan_summary(plan)
+        if not result.success:
+            logger.warning("Build failed: %s — entering setup review recovery loop", result.message)
+            summary = (
+                f"{summary}\n\n"
+                "Build failed before the setup could be reviewed.\n"
+                f"Error:\n{result.message}\n\n"
+                "You can request a fix, manually edit the XML, ask a question, or replan."
+            )
 
         # Initialize conversation history
-        run_dir = ctx.get_state("run_dir")
-        system_prompt = _build_system_prompt(plan_data, run_dir)
+        run_dir = ctx.get_state("run_dir") or result.run_dir
+        self._reset_recovery_state(ctx)
+        if not result.success:
+            ctx.set_state("setup_review_last_error", result.message)
+        system_prompt = _build_system_prompt(
+            plan_data,
+            run_dir,
+            build_error=result.message if not result.success else None,
+        )
         ctx.set_state("setup_review_history", [
             {"role": "system", "content": system_prompt},
         ])
@@ -234,6 +278,7 @@ class SetupReviewExecutor(Executor):
             ctx.set_state("pending_manual_edit", False)
             try:
                 await rebuild_gencase_viz(self.mcp, run_dir)
+                self._reset_recovery_state(ctx)
                 history.append({
                     "role": "tool",
                     "tool_call_id": pending_manual_edit,
@@ -241,11 +286,24 @@ class SetupReviewExecutor(Executor):
                 })
             except Exception as exc:
                 logger.exception("Manual edit rebuild failed")
+                retry_count = self._record_recovery_failure(ctx, str(exc))
                 history.append({
                     "role": "tool",
                     "tool_call_id": pending_manual_edit,
                     "content": f"Rebuild failed: {exc}",
                 })
+                if retry_count >= MAX_BUILD_RECOVERY_ATTEMPTS:
+                    ctx.set_state("setup_review_history", history)
+                    await ctx.send_message(
+                        ReviewResult(
+                            route="full_replan",
+                            feedback=(
+                                "Build recovery failed repeatedly after manual edits. "
+                                f"Last error: {exc}"
+                            ),
+                        )
+                    )
+                    return
             # Fall through to the LLM loop so it can respond
         else:
             # Append user message
@@ -305,6 +363,7 @@ class SetupReviewExecutor(Executor):
                         result_text = await self._patch_and_rebuild(
                             changes, plan_data, run_dir, ctx
                         )
+                        self._reset_recovery_state(ctx)
                         history.append({
                             "role": "tool",
                             "tool_call_id": tc.id,
@@ -312,11 +371,24 @@ class SetupReviewExecutor(Executor):
                         })
                     except Exception as exc:
                         logger.exception("patch_and_rebuild failed")
+                        retry_count = self._record_recovery_failure(ctx, str(exc))
                         history.append({
                             "role": "tool",
                             "tool_call_id": tc.id,
                             "content": f"Error: {exc}",
                         })
+                        if retry_count >= MAX_BUILD_RECOVERY_ATTEMPTS:
+                            ctx.set_state("setup_review_history", history)
+                            await ctx.send_message(
+                                ReviewResult(
+                                    route="full_replan",
+                                    feedback=(
+                                        "Build recovery failed repeatedly during setup review. "
+                                        f"Last error: {exc}"
+                                    ),
+                                )
+                            )
+                            return
 
                 elif fn_name == "manual_edit":
                     # Pause the loop so the user can edit the file
@@ -356,7 +428,11 @@ class SetupReviewExecutor(Executor):
     ) -> str:
         """Apply LLM patch, rebuild gencase, reopen ParaView."""
         case_xml = f"{run_dir}/Case_Def.xml"
-        current_xml = Path(case_xml).read_text()
+        if Path(case_xml).exists():
+            current_xml = Path(case_xml).read_text()
+        else:
+            base_xml = ctx.get_state("base_xml") or f"{self.base_dir}/cases/BaseCase_Def.xml"
+            current_xml = Path(base_xml).read_text()
 
         patch = await generate_patch(current_xml, plan_data, changes)
         logger.info("LLM patch keys: %s", list(patch.keys()))
