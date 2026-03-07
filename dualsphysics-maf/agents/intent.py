@@ -48,7 +48,14 @@ _CLASSIFY_SYSTEM_PROMPT = (
     "'forget this, simulate something completely different', 'redo everything'."
 )
 
-_SKILL_FILE = Path(__file__).resolve().parent.parent / "skills" / "dualsphysics_xml_guide.md"
+_SKILL_FILES = {
+    "xml": Path(__file__).resolve().parent.parent / "skills" / "dualsphysics_xml_guide.md",
+    "postprocess": Path(__file__).resolve().parent.parent / "skills" / "dualsphysics_postprocess_guide.md",
+}
+_SKILL_LABELS = {
+    "xml": "DualSPHysics XML Guide",
+    "postprocess": "DualSPHysics Post-Processing Guide",
+}
 
 
 _VALID_INTENTS = {"approve", "agent_patch", "manual_edit", "question", "full_replan"}
@@ -132,14 +139,24 @@ async def resolve_datalake_file(scenario: str, available_files: list[str]) -> st
     return None
 
 
-async def answer_question(question: str, plan_context: str) -> str:
+def _load_skill_reference(skill_type: str) -> tuple[str, str]:
+    """Load the selected skill reference text, defaulting to the XML guide."""
+    normalized = skill_type if skill_type in _SKILL_FILES else "xml"
+    if normalized != skill_type:
+        logger.warning("Unknown skill_type %r, defaulting to 'xml'", skill_type)
+
+    skill_file = _SKILL_FILES[normalized]
+    if not skill_file.exists():
+        return normalized, ""
+    return normalized, skill_file.read_text(encoding="utf-8")
+
+
+async def answer_question(question: str, plan_context: str, skill_type: str = "xml") -> str:
     """Answer a user question about the simulation plan using GPT-4o-mini.
 
     Provides the plan context and the skill file as reference material.
     """
-    skill_text = ""
-    if _SKILL_FILE.exists():
-        skill_text = _SKILL_FILE.read_text()
+    skill_key, skill_text = _load_skill_reference(skill_type)
 
     system_parts = [
         "You are a helpful assistant that answers questions about a DualSPHysics "
@@ -150,7 +167,7 @@ async def answer_question(question: str, plan_context: str) -> str:
     ]
     if skill_text:
         system_parts += [
-            "\n\n### Reference Material (DualSPHysics XML Guide)\n",
+            f"\n\n### Reference Material ({_SKILL_LABELS.get(skill_key, skill_key)})\n",
             skill_text,
         ]
 

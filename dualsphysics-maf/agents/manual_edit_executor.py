@@ -15,6 +15,7 @@ from agent_framework import (
 )
 
 from agents.build_utils import rebuild_gencase_viz
+from agents.plan_state import extract_plan_update
 from agents.schemas import BuildResult, ManualEditAck, ManualEditRequest
 
 logger = logging.getLogger(__name__)
@@ -67,7 +68,14 @@ class ManualEditExecutor(Executor):
         assert run_dir is not None
 
         try:
+            case_xml = f"{run_dir}/Case_Def.xml"
             await rebuild_gencase_viz(self.mcp, run_dir)
+
+            plan_data = ctx.get_state("plan")
+            if isinstance(plan_data, dict):
+                refreshed_plan = {**plan_data, **extract_plan_update(case_xml)}
+                ctx.set_state("plan", refreshed_plan)
+
             await ctx.send_message(BuildResult(
                 run_dir=run_dir,
                 success=True,

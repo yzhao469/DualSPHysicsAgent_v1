@@ -9,6 +9,7 @@ Executors, workflow graph, schemas, and LLM integration for the simulation plann
 | `__init__.py` | Package marker for the `agents` module. |
 | `build_executor.py` | Deterministic build stage: applies geometry and params, generates probe points, runs GenCase, and creates geometry visualization. |
 | `intent.py` | Classifies user feedback (`approve`/`revise`/`question`) and answers user questions during review loops. |
+| `plan_state.py` | Rehydrates current geometry and physics parameters from `Case_Def.xml` so workflow state stays in sync after manual edits. |
 | `planning_executor.py` | Converts initial scenario text or revision feedback into an `AgentExecutorRequest` for the planner agent. |
 | `review_executor.py` | HITL gate for plan review and post-visualization review; routes flow based on intent classification. |
 | `schemas.py` | Pydantic/dataclass models for simulation inputs/outputs shared across workflow executors. |

@@ -128,7 +128,7 @@ class ReviewExecutor(Executor):
             else:
                 plan_context = request.summary
 
-            answer = await answer_question(feedback, plan_context)
+            answer = await answer_question(feedback, plan_context, skill_type="xml")
 
             await ctx.request_info(
                 request_data=ReviewRequest(
