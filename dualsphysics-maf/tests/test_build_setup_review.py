@@ -201,9 +201,9 @@ class SetupReviewExecutorTests(unittest.IsolatedAsyncioTestCase):
         schemas_mod = _make_schema_stub()
 
         build_utils_mod = types.ModuleType("agents.utils.build_utils")
-        async def rebuild_gencase_viz(mcp, run_dir):
+        async def fake_rebuild_gencase_viz(mcp, run_dir):
             return None
-        build_utils_mod.rebuild_gencase_viz = rebuild_gencase_viz
+        build_utils_mod.rebuild_gencase_viz = fake_rebuild_gencase_viz
 
         intent_mod = types.ModuleType("agents.utils.intent")
         async def answer_question(question, plan_context):

@@ -56,7 +56,7 @@ class BuildExecutor(Executor):
         ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         return f"{self.base_dir}/runs/run_{ts}"
 
-    async def _build(self, plan_data: dict, base_xml: str, run_dir: str) -> None:
+    async def _build(self, plan_data: dict, base_xml: str, run_dir: str) -> str:
         """set_geometry -> modify_xml -> generate_points -> run_gencase -> visualize."""
         from agents.schemas import PhysicsParams
 
@@ -114,3 +114,5 @@ class BuildExecutor(Executor):
         logger.info(">>> visualize_geometry")
         viz_result = visualize_geometry(f"{run_dir}/out")
         logger.info("visualize_geometry: %s", viz_result)
+
+        return run_dir
