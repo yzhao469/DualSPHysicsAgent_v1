@@ -287,6 +287,7 @@ class AnalyzeExecutor(Executor):
                         "run_postprocess",
                         postprocess_tool=tool_name,
                         args=args,
+                        cwd=run_dir,
                     )
                     result = json.loads(r) if isinstance(r, str) else r
                     if result.get("returncode", -1) != 0:
