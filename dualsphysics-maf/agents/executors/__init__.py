@@ -1,5 +1,6 @@
-"""Executor subpackage — re-exports all 6 executor classes."""
+"""Executor subpackage — re-exports all 7 executor classes."""
 
+from agents.executors.analyze import AnalyzeExecutor
 from agents.executors.build import BuildExecutor
 from agents.executors.manual_edit import ManualEditExecutor
 from agents.executors.patch import PatchExecutor
@@ -8,6 +9,7 @@ from agents.executors.review import ReviewExecutor
 from agents.executors.sim import SimExecutor
 
 __all__ = [
+    "AnalyzeExecutor",
     "BuildExecutor",
     "ManualEditExecutor",
     "PatchExecutor",

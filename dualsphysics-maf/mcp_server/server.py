@@ -15,6 +15,8 @@ from tools.run_gencase import run_gencase as _run_gencase
 from tools.run_simulation import run_simulation as _run_simulation
 from tools.run_measuretool import run_measuretool as _run_measuretool
 from tools.metrics import compute_metrics as _compute_metrics
+from tools.postprocess import run_postprocess as _run_postprocess
+from tools.run_analysis import run_analysis as _run_analysis
 
 # ---------------------------------------------------------------------------
 # Logging: file + stderr (stderr goes to MCP client; file persists)
@@ -245,6 +247,55 @@ def compute_metrics(result_csv: str, ground_truth_csv: str) -> dict:
     logger.info("compute_metrics: result=%s gt=%s", result_csv, ground_truth_csv)
     result = _compute_metrics(result_csv, ground_truth_csv)
     logger.info("compute_metrics: %s", result)
+    return result
+
+
+@mcp.tool()
+async def run_postprocess(postprocess_tool: str, args: list[str], cwd: str | None = None) -> dict:
+    """Run a DualSPHysics post-processing tool.
+
+    Available tools: partvtk, partvtkout, isosurface, computeforces,
+    flowtool, boundaryvtk, floatinginfo, measuretool.
+
+    The LLM composes the CLI arguments based on the tool's help documentation.
+
+    Args:
+        postprocess_tool: Name of the post-processing tool (case-insensitive).
+        args:             CLI arguments as a list of strings. Paths should be
+                          relative to cwd (e.g. ["out/data", "-savevtk",
+                          "out/particles/PartFluid"]).
+        cwd:              Working directory. All relative paths in args resolve
+                          against this. Typically the run directory.
+
+    Returns dict with returncode, stdout, stderr, output_files.
+    """
+    logger.info("run_postprocess: tool=%s args=%s cwd=%s", postprocess_tool, args, cwd)
+    result = await _run_postprocess(postprocess_tool, args, cwd=cwd)
+    logger.info("run_postprocess: returncode=%d output_files=%s",
+                result["returncode"], result.get("output_files"))
+    return result
+
+
+@mcp.tool()
+async def run_analysis(python_code: str, work_dir: str) -> dict:
+    """Execute a Python analysis script on simulation output data.
+
+    The code runs in a subprocess with numpy, matplotlib, and pandas available.
+    Use this for parsing CSV files, computing derived quantities (e.g. max
+    run-out distance over time), and generating plots.
+
+    Generated files (plots, CSVs) should be saved to work_dir.
+
+    Args:
+        python_code: Python source code to execute.
+        work_dir:    Working directory (typically the run's output directory).
+
+    Returns dict with returncode, stdout, stderr, output_files.
+    """
+    logger.info("run_analysis: work_dir=%s code_len=%d", work_dir, len(python_code))
+    result = await _run_analysis(python_code, work_dir)
+    logger.info("run_analysis: returncode=%d output_files=%s",
+                result["returncode"], result.get("output_files"))
     return result
 
 

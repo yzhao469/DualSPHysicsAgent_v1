@@ -2,7 +2,7 @@
 import asyncio
 
 
-async def run_subprocess(cmd: list, timeout: int, env: dict = None) -> dict:
+async def run_subprocess(cmd: list, timeout: int, env: dict = None, cwd: str = None) -> dict:
     """Run a subprocess asynchronously with timeout.
 
     Returns dict with returncode, stdout, stderr.
@@ -13,6 +13,7 @@ async def run_subprocess(cmd: list, timeout: int, env: dict = None) -> dict:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             env=env,
+            cwd=cwd,
         )
         try:
             stdout, stderr = await asyncio.wait_for(

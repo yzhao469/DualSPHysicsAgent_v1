@@ -18,7 +18,7 @@ from agents.utils.skill_loader import get_skill_content
 
 logger = logging.getLogger(__name__)
 
-_CLASSIFY_SYSTEM_PROMPT = (
+_CLASSIFY_SYSTEM_PROMPT_PLAN = (
     "You are a classifier. The user has been shown a simulation plan or "
     "geometry visualization and replied with the message below. Classify "
     "the user's intent into exactly one of five categories.\n\n"
@@ -49,21 +49,68 @@ _CLASSIFY_SYSTEM_PROMPT = (
     "'forget this, simulate something completely different', 'redo everything'."
 )
 
+_CLASSIFY_SYSTEM_PROMPT_RESULTS = (
+    "You are a classifier. The user has just completed a DualSPHysics simulation "
+    "and is reviewing the results. They can request further analysis or finish. "
+    "Classify the user's intent into exactly one of five categories.\n\n"
+    "Return JSON with a single key: {\"intent\": \"<category>\"}.\n\n"
+    "### approve\n"
+    "The user is done and wants to finish.\n"
+    "Examples: 'done', 'that is all', 'finished', 'exit', 'no more analysis', "
+    "'I am satisfied', 'nothing else', ''.\n\n"
+    "### agent_patch\n"
+    "The user wants to perform analysis, visualization, or data extraction on "
+    "the simulation results. This includes ANY request that requires reading, "
+    "computing, or processing actual simulation data — even if phrased as a "
+    "question. If answering the request requires looking at the data files, "
+    "this is agent_patch, NOT question.\n"
+    "Examples: 'visualize the results', 'show me the flow', 'plot the velocity', "
+    "'what is the run-out distance?', 'export fluid particles as CSV', "
+    "'compute forces on the obstacle', 'show the free surface', "
+    "'can you visualize the result for me?', 'extract the max velocity over time', "
+    "'plot pressure at the probes', 'generate VTK files for ParaView', "
+    "'what is the average velocity?', 'what is the max pressure?', "
+    "'how far did the debris travel?', 'what are the values in the CSV?', "
+    "'what is the average value of velocity x', 'show me the probe data'.\n\n"
+    "### question\n"
+    "The user is asking a purely conceptual or definitional question that can "
+    "be answered from general knowledge alone, WITHOUT reading any data files.\n"
+    "Examples: 'what does RMSE mean?', 'is this a good result?', "
+    "'what units are the velocities in?', 'how do I open VTK files?', "
+    "'what does each column mean in the CSV?', 'what is HBP model?'.\n\n"
+    "### full_replan\n"
+    "The user wants to discard results and re-run with different parameters.\n"
+    "Examples: 'let me try different parameters', 'start over with higher density', "
+    "'redo the simulation', 'scrap this and try again'.\n\n"
+    "### manual_edit\n"
+    "Not applicable in results phase — classify as agent_patch instead."
+)
+
 
 _VALID_INTENTS = {"approve", "agent_patch", "manual_edit", "question", "full_replan"}
 
 
-async def classify_intent(feedback: str) -> str:
+async def classify_intent(feedback: str, phase: str = "plan") -> str:
     """Classify user feedback into one of five intents.
 
     Valid intents: ``"approve"``, ``"agent_patch"``, ``"manual_edit"``,
     ``"question"``, ``"full_replan"``.
 
     Empty feedback is treated as ``"approve"``.
+
+    Args:
+        feedback: The user's reply text.
+        phase: Review phase — ``"plan"``, ``"viz"``, or ``"results"``.
+               Uses a phase-specific system prompt for better classification.
     """
     feedback = feedback.strip()
     if not feedback:
         return "approve"
+
+    system_prompt = (
+        _CLASSIFY_SYSTEM_PROMPT_RESULTS if phase == "results"
+        else _CLASSIFY_SYSTEM_PROMPT_PLAN
+    )
 
     client = AsyncOpenAI()
     response = await client.chat.completions.create(
@@ -71,7 +118,7 @@ async def classify_intent(feedback: str) -> str:
         temperature=0,
         response_format={"type": "json_object"},
         messages=[
-            {"role": "system", "content": _CLASSIFY_SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": feedback},
         ],
     )

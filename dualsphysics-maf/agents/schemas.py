@@ -49,9 +49,9 @@ class ReviewRequest:
 class ReviewResult:
     """Output of ReviewExecutor after classifying user feedback."""
 
-    route: Literal["build", "sim", "full_replan"]
+    route: Literal["build", "sim", "analyze", "full_replan", "done"]
     feedback: str
-    phase: str  # "plan" or "viz"
+    phase: str  # "plan", "viz", or "results"
 
 
 @dataclass
@@ -75,6 +75,23 @@ class ManualEditAck:
 
     file_path: str
     message: str
+
+
+@dataclass
+class AnalysisRequest:
+    """User-requested post-processing analysis."""
+
+    feedback: str
+
+
+@dataclass
+class AnalysisResult:
+    """Output of AnalyzeExecutor."""
+
+    run_dir: str
+    success: bool
+    message: str  # Summary of what was produced
+    output_files: list[str]
 
 
 @dataclass
