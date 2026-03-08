@@ -7,6 +7,7 @@ Runs: set_geometry -> modify_xml -> generate_points -> run_gencase -> visualize
 import json
 import logging
 from datetime import datetime, timezone
+from pathlib import Path
 
 from agent_framework import (
     AgentExecutorResponse,
@@ -40,16 +41,22 @@ class BuildExecutor(Executor):
         ctx.set_state("plan", plan.model_dump())
 
         base_xml = ctx.get_state("base_xml") or f"{self.base_dir}/cases/BaseCase_Def.xml"
+        run_dir = self._new_run_dir()
+        ctx.set_state("run_dir", run_dir)
 
         try:
-            run_dir = await self._build(plan.model_dump(), base_xml)
-            ctx.set_state("run_dir", run_dir)
+            await self._build(plan.model_dump(), base_xml, run_dir)
             await ctx.send_message(BuildResult(run_dir=run_dir, success=True, message="Build complete"))
         except Exception as exc:
             logger.exception("Build pipeline failed")
-            await ctx.send_message(BuildResult(run_dir="", success=False, message=str(exc)))
+            await ctx.send_message(BuildResult(run_dir=run_dir, success=False, message=str(exc)))
 
-    async def _build(self, plan_data: dict, base_xml: str) -> str:
+    def _new_run_dir(self) -> str:
+        """Create a timestamped run directory path for the current build."""
+        ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        return f"{self.base_dir}/runs/run_{ts}"
+
+    async def _build(self, plan_data: dict, base_xml: str, run_dir: str) -> str:
         """set_geometry -> modify_xml -> generate_points -> run_gencase -> visualize."""
         from agents.schemas import PhysicsParams
 
@@ -57,8 +64,7 @@ class BuildExecutor(Executor):
         params = PhysicsParams(**plan_data["params"])
         probe_points: list[list[float]] = plan_data["probe_points"]
 
-        ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-        run_dir = f"{self.base_dir}/runs/run_{ts}"
+        Path(run_dir).mkdir(parents=True, exist_ok=True)
         case_xml = f"{run_dir}/Case_Def.xml"
 
         # 1. Set geometry
