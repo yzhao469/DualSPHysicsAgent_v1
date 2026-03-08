@@ -67,6 +67,7 @@ class AnalysisResult:
     success: bool
     message: str  # Summary of what was produced
     output_files: list[str]
+    script_path: str | None = None  # Path to postprocess.sh
 
 
 @dataclass

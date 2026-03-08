@@ -150,6 +150,10 @@ user later asks a question or the LLM references the plan, it will be stale.
 There's no way to resume a previous session or re-enter the results loop for an
 existing run directory.
 
+**Partial mitigation**: The `postprocess.sh` script is now saved in the run directory
+as a durable artifact. Users can re-run it independently (`./postprocess.sh`) without
+the agent. However, conversation history and workflow state are still lost.
+
 **Suggestions**:
 - Save workflow state (plan, run_dir, conversation history) to a JSON file in the
   run directory

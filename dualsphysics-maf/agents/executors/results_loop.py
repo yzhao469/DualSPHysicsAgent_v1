@@ -1,9 +1,9 @@
 """ResultsLoopExecutor — LLM tool-use interactive post-processing loop.
 
-Replaces the old ReviewExecutor (results phase) and AnalyzeExecutor
-analysis mode. Uses OpenAI function calling so the LLM can chain
-post-processing tools and Python analysis in a single turn, with
-full conversation memory.
+Uses a postprocess.sh script as the shared artifact (analogous to
+Case_Def.xml in the setup phase). The user and LLM collaborate on the
+script: the LLM proposes changes, the executor re-parses and re-runs
+commands via MCP for structured feedback.
 """
 
 import json
@@ -21,6 +21,10 @@ from agent_framework import (
 )
 
 from agents.schemas import AnalysisResult, ResultsLoopRequest
+from agents.utils.script_utils import (
+    generate_script_patch,
+    parse_script,
+)
 from agents.utils.skill_loader import get_postprocess_skill_content
 
 logger = logging.getLogger(__name__)
@@ -30,31 +34,21 @@ _TOOLS = [
     {
         "type": "function",
         "function": {
-            "name": "run_postprocess",
+            "name": "patch_and_rerun",
             "description": (
-                "Run a DualSPHysics post-processing tool (partvtk, partvtkout, "
-                "isosurface, computeforces, flowtool, boundaryvtk, floatinginfo, "
-                "measuretool). All paths in args must be relative to the run directory."
+                "Modify the postprocess.sh script based on the user's request, "
+                "then re-execute all commands. Use this to add, remove, or change "
+                "post-processing steps (PartVTK, IsoSurface, ComputeForces, etc.)."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "tool_name": {
+                    "changes": {
                         "type": "string",
-                        "description": "Name of the post-processing tool.",
-                        "enum": [
-                            "partvtk", "partvtkout", "isosurface",
-                            "computeforces", "flowtool", "boundaryvtk",
-                            "floatinginfo", "measuretool",
-                        ],
-                    },
-                    "args": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": "Command-line arguments for the tool.",
+                        "description": "Description of what to change in the post-processing script.",
                     },
                 },
-                "required": ["tool_name", "args"],
+                "required": ["changes"],
             },
         },
     },
@@ -63,11 +57,12 @@ _TOOLS = [
         "function": {
             "name": "run_python_analysis",
             "description": (
-                "Execute a Python script for data analysis (CSV parsing, "
+                "Execute a Python script for ad-hoc data analysis (CSV parsing, "
                 "computing derived quantities, plotting with matplotlib). "
                 "The script runs with out/analysis/ as its working directory. "
                 "Use relative paths: ../data/, ../particles/, ../measuretool/ "
-                "to access other output directories."
+                "to access other output directories. This is for one-off analysis "
+                "not part of the main post-processing script."
             ),
             "parameters": {
                 "type": "object",
@@ -88,12 +83,23 @@ _TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "manual_edit",
+            "description": (
+                "Let the user manually edit the postprocess.sh file directly. "
+                "Use this when the user says they want to edit the script themselves."
+            ),
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "answer_question",
             "description": (
                 "Answer a conceptual question about the simulation results, "
                 "DualSPHysics, physics, or post-processing techniques. "
                 "For questions that require reading data files, use "
-                "run_postprocess or run_python_analysis instead."
+                "run_python_analysis instead."
             ),
             "parameters": {
                 "type": "object",
@@ -118,7 +124,10 @@ _TOOLS = [
 ]
 
 
-def _build_system_prompt(plan_data: dict, run_dir: str, existing_files: list[str]) -> str:
+def _build_system_prompt(
+    plan_data: dict, run_dir: str, script_path: str, script_text: str,
+    existing_files: list[str],
+) -> str:
     """Build the system prompt for the results loop LLM."""
     skill_text = get_postprocess_skill_content()
     params = plan_data.get("params", {})
@@ -144,27 +153,24 @@ def _build_system_prompt(plan_data: dict, run_dir: str, existing_files: list[str
         f"  Probe points: {plan_data.get('probe_points', [])}\n"
         f"  Full params: {json.dumps(params, indent=2)}\n"
         f"{files_section}\n\n"
+        f"### Current postprocess.sh\n"
+        f"Path: {script_path}\n"
+        f"```bash\n{script_text}\n```\n\n"
         f"### Post-Processing Reference\n{skill_text}\n\n"
         "### Your Role\n"
-        "- Use `run_postprocess` for PartVTK, IsoSurface, ComputeForces, etc.\n"
-        "- Use `run_python_analysis` for CSV parsing, computing metrics, and plotting.\n"
-        "- You can chain multiple tool calls in one turn.\n"
-        "- ALL paths in postprocess args must be relative to the run directory.\n"
+        "- Use `patch_and_rerun` to modify the postprocess.sh script and re-execute it.\n"
+        "- Use `run_python_analysis` for ad-hoc CSV parsing, metrics, and plotting.\n"
+        "- Use `manual_edit` when the user wants to edit postprocess.sh themselves.\n"
+        "- ALL post-processing tool changes go through the script.\n"
         "- Python scripts run with out/analysis/ as cwd. Use relative paths.\n"
         "- PartVTK CSV uses semicolon separator. Use numpy.genfromtxt with delimiter=';'.\n"
-        "- PartVTK CSV columns: Idp;Pos.x;Pos.y;Pos.z;Vel.x;Vel.y;Vel.z;Rhop "
-        "(when vars include idp,vel,rhop).\n"
         "- In Python, use matplotlib with Agg backend for plots.\n"
         "- When the user is done (says 'done', 'exit', 'finished', etc.), call `done`.\n"
-        "- When the user gives short affirmative responses like 'done', 'that is all', "
-        "'finished', 'exit', or 'no more', call `done`.\n"
     )
 
 
 def _list_output_files(run_dir: str) -> list[str]:
     """List existing output files in the run directory."""
-    import os
-
     existing = []
     for subdir in ["out/particles", "out/measuretool", "out/analysis"]:
         full_dir = os.path.join(run_dir, subdir)
@@ -188,9 +194,17 @@ class ResultsLoopExecutor(Executor):
         result: AnalysisResult,
         ctx: WorkflowContext[None],
     ) -> None:
-        """After default post-processing: show results, start interactive loop."""
+        """After default post-processing: show results + script, start interactive loop."""
         run_dir = result.run_dir
         plan_data = ctx.get_state("plan") or {}
+        script_path = result.script_path or os.path.join(run_dir, "postprocess.sh")
+        ctx.set_state("script_path", script_path)
+
+        # Read the current script
+        script_text = ""
+        if os.path.exists(script_path):
+            with open(script_path, encoding="utf-8") as f:
+                script_text = f.read()
 
         # Build results summary
         summary_parts = [
@@ -199,6 +213,9 @@ class ResultsLoopExecutor(Executor):
             "=" * 64,
             "",
             result.message,
+            "",
+            "Post-processing script:",
+            f"  {script_path}",
             "",
         ]
         if result.output_files:
@@ -210,12 +227,15 @@ class ResultsLoopExecutor(Executor):
         summary_parts += [
             "",
             "=" * 64,
-            "Request analysis, ask questions, or type 'done' to finish:",
+            "Request changes to the post-processing script, run analysis,",
+            "ask questions, or type 'done' to finish:",
         ]
 
         # Initialize conversation history
         existing_files = _list_output_files(run_dir)
-        system_prompt = _build_system_prompt(plan_data, run_dir, existing_files)
+        system_prompt = _build_system_prompt(
+            plan_data, run_dir, script_path, script_text, existing_files,
+        )
         ctx.set_state("results_loop_history", [
             {"role": "system", "content": system_prompt},
         ])
@@ -236,9 +256,20 @@ class ResultsLoopExecutor(Executor):
         history = ctx.get_state("results_loop_history") or []
         run_dir = ctx.get_state("run_dir")
         plan_data = ctx.get_state("plan") or {}
+        script_path = ctx.get_state("script_path")
 
-        # Append user message
-        history.append({"role": "user", "content": feedback or "done"})
+        # Check if we're resuming after a manual edit pause
+        pending_manual_edit = ctx.get_state("pending_manual_edit_results")
+        if pending_manual_edit:
+            ctx.set_state("pending_manual_edit_results", False)
+            result_text = await self._run_script(script_path, run_dir)
+            history.append({
+                "role": "tool",
+                "tool_call_id": pending_manual_edit,
+                "content": f"Manual edit complete. Script re-executed.\n{result_text}",
+            })
+        else:
+            history.append({"role": "user", "content": feedback or "done"})
 
         client = AsyncOpenAI()
         analysis_dir = f"{run_dir}/out/analysis"
@@ -255,11 +286,9 @@ class ResultsLoopExecutor(Executor):
             choice = response.choices[0]
             msg = choice.message
 
-            # Append assistant message to history
             history.append(msg.model_dump(exclude_none=True))
 
             if not msg.tool_calls:
-                # Text response — show to user and loop
                 text = msg.content or ""
                 ctx.set_state("results_loop_history", history)
                 await ctx.request_info(
@@ -268,7 +297,6 @@ class ResultsLoopExecutor(Executor):
                 )
                 return
 
-            # Process tool calls
             for tc in msg.tool_calls:
                 fn_name = tc.function.name
                 fn_args = json.loads(tc.function.arguments)
@@ -278,41 +306,30 @@ class ResultsLoopExecutor(Executor):
                     await ctx.yield_output({
                         "status": "complete",
                         "run_dir": run_dir,
+                        "script_path": script_path,
                         "params": plan_data.get("params"),
                         "probe_points": plan_data.get("probe_points"),
                     })
                     return
 
-                elif fn_name == "run_postprocess":
-                    tool_name = fn_args["tool_name"]
-                    args = fn_args["args"]
-                    logger.info(">>> results_loop postprocess: %s %s", tool_name, args)
+                elif fn_name == "patch_and_rerun":
+                    changes = fn_args["changes"]
                     try:
-                        r = await self.mcp.call_tool(
-                            "run_postprocess",
-                            postprocess_tool=tool_name,
-                            args=args,
-                            cwd=run_dir,
+                        result_text = await self._patch_and_rerun(
+                            changes, plan_data, run_dir, script_path, ctx,
                         )
-                        result = json.loads(r) if isinstance(r, str) else r
-                        if result.get("returncode", -1) != 0:
-                            err = result.get("stderr") or result.get("stdout") or "unknown error"
-                            tool_result = f"FAILED (rc={result.get('returncode')}): {err[:500]}"
-                        else:
-                            files = result.get("output_files", [])
-                            tool_result = f"OK — {len(files)} output files"
-                            if files:
-                                tool_result += ": " + ", ".join(
-                                    os.path.basename(f) for f in files[:10]
-                                )
+                        history.append({
+                            "role": "tool",
+                            "tool_call_id": tc.id,
+                            "content": result_text,
+                        })
                     except Exception as exc:
-                        tool_result = f"Error: {exc}"
-
-                    history.append({
-                        "role": "tool",
-                        "tool_call_id": tc.id,
-                        "content": tool_result,
-                    })
+                        logger.exception("patch_and_rerun failed")
+                        history.append({
+                            "role": "tool",
+                            "tool_call_id": tc.id,
+                            "content": f"Error: {exc}",
+                        })
 
                 elif fn_name == "run_python_analysis":
                     code = fn_args["code"]
@@ -349,9 +366,22 @@ class ResultsLoopExecutor(Executor):
                         "content": tool_result,
                     })
 
+                elif fn_name == "manual_edit":
+                    ctx.set_state("results_loop_history", history)
+                    ctx.set_state("pending_manual_edit_results", tc.id)
+                    await ctx.request_info(
+                        request_data=ResultsLoopRequest(
+                            summary=(
+                                f"Edit the post-processing script at:\n  {script_path}\n\n"
+                                "Type 'done' when finished editing."
+                            ),
+                        ),
+                        response_type=str,
+                    )
+                    return
+
                 elif fn_name == "answer_question":
                     question = fn_args["question"]
-                    # Use the skill content + plan as context
                     from agents.utils.intent import answer_question as qa
                     plan_context = json.dumps(plan_data, indent=2)
                     answer = await qa(question, plan_context)
@@ -361,5 +391,67 @@ class ResultsLoopExecutor(Executor):
                         "content": answer,
                     })
 
-            # Continue loop — LLM may chain more tool calls or produce text
             ctx.set_state("results_loop_history", history)
+
+    async def _patch_and_rerun(
+        self,
+        changes: str,
+        plan_data: dict,
+        run_dir: str,
+        script_path: str,
+        ctx: WorkflowContext,
+    ) -> str:
+        """LLM patches the script, then re-parse and re-execute."""
+        with open(script_path, encoding="utf-8") as f:
+            current_script = f.read()
+
+        new_script = await generate_script_patch(current_script, plan_data, changes)
+
+        # Write updated script
+        with open(script_path, "w", encoding="utf-8") as f:
+            f.write(new_script)
+        logger.info("Script patched: %s", script_path)
+
+        # Update system prompt with new script content
+        history = ctx.get_state("results_loop_history") or []
+        if history and history[0]["role"] == "system":
+            existing_files = _list_output_files(run_dir)
+            history[0]["content"] = _build_system_prompt(
+                plan_data, run_dir, script_path, new_script, existing_files,
+            )
+            ctx.set_state("results_loop_history", history)
+
+        # Re-execute
+        return await self._run_script(script_path, run_dir)
+
+    async def _run_script(self, script_path: str, run_dir: str) -> str:
+        """Parse and execute the script, return a summary."""
+        with open(script_path, encoding="utf-8") as f:
+            script_text = f.read()
+
+        commands = parse_script(script_text)
+        results: list[str] = []
+
+        for cmd in commands:
+            logger.info(">>> %s %s", cmd.tool_name, " ".join(cmd.args))
+            try:
+                r = await self.mcp.call_tool(
+                    "run_postprocess",
+                    postprocess_tool=cmd.tool_name,
+                    cwd=run_dir,
+                    args=cmd.args,
+                )
+                result = json.loads(r) if isinstance(r, str) else r
+                if result.get("returncode", -1) != 0:
+                    err = result.get("stderr") or result.get("stdout") or "unknown"
+                    results.append(f"FAIL {cmd.tool_name}: {err[:200]}")
+                else:
+                    files = result.get("output_files", [])
+                    results.append(
+                        f"OK {cmd.tool_name}: {len(files)} files"
+                        + (f" ({', '.join(os.path.basename(f) for f in files[:5])})" if files else "")
+                    )
+            except Exception as exc:
+                results.append(f"ERROR {cmd.tool_name}: {exc}")
+
+        return "Script execution results:\n" + "\n".join(f"  - {r}" for r in results)
