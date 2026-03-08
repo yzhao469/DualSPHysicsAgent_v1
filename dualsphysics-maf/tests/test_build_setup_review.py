@@ -221,6 +221,7 @@ class SetupReviewExecutorTests(unittest.IsolatedAsyncioTestCase):
 
         skill_loader_mod = types.ModuleType("agents.utils.skill_loader")
         skill_loader_mod.get_skill_content = lambda: "skill"
+        skill_loader_mod.get_skill_topic = lambda topic: f"skill:{topic}"
 
         openai_mod = types.ModuleType("openai")
         class PlaceholderAsyncOpenAI:

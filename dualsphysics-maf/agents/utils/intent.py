@@ -10,7 +10,7 @@ import os
 
 from openai import AsyncOpenAI
 
-from agents.utils.skill_loader import get_skill_content
+from agents.utils.skill_loader import get_postprocess_skill_content, get_skill_content
 
 logger = logging.getLogger(__name__)
 
@@ -60,12 +60,20 @@ async def resolve_datalake_file(scenario: str, available_files: list[str]) -> st
     return None
 
 
-async def answer_question(question: str, plan_context: str) -> str:
+async def answer_question(question: str, plan_context: str, domain: str = "xml") -> str:
     """Answer a user question about the simulation plan using GPT-4o-mini.
 
     Provides the plan context and the skill file as reference material.
+
+    Args:
+        domain: "xml" for geometry/setup skills, "postprocess" for analysis skills.
     """
-    skill_text = get_skill_content()
+    if domain == "postprocess":
+        skill_text = get_postprocess_skill_content()
+        ref_label = "Post-Processing Guide"
+    else:
+        skill_text = get_skill_content()
+        ref_label = "DualSPHysics XML Guide"
 
     system_parts = [
         "You are a helpful assistant that answers questions about a DualSPHysics "
@@ -73,7 +81,7 @@ async def answer_question(question: str, plan_context: str) -> str:
         "give a clear, concise answer.\n",
         "### Current Simulation Plan\n",
         plan_context,
-        "\n\n### Reference Material (DualSPHysics XML Guide)\n",
+        f"\n\n### Reference Material ({ref_label})\n",
         skill_text,
     ]
 
