@@ -53,10 +53,10 @@ User scenario (string)
 │  Phase 4: SIMULATION + DEFAULT POST-PROCESSING (no LLM)         │
 │  SimExecutor → AnalyzeExecutor                                  │
 │                                                                 │
-│  MCP calls: run_simulation → partvtk (fluid) → partvtk (bound) │
-│             → run_measuretool → compute_metrics → visualize     │
+│  Generates postprocess.sh, parses it, runs each command via MCP │
+│  MCP calls: run_simulation → [script commands] → compute_metrics│
 └─────────────────────────────────────────────────────────────────┘
-     │  AnalysisResult {run_dir, success, message, output_files}
+     │  AnalysisResult {run_dir, success, message, output_files, script_path}
      ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  Phase 5: RESULTS LOOP (LLM tool-use loop, terminal)            │
@@ -231,23 +231,25 @@ is persisted in `ctx.set_state("setup_review_history", history)` between HITL pa
 3. Calls `run_simulation(case_path, output_dir, gpu=True/False)` via MCP
 4. Sends `ReviewResult(route="sim")` to AnalyzeExecutor
 
-### AnalyzeExecutor (default mode only)
+### AnalyzeExecutor (script-based)
 
 **Trigger**: `ReviewResult` from SimExecutor.
 
-No LLM calls — purely deterministic:
+No LLM calls — generates and executes a `postprocess.sh` script:
 
-1. **PartVTK (fluid)**: exports fluid particles as VTK with velocity, density, pressure
-   ```
-   run_postprocess(partvtk, ["-dirin", "out/data", "-savevtk", "out/particles/PartFluid",
-                              "-onlytype:-all,+fluid", "-vars:+idp,+vel,+rhop,+press"])
-   ```
-2. **PartVTK (boundary)**: exports boundary particles
-3. **MeasureTool**: extracts probe data to CSV (if `PointsMeasure_Points.txt` exists)
+1. **Generate script**: calls `generate_script(plan_data, run_dir, bin_dir)` from `script_utils.py`
+   - Produces a standalone `postprocess.sh` with `$SCRIPT_DIR`/`$BIN_DIR` variables
+   - Default commands: PartVTK (fluid), PartVTK (boundary), MeasureTool (if probes exist)
+2. **Write script**: saves to `{run_dir}/postprocess.sh` with `chmod +x`
+3. **Parse and execute**: calls `parse_script()` to extract individual `ScriptCommand` objects,
+   then runs each via MCP for structured feedback (return codes, output file lists)
 4. **compute_metrics**: compares with ground truth CSV (if it exists in `cases/ground_truth/`)
-5. **ParaView**: opens fluid VTK results via pyvista
+5. **Visualize**: opens fluid VTK results via pyvista
 
-**Output**: `AnalysisResult(run_dir, success, message, output_files)`
+The script is a real standalone `.sh` — users can re-run it independently without the agent.
+The executor parses and runs it via MCP only to get structured per-command feedback.
+
+**Output**: `AnalysisResult(run_dir, success, message, output_files, script_path)`
 
 ---
 
@@ -257,29 +259,36 @@ No LLM calls — purely deterministic:
 
 **Trigger**: `AnalysisResult` from AnalyzeExecutor.
 
+The results loop uses `postprocess.sh` as the shared artifact — analogous to how
+SetupReviewExecutor uses `Case_Def.xml`. The user and LLM collaborate on the script:
+the LLM proposes changes via `patch_and_rerun`, the executor re-parses and re-executes
+commands via MCP for structured feedback.
+
 **On entry** (`on_analysis_complete` handler):
-1. Formats results summary (post-proc output, generated files)
-2. Lists existing output files in `out/particles/`, `out/measuretool/`, `out/analysis/`
-3. Initializes conversation history:
+1. Reads the current `postprocess.sh` from `script_path`
+2. Formats results summary (post-proc output, generated files, script path)
+3. Lists existing output files in `out/particles/`, `out/measuretool/`, `out/analysis/`
+4. Initializes conversation history (system prompt includes the current script content):
    ```
    results_loop_history = [
-     {"role": "system", "content": <system_prompt>}
+     {"role": "system", "content": <system_prompt with script>}
    ]
    ```
-4. Calls `ctx.request_info(ResultsLoopRequest(summary=...))` → workflow pauses
+5. Calls `ctx.request_info(ResultsLoopRequest(summary=...))` → workflow pauses
 
 **System prompt context** (`_build_system_prompt`):
-- Run directory path
-- Directory layout description
+- Run directory path and directory layout
 - Simulation parameters (TimeOut, TimeMax, probe points, full params JSON)
 - List of existing output files (up to 50)
+- Current `postprocess.sh` content (full script text)
 - Full post-processing skill content (`dualsphysics-postprocess/` skill files)
 - Role instructions (which tool to use when, path conventions, CSV format notes)
 
 **On each user reply** (`on_user_reply` response_handler):
-1. Appends user message to history
-2. Calls OpenAI with history + tool definitions (model: `ANALYSIS_MODEL`, default `gpt-4o`)
-3. Same while-loop pattern as SetupReviewExecutor:
+1. Checks for `pending_manual_edit_results` flag (resumes script re-execution if set)
+2. Appends user message to history
+3. Calls OpenAI with history + tool definitions (model: `ANALYSIS_MODEL`, default `gpt-4o`)
+4. Same while-loop pattern as SetupReviewExecutor:
 
 ```
 while True:
@@ -290,22 +299,34 @@ while True:
     show text to user via request_info, return
 
   for each tool_call:
-    "done"                → yield_output({status, run_dir, params, probes}), return
-    "run_postprocess"     → call MCP run_postprocess, append result to history
+    "done"                → yield_output({status, run_dir, script_path, params, probes}), return
+    "patch_and_rerun"     → LLM rewrites script, re-parse and re-execute via MCP
     "run_python_analysis" → print code to terminal, call MCP run_analysis, append result
+    "manual_edit"         → pause workflow, let user edit postprocess.sh, re-execute on resume
     "answer_question"     → call answer_question(), append result to history
 
   continue loop
 ```
 
-### Tool: `run_postprocess`
+### Tool: `patch_and_rerun`
 
-Calls the MCP `run_postprocess` tool with:
-- `postprocess_tool`: one of partvtk, isosurface, computeforces, flowtool, boundaryvtk, floatinginfo, partvtkout, measuretool
-- `args`: command-line arguments (all paths relative to run_dir)
-- `cwd`: the run directory
+Mirrors `patch_and_rebuild` from SetupReviewExecutor, but for the shell script:
 
-Tool result returned to LLM: "OK — N output files: file1, file2" or "FAILED: error"
+1. Reads current `postprocess.sh` from disk
+2. Calls `generate_script_patch()` (model: `PATCH_MODEL`, default `gpt-4o`):
+   - **System prompt**: `PATCH_SCRIPT_SYSTEM_PROMPT` — return the full updated script
+   - **User message**: current script + plan JSON + postprocess skill content + user instruction
+   - **Output**: complete updated shell script text
+3. Writes updated script to `postprocess.sh`
+4. Updates system prompt in conversation history with new script content
+5. Calls `_run_script()` — parses script via `parse_script()`, executes each command via MCP
+6. Returns per-command execution summary as tool result
+
+### Tool: `manual_edit`
+
+1. Stores the OpenAI tool_call ID in `pending_manual_edit_results` state
+2. Shows script path to user via `request_info`
+3. When user replies, re-parses and re-executes the edited script, appends tool result to history
 
 ### Tool: `run_python_analysis`
 
@@ -315,13 +336,17 @@ Tool result returned to LLM: "OK — N output files: file1, file2" or "FAILED: e
    - `work_dir`: `{run_dir}/out/analysis/` (scripts run here as cwd)
 3. Tool result: "OK\nGenerated: plot.png\nOutput: ..." or "FAILED: error"
 
+This is for ad-hoc analysis (CSV parsing, plotting) that doesn't belong in the main
+post-processing script.
+
 ### Tool: `answer_question`
 
 Same as in SetupReviewExecutor — calls `answer_question()` from `intent.py`.
 
 **Conversation memory**: Full OpenAI message history persisted in
 `ctx.set_state("results_loop_history", history)`. This enables multi-turn analysis:
-- User: "plot velocity over time" → LLM generates Python
+- User: "add isosurface of velocity" → LLM patches script, re-runs
+- User: "plot velocity over time" → LLM generates ad-hoc Python
 - User: "zoom into 0-2s" → LLM remembers previous code, generates updated version
 
 ---
@@ -332,12 +357,14 @@ These keys are stored in `WorkflowContext` state and persist across executors:
 
 | Key | Set by | Used by | Contents |
 |-----|--------|---------|----------|
-| `plan` | BuildExecutor | SetupReview, SimExecutor, ResultsLoop | `SimulationPlan.model_dump()` dict |
+| `plan` | BuildExecutor | SetupReview, SimExecutor, AnalyzeExecutor, ResultsLoop | `SimulationPlan.model_dump()` dict |
 | `run_dir` | BuildExecutor | SetupReview, SimExecutor, AnalyzeExecutor, ResultsLoop | Absolute path to run directory |
 | `base_xml` | PlanningExecutor | BuildExecutor | Path to base XML (datalake or default) |
 | `setup_review_history` | SetupReviewExecutor | SetupReviewExecutor | OpenAI message history list |
 | `pending_manual_edit` | SetupReviewExecutor | SetupReviewExecutor | Tool call ID (str) or False |
+| `script_path` | ResultsLoopExecutor | ResultsLoopExecutor | Path to `postprocess.sh` |
 | `results_loop_history` | ResultsLoopExecutor | ResultsLoopExecutor | OpenAI message history list |
+| `pending_manual_edit_results` | ResultsLoopExecutor | ResultsLoopExecutor | Tool call ID (str) or False |
 
 ---
 
@@ -350,7 +377,8 @@ These keys are stored in `WorkflowContext` state and persist across executors:
 | SetupReviewExecutor | GPT-4o-mini | Tool-use routing | Plan JSON + run_dir + conversation history |
 | SetupReview → `patch_and_rebuild` | GPT-4o | Generate XML patch | Current XML + plan + skill content + instruction |
 | SetupReview → `answer_question` | GPT-4o-mini | Answer questions | Plan JSON + XML skill content |
-| ResultsLoopExecutor | GPT-4o | Tool-use routing + analysis | Params + file listing + postprocess skill + conversation history |
+| ResultsLoopExecutor | GPT-4o | Tool-use routing + analysis | Params + file listing + script content + postprocess skill + conversation history |
+| ResultsLoop → `patch_and_rerun` | GPT-4o | Generate updated postprocess.sh | Current script + plan JSON + postprocess skill + instruction |
 | ResultsLoop → `answer_question` | GPT-4o-mini | Answer questions | Plan JSON + XML skill content |
 
 ---
