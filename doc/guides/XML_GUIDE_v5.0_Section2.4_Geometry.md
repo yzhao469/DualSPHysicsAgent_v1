@@ -1,6 +1,6 @@
 # Section 2.4 — Geometry
 
-> Extracted from **XML_GUIDE_v5.0.pdf**, pages 19–65.
+> Extracted from **XML_GUIDE_v5.0.pdf**, pages 19-65.
 
 ---
 
@@ -527,7 +527,7 @@ Example transformation sequence:
 | `front`       | Front face                 |
 | `back`        | Back face                  |
 | `^`           | Exclude (e.g. `all^top`)   |
-| `\|`          | Combine faces              |
+| pipe `\|`     | Combine faces              |
 
 ```xml
 <mainlist>
