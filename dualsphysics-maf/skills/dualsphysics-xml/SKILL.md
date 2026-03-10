@@ -297,6 +297,7 @@ Use `read_skill_resource` to load these when needed:
 
 | Resource | When to load | Content |
 |---|---|---|
-| `drawing-primitives.md` | **Always** — needed for any geometry | All shape commands: boxes, rounded shapes, polyhedrons (prism, beach, extrude), lines, triangles, external geometry (STL/VTK/PLY), fill operations (fillbox, fillpoint), redraw commands |
-| `transforms-and-advanced.md` | When geometry requires transforms, variables, reusable lists, or parameterised dimensions | Transform stack, user variables, math expressions, reusable lists, clipping, debugging |
-| `composition-patterns.md` | When you need reference examples of common simulation setups | Complete geometry examples: 2D dam break, inclined channel, sloped beach, flood fill, void carving, and more |
+| `drawing-shapes.md` | **Always** — needed for any geometry | All shape commands: boxes, rounded shapes, polyhedrons (prism, pyramid, beach, extrude, figure), lines, triangles, external geometry (STL/VTK/PLY) with mask system reference |
+| `fill-and-modification.md` | **Always** — needed when placing fluid | Fill operations (fillbox, fillpoint, fillprism), redraw commands for patching holes, freedraw mode, and multi-layer shell creation |
+| `transforms-and-variables.md` | When geometry requires transforms, variables, reusable lists, or parameterised dimensions | Transform stack, user variables, math expressions & functions, reusable lists, clipping, debugging & output |
+| `composition-patterns.md` | When you need reference examples of common simulation setups | 11 complete geometry examples: 2D dam break, inclined channel, sloped beach, flood fill, void carving, and more |

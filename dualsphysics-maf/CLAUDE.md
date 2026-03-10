@@ -139,9 +139,10 @@ Python code orchestrates all MCP tool calls deterministically.
 ### Skill Files
 | File | Description |
 |------|-------------|
-| `skills/dualsphysics-xml/SKILL.md` | XML structure, physics params, material archetypes, probes |
-| `skills/dualsphysics-xml/drawing-primitives.md` | GenCase drawing commands |
-| `skills/dualsphysics-xml/transforms-and-advanced.md` | Transform stack, variables, draw modes |
+| `skills/dualsphysics-xml/SKILL.md` | XML structure, domain limits, 2D/3D rules, physics params, material archetypes, probes |
+| `skills/dualsphysics-xml/drawing-shapes.md` | All shape-creation commands (boxes, spheres, cylinders, prisms, lines, triangles, external geometry) |
+| `skills/dualsphysics-xml/fill-and-modification.md` | Fill operations, redraw commands, freedraw mode, multi-layer shells |
+| `skills/dualsphysics-xml/transforms-and-variables.md` | Transform stack, variables, expressions, reusable lists, clipping, debugging |
 | `skills/dualsphysics-xml/composition-patterns.md` | 11 complete geometry examples |
 | `skills/dualsphysics-postprocess/SKILL.md` | Post-processing overview, patterns, analysis guide |
 | `skills/dualsphysics-postprocess/partvtk-help.md` | PartVTK CLI reference |

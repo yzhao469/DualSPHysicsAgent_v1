@@ -115,8 +115,9 @@ _TOOLS = [
                         "type": "string",
                         "enum": [
                             "xml-overview",
-                            "drawing-primitives",
-                            "transforms-and-advanced",
+                            "drawing-shapes",
+                            "fill-and-modification",
+                            "transforms-and-variables",
                             "composition-patterns",
                         ],
                         "description": "Which reference to fetch.",
