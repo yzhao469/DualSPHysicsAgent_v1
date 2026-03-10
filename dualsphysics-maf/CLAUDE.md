@@ -142,7 +142,7 @@ Python code orchestrates all MCP tool calls deterministically.
 | `skills/dualsphysics-xml/SKILL.md` | XML structure, physics params, material archetypes, probes |
 | `skills/dualsphysics-xml/drawing-primitives.md` | GenCase drawing commands |
 | `skills/dualsphysics-xml/transforms-and-advanced.md` | Transform stack, variables, draw modes |
-| `skills/dualsphysics-xml/composition-patterns.md` | 9 complete geometry examples |
+| `skills/dualsphysics-xml/composition-patterns.md` | 11 complete geometry examples |
 | `skills/dualsphysics-postprocess/SKILL.md` | Post-processing overview, patterns, analysis guide |
 | `skills/dualsphysics-postprocess/partvtk-help.md` | PartVTK CLI reference |
 | `skills/dualsphysics-postprocess/isosurface-help.md` | IsoSurface CLI reference |
