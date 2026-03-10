@@ -25,8 +25,8 @@ A DualSPHysics case XML has this skeleton:
     <mkconfig boundcount="240" fluidcount="9" />
     <geometry>
       <definition dp="0.01">
-        <pointmin x="-0.5" y="-0.5" z="-0.5" />
-        <pointmax x="5.0" y="3.0" z="5.0" />
+        <pointmin x="-0.5" y="0" z="-0.5" />
+        <pointmax x="5.0" y="0" z="5.0" />
       </definition>
       <commands>
         <mainlist>
@@ -47,7 +47,7 @@ A DualSPHysics case XML has this skeleton:
 
 **Key rules:**
 - `dp` = inter-particle distance (m). Controls resolution. Halving dp -> ~4x particles, ~4-8x runtime.
-- `<pointmin>` / `<pointmax>` define the domain bounding box. Must enclose all geometry with some margin (~0.2-0.5 m).
+- `<pointmin>` / `<pointmax>` define the domain bounding box. Must enclose all geometry with some margin (~0.5–1.0 m).
 - `<mainlist>` is executed top-to-bottom. Order matters — later commands overwrite earlier particles.
 - Always end `<mainlist>` with `<shapeout file="" />` to write VTK output.
 
@@ -73,17 +73,48 @@ Every particle gets an MK label that identifies its role. Set the current MK bef
 
 ---
 
-## I. 2D vs 3D
+## I. 2D vs 3D — CRITICAL
 
-**2D simulation:**
-- Set all y-extents to a fixed depth (typically `2.0 m`)
-- All objects span the full y-range: `y=0` to `y=2.0`
-- Domain: `pointmin y=0`, `pointmax y=2` (or use small margin: `-0.1` to `2.1`)
-- Probe y-coordinate: `y=1.0` (centre)
+### 2D simulation
+**The pointmin and pointmax y-coordinates MUST be equal** to tell GenCase this is a 2D domain.
+Typically both are set to `y=0`:
 
-**3D simulation:**
-- Full 3D domain with appropriate y-extents
-- Set `ShiftTFS` to `2.75` (instead of `1.5` for 2D) in execution parameters
+```xml
+<definition dp="0.01">
+  <pointmin x="-1" y="0" z="-1" />
+  <pointmax x="4.5" y="0" z="3.5" />
+</definition>
+```
+
+Even though pointmin.y == pointmax.y == 0, the drawing commands still use non-zero y extents
+to give objects physical thickness. **Objects are drawn spanning y=-1 to y=1** (or any symmetric
+range around 0) — GenCase projects them onto the 2D plane automatically:
+
+```xml
+<!-- 2D floor: y spans -1 to 1 even though domain y=0 -->
+<drawbox>
+  <boxfill>solid</boxfill>
+  <point x="0" y="-1" z="0" />
+  <size x="4.0" y="2" z="0.04" />
+</drawbox>
+```
+
+**Rules for 2D:**
+- `pointmin y` and `pointmax y` MUST be the same value (typically 0)
+- All drawbox/drawcylinder/etc. commands use y span (e.g., `y=-1` to `y=1`) for thickness
+- `fillbox` seed point y should be 0 (the domain y-value)
+- Probe y-coordinate should be 0 (the domain y-value)
+- `ShiftTFS` = `1.5` in execution parameters
+
+### 3D simulation
+- `pointmin.y` and `pointmax.y` span the actual 3D domain
+- All objects span their real y-extents
+- `ShiftTFS` = `2.75` in execution parameters
+
+### How to decide 2D vs 3D
+- If the user says "2D" or the scenario is a channel/dam break with no lateral variation → **2D**
+- If the user describes width, lateral obstacles, or 3D effects → **3D**
+- When in doubt, use **2D** (much faster, ~100x fewer particles)
 
 ---
 
@@ -152,7 +183,7 @@ Place probes where you expect interesting flow behaviour. Output as `[x, y, z]` 
 **Channel / dam break (2D):**
 - x: 3 points evenly spaced downstream of the initial fluid, clear of walls
 - z: 2 heights — near floor (0.05 m) and mid-fluid-height
-- y: fixed at domain centre (e.g., 1.0 for y-depth of 2.0)
+- y: fixed at 0 (the 2D domain y-value)
 - Total: 6 probes
 
 **Tank with obstacle (2D or 3D):**
@@ -161,6 +192,11 @@ Place probes where you expect interesting flow behaviour. Output as `[x, y, z]` 
 - Near the obstacle surface (1-2 points)
 - Near free surface (1 point)
 
+**Inclined channel / debris flow (2D):**
+- Along the slope at regular intervals
+- At heights above the slope surface (not below it!)
+- Account for the slope when calculating z-position of probes
+
 **Open channel flow:**
 - Along the channel at regular intervals
 - At multiple heights to capture velocity profile
@@ -168,18 +204,18 @@ Place probes where you expect interesting flow behaviour. Output as `[x, y, z]` 
 **General rules:**
 - Keep probes at least `3*dp` from any boundary to avoid kernel truncation artefacts
 - Keep probes inside the expected fluid domain (not in air or boundary)
-- For 2D cases, y should be at domain centre
+- For 2D cases, y = 0
 - Return probes as a list of `[x, y, z]` triples
 
 ### Example (2D dam break, channel_length=4.0, fluid_width=1.0, fluid_height=1.5):
 ```
 probe_points = [
-  [1.5, 1.0, 0.05],   # downstream, near floor
-  [1.5, 1.0, 0.75],   # downstream, mid-height
-  [2.5, 1.0, 0.05],   # mid-channel, near floor
-  [2.5, 1.0, 0.75],   # mid-channel, mid-height
-  [3.5, 1.0, 0.05],   # far downstream, near floor
-  [3.5, 1.0, 0.75],   # far downstream, mid-height
+  [1.5, 0, 0.05],   # downstream, near floor
+  [1.5, 0, 0.75],   # downstream, mid-height
+  [2.5, 0, 0.05],   # mid-channel, near floor
+  [2.5, 0, 0.75],   # mid-channel, mid-height
+  [3.5, 0, 0.05],   # far downstream, near floor
+  [3.5, 0, 0.75],   # far downstream, mid-height
 ]
 ```
 
@@ -204,12 +240,20 @@ When interpreting a natural language scenario:
    - "shear-thickening", "dilatant" -> HBP_n = 1.1-1.3
 5. **Set `rhop0` = `phase_rhop`** (constantsdef reference density must match the phase)
 6. **Set `Visco` = `visco_nn`** (wall viscosity should match phase viscosity)
-7. **Geometry**: design from scratch using the primitives in `drawing-primitives.md`. Think about:
-   - What boundaries are needed (walls, floor, obstacles)?
+7. **Decide 2D or 3D first** — this affects every dimension in your geometry:
+   - 2D: `pointmin y=0, pointmax y=0`, objects drawn with `y=-1, size_y=2`, probes at `y=0`
+   - 3D: `pointmin/pointmax` span the real y domain
+8. **Geometry**: design from scratch using the primitives in `drawing-primitives.md`. Think about:
+   - What boundaries are needed (walls, floor, obstacles, slopes)?
    - Where is the fluid initially?
-   - What are the domain bounds (pointmin/pointmax)?
-   - Is this 2D or 3D?
-8. **Complex shapes**: if the geometry involves organic/CAD shapes (ship hulls, turbines, terrain), ask the user for an STL file and use `drawfilestl`.
+   - Is the floor flat or inclined? (use `drawprism` or `drawbeach` for slopes)
+   - What are the domain bounds (pointmin/pointmax with margin)?
+9. **Inclined surfaces**: For slopes, ramps, and inclined channels:
+   - Use `drawprism` with 6-8 points defining the cross-section, extruded in y
+   - Or use `drawbeach` with polygon profile points
+   - Place fluid on the slope using `fillbox` with a seed point above the slope surface
+   - See `composition-patterns.md` for complete examples
+10. **Complex shapes**: if the geometry involves organic/CAD shapes (ship hulls, turbines, terrain), ask the user for an STL file and use `drawfilestl`.
 
 ---
 
@@ -219,6 +263,6 @@ Use `read_skill_resource` to load these when needed:
 
 | Resource | When to load | Content |
 |---|---|---|
-| `drawing-primitives.md` | **Always** — needed when designing any geometry | All drawing commands (drawbox, drawcylinder, drawsphere, etc.) and fill operations (fillbox, fillpoint) |
+| `drawing-primitives.md` | **Always** — needed when designing any geometry | All drawing commands (drawbox, drawcylinder, drawsphere, drawprism, drawbeach, etc.) and fill operations (fillbox, fillpoint) |
 | `transforms-and-advanced.md` | When geometry requires transforms, variables, reusable lists, or non-default drawing modes | Transform stack, user variables, reusable lists, drawing modes |
-| `composition-patterns.md` | When you need reference examples of common simulation setups | 9 complete geometry examples: open-top tank, dam break, void carving, flood fill, sloped beach, external mesh, repeated objects, multi-phase, 3D tank with obstacle |
+| `composition-patterns.md` | When you need reference examples of common simulation setups | 11 complete geometry examples: 2D dam break, inclined channel, sloped beach, flood fill, void carving, and more |

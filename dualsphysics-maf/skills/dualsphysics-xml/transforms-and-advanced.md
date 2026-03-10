@@ -37,7 +37,7 @@ GenCase supports user-defined variables for parameterised geometry.
 
 <!-- Use variables with # prefix -->
 <drawbox>
-  <point x="0" y="0" z="0" />
+  <point x="0" y="-1" z="0" />
   <size x="#TankLen" y="2" z="#TankH" />
 </drawbox>
 ```
@@ -57,7 +57,7 @@ Define reusable command groups:
   <list name="WallSegment">
     <drawbox>
       <boxfill>solid</boxfill>
-      <point x="0" y="0" z="0" />
+      <point x="0" y="-1" z="0" />
       <size x="0.04" y="2" z="1.5" />
     </drawbox>
   </list>
