@@ -47,3 +47,53 @@ def test_get_postprocess_skill_content_reads_postprocess_bundle(monkeypatch, tmp
     assert skill_loader.get_postprocess_skill_content() == (
         "postprocess skill\n\n---\n\nplot recipes"
     )
+
+
+def test_get_skill_topic_returns_single_file(monkeypatch, tmp_path):
+    skills_root = tmp_path / "skills"
+    pp_dir = skills_root / "dualsphysics-postprocess"
+    pp_dir.mkdir(parents=True)
+    (pp_dir / "partvtk-help.md").write_text("partvtk details", encoding="utf-8")
+    (pp_dir / "SKILL.md").write_text("overview only", encoding="utf-8")
+
+    monkeypatch.setattr(skill_loader, "_SKILLS_ROOT", skills_root)
+    skill_loader._cached.clear()
+
+    result = skill_loader.get_skill_topic("partvtk")
+    assert result == "partvtk details"
+    # Should NOT include the overview
+    assert "overview only" not in result
+
+
+def test_get_skill_topic_caches_result(monkeypatch, tmp_path):
+    skills_root = tmp_path / "skills"
+    pp_dir = skills_root / "dualsphysics-postprocess"
+    pp_dir.mkdir(parents=True)
+    (pp_dir / "isosurface-help.md").write_text("v1", encoding="utf-8")
+
+    monkeypatch.setattr(skill_loader, "_SKILLS_ROOT", skills_root)
+    skill_loader._cached.clear()
+
+    first = skill_loader.get_skill_topic("isosurface")
+    (pp_dir / "isosurface-help.md").write_text("v2", encoding="utf-8")
+    second = skill_loader.get_skill_topic("isosurface")
+
+    assert first == "v1"
+    assert second == "v1"
+
+
+def test_get_skill_topic_unknown_raises_valueerror():
+    with pytest.raises(ValueError, match="Unknown skill topic"):
+        skill_loader.get_skill_topic("nonexistent-topic")
+
+
+def test_list_skill_topics_filters_by_domain():
+    postprocess_topics = skill_loader.list_skill_topics("postprocess")
+    xml_topics = skill_loader.list_skill_topics("xml")
+    all_topics = skill_loader.list_skill_topics("all")
+
+    assert len(postprocess_topics) == 4
+    assert len(xml_topics) == 4
+    assert len(all_topics) == 8
+    assert "partvtk" in postprocess_topics
+    assert "drawing-primitives" in xml_topics

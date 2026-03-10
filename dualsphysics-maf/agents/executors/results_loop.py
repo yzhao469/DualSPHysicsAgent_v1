@@ -25,7 +25,7 @@ from agents.utils.script_utils import (
     generate_script_patch,
     parse_script,
 )
-from agents.utils.skill_loader import get_postprocess_skill_content
+from agents.utils.skill_loader import get_skill_topic
 
 logger = logging.getLogger(__name__)
 
@@ -116,6 +116,28 @@ _TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "get_reference",
+            "description": (
+                "Fetch detailed CLI reference for a specific post-processing tool. "
+                "Use this when you need exact flag names, argument syntax, or usage "
+                "examples for a tool."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "topic": {
+                        "type": "string",
+                        "enum": ["partvtk", "isosurface", "other-postprocess-tools"],
+                        "description": "Which reference to fetch.",
+                    },
+                },
+                "required": ["topic"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "done",
             "description": "User is finished with the analysis. End the workflow.",
             "parameters": {"type": "object", "properties": {}},
@@ -129,7 +151,7 @@ def _build_system_prompt(
     existing_files: list[str],
 ) -> str:
     """Build the system prompt for the results loop LLM."""
-    skill_text = get_postprocess_skill_content()
+    skill_text = get_skill_topic("postprocess-overview")
     params = plan_data.get("params", {})
 
     files_section = ""
@@ -156,7 +178,10 @@ def _build_system_prompt(
         f"### Current postprocess.sh\n"
         f"Path: {script_path}\n"
         f"```bash\n{script_text}\n```\n\n"
-        f"### Post-Processing Reference\n{skill_text}\n\n"
+        f"### Post-Processing Overview\n{skill_text}\n\n"
+        "### Detailed CLI References\n"
+        "For exact flag names, argument syntax, and usage examples, call `get_reference` "
+        "with one of: `partvtk`, `isosurface`, `other-postprocess-tools`.\n\n"
         "### Your Role\n"
         "- Use `patch_and_rerun` to modify the postprocess.sh script and re-execute it.\n"
         "- Use `run_python_analysis` for ad-hoc CSV parsing, metrics, and plotting.\n"
@@ -380,11 +405,20 @@ class ResultsLoopExecutor(Executor):
                     )
                     return
 
+                elif fn_name == "get_reference":
+                    topic = fn_args["topic"]
+                    ref_content = get_skill_topic(topic)
+                    history.append({
+                        "role": "tool",
+                        "tool_call_id": tc.id,
+                        "content": ref_content,
+                    })
+
                 elif fn_name == "answer_question":
                     question = fn_args["question"]
                     from agents.utils.intent import answer_question as qa
                     plan_context = json.dumps(plan_data, indent=2)
-                    answer = await qa(question, plan_context)
+                    answer = await qa(question, plan_context, domain="postprocess")
                     history.append({
                         "role": "tool",
                         "tool_call_id": tc.id,

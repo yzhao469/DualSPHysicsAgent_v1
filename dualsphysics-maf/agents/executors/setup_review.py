@@ -33,7 +33,7 @@ from agents.schemas import (
 from agents.utils.build_utils import rebuild_gencase_viz
 from agents.utils.intent import answer_question
 from agents.utils.patch_utils import generate_patch, merge_patch
-from agents.utils.skill_loader import get_skill_content
+from agents.utils.skill_loader import get_skill_content, get_skill_topic
 
 logger = logging.getLogger(__name__)
 MAX_BUILD_RECOVERY_ATTEMPTS = 3
@@ -97,6 +97,33 @@ _TOOLS = [
                 "Use this when the user says they want to edit the file themselves."
             ),
             "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_reference",
+            "description": (
+                "Fetch detailed reference for a specific XML/geometry topic. "
+                "Use this when you need exact syntax, drawing primitives, "
+                "transform rules, or composition examples."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "topic": {
+                        "type": "string",
+                        "enum": [
+                            "xml-overview",
+                            "drawing-primitives",
+                            "transforms-and-advanced",
+                            "composition-patterns",
+                        ],
+                        "description": "Which reference to fetch.",
+                    },
+                },
+                "required": ["topic"],
+            },
         },
     },
     {
@@ -440,6 +467,15 @@ class SetupReviewExecutor(Executor):
                         response_type=str,
                     )
                     return
+
+                elif fn_name == "get_reference":
+                    topic = fn_args["topic"]
+                    ref_content = get_skill_topic(topic)
+                    history.append({
+                        "role": "tool",
+                        "tool_call_id": tc.id,
+                        "content": ref_content,
+                    })
 
                 elif fn_name == "answer_question":
                     question = fn_args["question"]
