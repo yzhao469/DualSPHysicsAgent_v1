@@ -14,10 +14,19 @@ LLM-assisted workflow for DualSPHysics non-Newtonian simulations.
    ```bash
    echo "OPENAI_API_KEY=your_key_here" > .env
    ```
-3. Run the interactive workflow:
+3. Run the interactive workflow (choose **one**):
+
+   **Terminal mode** (original CLI):
    ```bash
    .venv/bin/python main.py
    ```
+
+   **Web GUI** (Streamlit):
+   ```bash
+   .venv/bin/streamlit run gui.py
+   ```
+   The GUI provides a chat interface, an XML editor, image viewer,
+   shell-script editor, Python code viewer, and a file browser.
 
 ## Testing
 
@@ -56,6 +65,7 @@ Key folders under `dualsphysics-maf` have README files that document file respon
 | `README.md` | This index README for `dualsphysics-maf` folder-level documentation. |
 | `datalake/` | Runtime working data folder used by the workflow to store/edit the active case XML (`Case_Def.xml`). |
 | `main.py` | Main interactive workflow runner (planning → review → build → simulation) using event-driven HITL responses. |
+| `gui.py` | Streamlit web GUI — chat interface, XML/script editors, image viewer, and file browser for the simulation workflow. |
 | `main_smoke.py` | Alternate smoke entrypoint for explicit-parameter runs that bypass scenario-to-parameter reasoning. |
 | `pyproject.toml` | Project metadata and pinned Python dependencies. |
 | `requirements.txt` | Legacy dependency list (prefer `pip install -e .` via `pyproject.toml`). |

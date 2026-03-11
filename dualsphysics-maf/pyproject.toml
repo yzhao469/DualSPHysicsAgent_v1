@@ -17,6 +17,7 @@ dependencies = [
     "matplotlib>=3.9,<4",
     "python-dotenv>=1.0,<2",
     "opentelemetry-semantic-conventions-ai==0.4.13",
+    "streamlit>=1.33,<2",
 ]
 
 [project.optional-dependencies]
@@ -29,7 +30,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-py-modules = ["main", "main_smoke"]
+py-modules = ["main", "main_smoke", "gui"]
 
 [tool.setuptools.packages.find]
 include = ["agents*", "mcp_server*"]
