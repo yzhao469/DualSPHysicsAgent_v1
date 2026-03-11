@@ -154,7 +154,8 @@ Python code orchestrates all MCP tool calls deterministically.
 | `cases/BaseCase_Def.xml` | Base XML template |
 | `cases/ground_truth/` | Ground truth CSVs (not yet generated) |
 | `datalake/` | User-provided XML cases |
-| `main.py` | Workflow event loop + HITL |
+| `main.py` | Terminal workflow event loop + HITL |
+| `gui.py` | Streamlit web GUI — chat + XML/script editors + file browser. Same workflow, thread+queue bridge. |
 | `main_smoke.py` | Smoke test (bypasses workflow) |
 
 ---
@@ -176,7 +177,7 @@ Python code orchestrates all MCP tool calls deterministically.
 | Tool | Purpose |
 |------|---------|
 | `run_postprocess` | Generic wrapper: partvtk, partvtkout, isosurface, computeforces, flowtool, boundaryvtk, floatinginfo, measuretool |
-| `run_analysis` | Execute Python analysis scripts (numpy/matplotlib/pandas) |
+| `run_analysis` | Execute Python analysis scripts (numpy/matplotlib/pandas/pyvista) |
 
 ---
 
