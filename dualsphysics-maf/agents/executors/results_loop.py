@@ -57,8 +57,11 @@ _TOOLS = [
         "function": {
             "name": "run_python_analysis",
             "description": (
-                "Execute a Python script for ad-hoc data analysis (CSV parsing, "
-                "computing derived quantities, plotting with matplotlib). "
+                "Execute a Python script for ad-hoc data analysis and visualization. "
+                "Capabilities: CSV parsing, computing derived quantities, plotting "
+                "with matplotlib, and 3D VTK rendering with pyvista (offscreen). "
+                "For VTK visualization, use pyvista with off_screen=True to render "
+                "VTK files to PNG. "
                 "The script runs with out/analysis/ as its working directory. "
                 "Use relative paths: ../data/, ../particles/, ../measuretool/ "
                 "to access other output directories. This is for one-off analysis "
@@ -184,7 +187,8 @@ def _build_system_prompt(
         "with one of: `partvtk`, `isosurface`, `other-postprocess-tools`.\n\n"
         "### Your Role\n"
         "- Use `patch_and_rerun` to modify the postprocess.sh script and re-execute it.\n"
-        "- Use `run_python_analysis` for ad-hoc CSV parsing, metrics, and plotting.\n"
+        "- Use `run_python_analysis` for ad-hoc CSV parsing, metrics, plotting, "
+        "and 3D VTK visualization (pyvista with off_screen=True).\n"
         "- Use `manual_edit` when the user wants to edit postprocess.sh themselves.\n"
         "- ALL post-processing tool changes go through the script.\n"
         "- Python scripts run with out/analysis/ as cwd. Use relative paths.\n"

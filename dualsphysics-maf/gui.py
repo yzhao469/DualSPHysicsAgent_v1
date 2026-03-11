@@ -68,8 +68,6 @@ _DEFAULTS: dict[str, Any] = {
     "messages": [],
     "workflow_running": False,
     "workflow_done": False,
-    "event_queue": queue.Queue(),
-    "response_queue": queue.Queue(),
     "pending_request": None,
     "run_dir": None,
     "phase": "idle",          # idle | running | setup_review | results_loop | complete
@@ -81,16 +79,29 @@ def _init_session_state() -> None:
     for k, v in _DEFAULTS.items():
         if k not in st.session_state:
             st.session_state[k] = v
+    # Queues and shutdown event must be created per-session
+    if "event_queue" not in st.session_state:
+        st.session_state.event_queue = queue.Queue()
+    if "response_queue" not in st.session_state:
+        st.session_state.response_queue = queue.Queue()
+    if "shutdown_event" not in st.session_state:
+        st.session_state.shutdown_event = threading.Event()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Workflow ↔ GUI bridge  (runs in a daemon thread)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-async def _gui_process_events(stream: Any, eq: queue.Queue, rq: queue.Queue) -> dict | None:
+_RESPONSE_TIMEOUT = 600  # seconds to wait for user reply before giving up
+
+
+async def _gui_process_events(
+    stream: Any, eq: queue.Queue, rq: queue.Queue, shutdown: threading.Event,
+) -> dict | None:
     """Drain the workflow event stream, forwarding events over *eq*.
 
     Blocks on *rq* whenever the workflow asks for user input.
+    Raises ``RuntimeError`` if *shutdown* is set while waiting.
     """
     pending: dict[str, Any] = {}
 
@@ -104,7 +115,15 @@ async def _gui_process_events(stream: Any, eq: queue.Queue, rq: queue.Queue) -> 
                 "source": event.source_executor_id or "",
                 "request_id": event.request_id,
             })
-            response = rq.get()               # block until the user replies
+            # Poll with timeout so the thread can exit if the session ends
+            response = None
+            while response is None:
+                if shutdown.is_set():
+                    raise RuntimeError("Session ended while waiting for user reply")
+                try:
+                    response = rq.get(timeout=5)
+                except queue.Empty:
+                    continue
             pending[event.request_id] = response
 
         elif event.type == "executor_failed":
@@ -125,7 +144,9 @@ async def _gui_process_events(stream: Any, eq: queue.Queue, rq: queue.Queue) -> 
     return None
 
 
-async def _run_workflow(scenario: str, eq: queue.Queue, rq: queue.Queue) -> None:
+async def _run_workflow(
+    scenario: str, eq: queue.Queue, rq: queue.Queue, shutdown: threading.Event,
+) -> None:
     mcp = make_mcp_tool()
     agent = make_simulation_agent()
     agent_exec = AgentExecutor(agent)
@@ -135,18 +156,20 @@ async def _run_workflow(scenario: str, eq: queue.Queue, rq: queue.Queue) -> None
 
     async with mcp:
         stream = wf.run(scenario, stream=True)
-        responses = await _gui_process_events(stream, eq, rq)
+        responses = await _gui_process_events(stream, eq, rq, shutdown)
         while responses is not None:
             stream = wf.run(responses=responses, stream=True)
-            responses = await _gui_process_events(stream, eq, rq)
+            responses = await _gui_process_events(stream, eq, rq, shutdown)
 
     eq.put({"type": "done"})
 
 
-def _workflow_thread(scenario: str, eq: queue.Queue, rq: queue.Queue) -> None:
+def _workflow_thread(
+    scenario: str, eq: queue.Queue, rq: queue.Queue, shutdown: threading.Event,
+) -> None:
     """Thread entry-point."""
     try:
-        asyncio.run(_run_workflow(scenario, eq, rq))
+        asyncio.run(_run_workflow(scenario, eq, rq, shutdown))
     except Exception as exc:
         logger.exception("Workflow thread error")
         eq.put({"type": "status", "message": f"❌ Workflow error: {exc}"})
@@ -217,6 +240,35 @@ def _file_icon(path: str) -> str:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Summary formatting (strip terminal decorations for the GUI)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+import re as _re
+
+_BANNER_RE = _re.compile(r"^={3,}\s*$", _re.MULTILINE)
+_TERMINAL_PROMPTS = [
+    "ParaView should be open with the particle configuration.",
+    "Approve, request changes, or ask a question:",
+    "Request changes to the post-processing script, run analysis,",
+    "ask questions, or type 'done' to finish:",
+]
+
+
+def _clean_summary_for_gui(text: str) -> str:
+    """Convert terminal-style summary text to clean markdown."""
+    # Strip ===… banner lines
+    text = _BANNER_RE.sub("", text)
+    # Remove terminal-only prompt lines
+    for prompt in _TERMINAL_PROMPTS:
+        text = text.replace(prompt, "")
+    # Collapse triple+ blank lines
+    text = _re.sub(r"\n{3,}", "\n\n", text)
+    # Convert leading "  SIMULATION PLAN" / "  SIMULATION RESULTS" to markdown heading
+    text = _re.sub(r"^\s*(SIMULATION (?:PLAN|RESULTS))\s*$", r"## \1", text, flags=_re.MULTILINE)
+    return text.strip()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Event processing
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -239,7 +291,8 @@ def _apply_event(ev: dict) -> None:
 
     if t == "request_info":
         st.session_state.pending_request = ev
-        st.session_state.messages.append({"role": "assistant", "content": ev["summary"]})
+        clean = _clean_summary_for_gui(ev["summary"])
+        st.session_state.messages.append({"role": "assistant", "content": clean})
         src = ev.get("source", "")
         if "setup_review" in src:
             st.session_state.phase = "setup_review"
@@ -300,19 +353,27 @@ def _render_sidebar(key_files, images, output_files, python_scripts, run_dir):
         # New-session button
         if st.session_state.workflow_done:
             if st.button("🔄 New Session"):
+                # Signal the old workflow thread to stop
+                st.session_state.shutdown_event.set()
                 for k, v in _DEFAULTS.items():
                     st.session_state[k] = v
+                # Fresh per-session objects
+                st.session_state.event_queue = queue.Queue()
+                st.session_state.response_queue = queue.Queue()
+                st.session_state.shutdown_event = threading.Event()
                 st.rerun()
 
         st.divider()
 
-        # Key files
+        # Key files (clickable)
         if key_files:
             st.subheader("📌 Key Files")
             if "xml" in key_files:
-                st.caption(f"XML: `Case_Def.xml`")
+                if st.button("📝 Case_Def.xml", key="sb_key_xml", width="stretch"):
+                    st.session_state.selected_file = key_files["xml"]
             if "script" in key_files:
-                st.caption(f"Script: `postprocess.sh`")
+                if st.button("📜 postprocess.sh", key="sb_key_script", width="stretch"):
+                    st.session_state.selected_file = key_files["script"]
 
         # Generated files grouped by type
         if images or output_files or python_scripts:
@@ -324,7 +385,7 @@ def _render_sidebar(key_files, images, output_files, python_scripts, run_dir):
                         if st.button(
                             f"🖼️ {os.path.basename(img)}",
                             key=f"sb_img_{img}",
-                            use_container_width=True,
+                            width="stretch",
                         ):
                             st.session_state.selected_file = img
 
@@ -334,18 +395,20 @@ def _render_sidebar(key_files, images, output_files, python_scripts, run_dir):
                         if st.button(
                             f"🐍 {os.path.basename(s)}",
                             key=f"sb_py_{s}",
-                            use_container_width=True,
+                            width="stretch",
                         ):
                             st.session_state.selected_file = s
 
             if output_files:
                 with st.expander(f"📄 All Files ({len(output_files)})"):
+                    if len(output_files) > 60:
+                        st.caption(f"Showing first 60 of {len(output_files)} files")
                     for fp in output_files[:60]:
                         name = os.path.relpath(fp, run_dir) if run_dir else os.path.basename(fp)
                         if st.button(
                             f"{_file_icon(fp)} {name}",
                             key=f"sb_f_{fp}",
-                            use_container_width=True,
+                            width="stretch",
                         ):
                             st.session_state.selected_file = fp
 
@@ -369,6 +432,22 @@ def _render_chat():
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
+
+
+def _notify_llm_of_edit(message: str) -> None:
+    """Send a file-edit notification to the workflow as a user reply.
+
+    If the workflow is waiting for user input (pending_request), this
+    forwards the message as the HITL response so the LLM knows about
+    the edit.  Otherwise it just appears in the chat log.
+    """
+    st.session_state.messages.append({"role": "user", "content": message})
+    if st.session_state.pending_request:
+        st.session_state.response_queue.put(message)
+        st.session_state.pending_request = None
+        st.success(f"✅ Saved and sent to agent.")
+    else:
+        st.success(f"✅ Saved.")
 
 
 def _render_xml_editor(xml_path: str | None):
@@ -395,7 +474,8 @@ def _render_xml_editor(xml_path: str | None):
         )
         if st.button("💾 Save Changes", key="save_xml", type="primary"):
             Path(xml_path).write_text(edited)
-            st.success("✅ XML file saved!")
+            msg = "I manually edited Case_Def.xml. Please review my changes and proceed."
+            _notify_llm_of_edit(msg)
             st.rerun()
     else:
         st.code(content, language="xml", line_numbers=True)
@@ -417,7 +497,7 @@ def _render_visualization(images: list[str]):
         selected = images[0]
 
     if selected and os.path.exists(selected):
-        st.image(selected, caption=os.path.basename(selected), use_container_width=True)
+        st.image(selected, caption=os.path.basename(selected), width="stretch")
 
 
 def _render_script_editor(script_path: str | None):
@@ -444,7 +524,8 @@ def _render_script_editor(script_path: str | None):
         )
         if st.button("💾 Save Changes", key="save_script", type="primary"):
             Path(script_path).write_text(edited)
-            st.success("✅ Script saved!")
+            msg = "I manually edited postprocess.sh. Please review my changes and proceed."
+            _notify_llm_of_edit(msg)
             st.rerun()
     else:
         st.code(content, language="bash", line_numbers=True)
@@ -493,7 +574,7 @@ def _render_file_browser(output_files: list[str], run_dir: str | None):
                 if st.button(
                     f"{_file_icon(fp)} {name}",
                     key=f"fb_{fp}",
-                    use_container_width=True,
+                    width="stretch",
                 ):
                     st.session_state.selected_file = fp
 
@@ -505,33 +586,35 @@ def _render_file_browser(output_files: list[str], run_dir: str | None):
         _file_preview(sel)
 
 
+def _read_text_safe(path: str) -> str | None:
+    """Read a file as UTF-8 text, returning None on encoding errors."""
+    try:
+        return Path(path).read_text(encoding="utf-8", errors="replace")
+    except Exception:
+        return None
+
+
 def _file_preview(path: str):
     """Render an inline preview for the given file."""
     ext = os.path.splitext(path)[1].lower()
 
     if ext in (".png", ".jpg", ".jpeg"):
-        st.image(path, use_container_width=True)
+        st.image(path, width="stretch")
     elif ext == ".csv":
         try:
             import pandas as pd
             df = pd.read_csv(path, sep=None, engine="python", nrows=200)
-            st.dataframe(df, use_container_width=True)
+            st.dataframe(df, width="stretch")
         except Exception as e:
             st.error(f"Could not parse CSV: {e}")
-    elif ext == ".py":
-        st.code(Path(path).read_text(), language="python", line_numbers=True)
-    elif ext == ".xml":
-        st.code(Path(path).read_text(), language="xml", line_numbers=True)
-    elif ext in (".sh", ".bash"):
-        st.code(Path(path).read_text(), language="bash", line_numbers=True)
-    elif ext in (".txt", ".log"):
-        st.code(Path(path).read_text(), line_numbers=True)
     elif ext in (".vtk", ".bi4"):
         st.info(f"Binary file — {os.path.getsize(path):,} bytes")
     else:
-        try:
-            st.code(Path(path).read_text(), line_numbers=True)
-        except Exception:
+        lang = {".py": "python", ".xml": "xml", ".sh": "bash", ".bash": "bash"}.get(ext)
+        text = _read_text_safe(path)
+        if text is not None:
+            st.code(text, language=lang, line_numbers=True)
+        else:
             st.info(f"Binary file — {os.path.getsize(path):,} bytes")
 
 
@@ -552,8 +635,8 @@ def main():
     # 1. Drain any queued events
     _drain_event_queue()
 
-    # 2. Discover files
-    run_dir = st.session_state.run_dir or _find_latest_run_dir()
+    # 2. Discover files (only for the current session's run)
+    run_dir = st.session_state.run_dir
     key_files, images, output_files, python_scripts = _discover_files(run_dir)
 
     # 3. Sidebar
@@ -596,6 +679,19 @@ def main():
     else:
         _render_chat()
 
+    # 5b. Sidebar file preview (shown below tabs when a file is selected)
+    sel = st.session_state.get("selected_file")
+    if sel and os.path.exists(sel):
+        st.divider()
+        col_title, col_close = st.columns([5, 1])
+        with col_title:
+            st.subheader(f"Viewing: {os.path.basename(sel)}")
+        with col_close:
+            if st.button("✕ Close", key="close_preview"):
+                st.session_state.selected_file = None
+                st.rerun()
+        _file_preview(sel)
+
     # 6. Background event poller
     _event_poller()
 
@@ -619,6 +715,7 @@ def main():
                     user_input,
                     st.session_state.event_queue,
                     st.session_state.response_queue,
+                    st.session_state.shutdown_event,
                 ),
                 daemon=True,
             )
