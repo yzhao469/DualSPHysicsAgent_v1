@@ -20,3 +20,7 @@ CaseDebrisFlow2D_Def_run*.xml
 
 # Secrets
 .env
+
+# React frontend build artifacts and dependencies
+gui-react/node_modules/
+gui-react/dist/
