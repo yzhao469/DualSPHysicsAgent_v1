@@ -67,6 +67,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+_RUNS_PATH = Path(RUNS_DIR).resolve()
+_BASE_PATH = Path(BASE).resolve()
+
+
+def _is_safe_path(path: str) -> bool:
+    """Return True only if *path* is under RUNS_DIR or BASE (no traversal)."""
+    resolved = Path(path).resolve()
+    return resolved.is_relative_to(_RUNS_PATH) or resolved.is_relative_to(_BASE_PATH)
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Session management
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -446,9 +455,7 @@ async def get_file_content(path: str = Query(...)):
     """Get the text content of a file."""
     if not os.path.isfile(path):
         return JSONResponse(status_code=404, content={"error": "File not found"})
-    # Security: only allow files under RUNS_DIR or BASE
-    abs_path = os.path.abspath(path)
-    if not (abs_path.startswith(os.path.abspath(RUNS_DIR)) or abs_path.startswith(os.path.abspath(BASE))):
+    if not _is_safe_path(path):
         return JSONResponse(status_code=403, content={"error": "Access denied"})
 
     ext = os.path.splitext(path)[1].lower()
@@ -472,8 +479,7 @@ async def download_file(path: str = Query(...)):
     """Download a file."""
     if not os.path.isfile(path):
         return JSONResponse(status_code=404, content={"error": "File not found"})
-    abs_path = os.path.abspath(path)
-    if not (abs_path.startswith(os.path.abspath(RUNS_DIR)) or abs_path.startswith(os.path.abspath(BASE))):
+    if not _is_safe_path(path):
         return JSONResponse(status_code=403, content={"error": "Access denied"})
     return FileResponse(path, filename=os.path.basename(path))
 
@@ -481,8 +487,7 @@ async def download_file(path: str = Query(...)):
 @app.post("/api/files/save")
 async def save_file(req: SaveFileRequest):
     """Save edited content to a file."""
-    abs_path = os.path.abspath(req.path)
-    if not (abs_path.startswith(os.path.abspath(RUNS_DIR)) or abs_path.startswith(os.path.abspath(BASE))):
+    if not _is_safe_path(req.path):
         return JSONResponse(status_code=403, content={"error": "Access denied"})
     if not os.path.isfile(req.path):
         return JSONResponse(status_code=404, content={"error": "File not found"})
@@ -507,8 +512,7 @@ async def get_image(path: str = Query(...)):
     """Serve an image file."""
     if not os.path.isfile(path):
         return JSONResponse(status_code=404, content={"error": "File not found"})
-    abs_path = os.path.abspath(path)
-    if not (abs_path.startswith(os.path.abspath(RUNS_DIR)) or abs_path.startswith(os.path.abspath(BASE))):
+    if not _is_safe_path(path):
         return JSONResponse(status_code=403, content={"error": "Access denied"})
     ext = os.path.splitext(path)[1].lower().lstrip(".")
     media = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg"}.get(ext, "application/octet-stream")
