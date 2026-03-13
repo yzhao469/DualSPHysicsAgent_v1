@@ -227,11 +227,15 @@ async def _api_process_events(
                 if isinstance(data, (SetupReviewRequest, ResultsLoopRequest))
                 else str(data)
             )
+            confirm_sim = (
+                isinstance(data, SetupReviewRequest) and data.confirm_sim
+            )
             await session.event_queue.put({
                 "type": "request_info",
                 "summary": summary,
                 "source": event.source_executor_id or "",
                 "request_id": event.request_id,
+                "confirm_sim": confirm_sim,
             })
             # Wait for user response
             while True:
@@ -314,8 +318,9 @@ def _apply_event(ev: dict, session: Session) -> None:
 
     if t == "request_info":
         session.pending_request = ev
-        clean = _clean_summary(ev["summary"])
-        session.messages.append({"role": "assistant", "content": clean})
+        if not ev.get("confirm_sim"):
+            clean = _clean_summary(ev["summary"])
+            session.messages.append({"role": "assistant", "content": clean})
         src = ev.get("source", "")
         if "setup_review" in src:
             session.phase = "setup_review"
@@ -390,6 +395,7 @@ async def get_state():
         "workflow_running": session.workflow_running,
         "workflow_done": session.workflow_done,
         "pending_request": session.pending_request is not None,
+        "confirm_sim": (session.pending_request or {}).get("confirm_sim", False),
         "run_dir": session.run_dir,
         "selected_file": session.selected_file,
         "files": files,
@@ -542,6 +548,7 @@ async def websocket_endpoint(ws: WebSocket):
                         "workflow_running": session.workflow_running,
                         "workflow_done": session.workflow_done,
                         "pending_request": session.pending_request is not None,
+                        "confirm_sim": (session.pending_request or {}).get("confirm_sim", False),
                         "run_dir": session.run_dir,
                         "messages": session.messages,
                         "files": _discover_files(session.run_dir),

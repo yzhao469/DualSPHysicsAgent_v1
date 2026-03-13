@@ -46,6 +46,7 @@ export default function App() {
     workflow_running: false,
     workflow_done: false,
     pending_request: false,
+    confirm_sim: false,
     run_dir: null,
     files: { key_files: {}, images: [], output_files: [], python_scripts: [] },
   });
@@ -143,6 +144,7 @@ export default function App() {
           ...prev,
           messages: [...prev.messages, { role: 'user', content: text }],
           pending_request: false,
+          confirm_sim: false,
         }));
         try {
           await respondToWorkflow(text);
@@ -220,6 +222,7 @@ export default function App() {
               workflowRunning={state.workflow_running}
               workflowDone={state.workflow_done}
               pendingRequest={state.pending_request}
+              confirmSim={state.confirm_sim}
               onSend={handleSend}
             />
           )}

@@ -42,6 +42,7 @@ class SetupReviewRequest:
     """Data attached to a HITL request_info call in the setup review loop."""
 
     summary: str
+    confirm_sim: bool = False
 
 
 @dataclass

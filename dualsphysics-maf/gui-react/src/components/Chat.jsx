@@ -9,6 +9,7 @@ export default function Chat({
   workflowRunning,
   workflowDone,
   pendingRequest,
+  confirmSim,
   onSend,
 }) {
   const [input, setInput] = useState('');
@@ -97,19 +98,40 @@ export default function Chat({
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Simulation confirm buttons */}
+      {confirmSim && pendingRequest && (
+        <div className="confirm-sim-bar">
+          <span>Ready to run the main simulation.</span>
+          <button
+            className="btn confirm-btn"
+            onClick={() => onSend('yes')}
+          >
+            Run Simulation
+          </button>
+          <button
+            className="btn decline-btn"
+            onClick={() => onSend('no, I want to keep editing')}
+          >
+            Keep Editing
+          </button>
+        </div>
+      )}
+
       {/* Input bar */}
-      <form className="chat-input-bar" onSubmit={handleSubmit}>
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder={placeholder}
-          disabled={!canSend}
-        />
-        <button type="submit" disabled={!canSend || !input.trim()}>
-          Send
-        </button>
-      </form>
+      {!confirmSim && (
+        <form className="chat-input-bar" onSubmit={handleSubmit}>
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder={placeholder}
+            disabled={!canSend}
+          />
+          <button type="submit" disabled={!canSend || !input.trim()}>
+            Send
+          </button>
+        </form>
+      )}
     </div>
   );
 }

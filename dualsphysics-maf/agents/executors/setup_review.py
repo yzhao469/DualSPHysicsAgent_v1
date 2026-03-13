@@ -321,6 +321,22 @@ class SetupReviewExecutor(Executor):
         plan_data = ctx.get_state("plan")
         run_dir = ctx.get_state("run_dir")
 
+        # Check if we're resuming after a sim confirmation prompt
+        pending_sim_confirm = ctx.get_state("pending_sim_confirm")
+        if pending_sim_confirm:
+            ctx.set_state("pending_sim_confirm", False)
+            confirmed = feedback.strip().lower() in ("yes", "y", "confirm", "run", "ok", "go", "")
+            if confirmed:
+                ctx.set_state("setup_review_history", history)
+                await ctx.send_message(
+                    ReviewResult(route="sim", feedback="approved")
+                )
+                return
+            # User declined — continue the review conversation
+            history.append({"role": "user", "content": feedback or "no"})
+            log_message(run_dir, "user", feedback or "no", phase="setup_review")
+            # Fall through to the LLM loop
+
         # Check if we're resuming after a manual edit pause
         pending_manual_edit = ctx.get_state("pending_manual_edit")
         if pending_manual_edit:
@@ -406,9 +422,20 @@ class SetupReviewExecutor(Executor):
                             ),
                         })
                         continue
+                    # Ask the user to explicitly confirm before running sim
+                    history.append({
+                        "role": "tool",
+                        "tool_call_id": tc.id,
+                        "content": "Waiting for user confirmation to proceed.",
+                    })
                     ctx.set_state("setup_review_history", history)
-                    await ctx.send_message(
-                        ReviewResult(route="sim", feedback="approved")
+                    ctx.set_state("pending_sim_confirm", True)
+                    await ctx.request_info(
+                        request_data=SetupReviewRequest(
+                            summary="Ready to run the main simulation. Confirm?",
+                            confirm_sim=True,
+                        ),
+                        response_type=str,
                     )
                     return
 
