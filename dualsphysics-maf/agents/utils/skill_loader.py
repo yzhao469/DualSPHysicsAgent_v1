@@ -15,8 +15,9 @@ _TOPIC_REGISTRY: dict[str, tuple[str, str]] = {
     "isosurface":              ("dualsphysics-postprocess", "isosurface-help.md"),
     "other-postprocess-tools": ("dualsphysics-postprocess", "other-tools-help.md"),
     "xml-overview":            ("dualsphysics-xml", "SKILL.md"),
-    "drawing-primitives":      ("dualsphysics-xml", "drawing-primitives.md"),
-    "transforms-and-advanced": ("dualsphysics-xml", "transforms-and-advanced.md"),
+    "drawing-shapes":          ("dualsphysics-xml", "drawing-shapes.md"),
+    "fill-and-modification":   ("dualsphysics-xml", "fill-and-modification.md"),
+    "transforms-and-variables": ("dualsphysics-xml", "transforms-and-variables.md"),
     "composition-patterns":    ("dualsphysics-xml", "composition-patterns.md"),
 }
 

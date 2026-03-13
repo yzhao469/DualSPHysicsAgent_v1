@@ -93,7 +93,8 @@ def test_list_skill_topics_filters_by_domain():
     all_topics = skill_loader.list_skill_topics("all")
 
     assert len(postprocess_topics) == 4
-    assert len(xml_topics) == 4
-    assert len(all_topics) == 8
+    assert len(xml_topics) == 5
+    assert len(all_topics) == 9
     assert "partvtk" in postprocess_topics
-    assert "drawing-primitives" in xml_topics
+    assert "drawing-shapes" in xml_topics
+    assert "fill-and-modification" in xml_topics
