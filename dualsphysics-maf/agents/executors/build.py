@@ -19,6 +19,7 @@ from agent_framework import (
 
 from agents.schemas import BuildResult, SimulationPlan
 from agents.tools.visualize_geometry import visualize_geometry
+from agents.utils.chat_logger import log_message
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,11 @@ class BuildExecutor(Executor):
         base_xml = ctx.get_state("base_xml") or f"{self.base_dir}/cases/BaseCase_Def.xml"
         run_dir = self._new_run_dir()
         ctx.set_state("run_dir", run_dir)
+
+        # Log the initial scenario now that run_dir exists
+        scenario = ctx.get_state("scenario") or ""
+        if scenario:
+            log_message(run_dir, "user", scenario, phase="planning")
 
         try:
             await self._build(plan.model_dump(), base_xml, run_dir)

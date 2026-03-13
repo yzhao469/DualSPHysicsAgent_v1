@@ -140,6 +140,12 @@ def _make_schema_stub():
     return module
 
 
+def _make_chat_logger_stub():
+    mod = types.ModuleType("agents.utils.chat_logger")
+    mod.log_message = lambda *args, **kwargs: None
+    return mod
+
+
 def _make_common_agent_packages():
     agents_pkg = types.ModuleType("agents")
     agents_pkg.__path__ = []
@@ -164,6 +170,7 @@ class BuildExecutorTests(unittest.IsolatedAsyncioTestCase):
             "agents.tools": tools_pkg,
             "agents.tools.visualize_geometry": viz_mod,
             "agents.utils": utils_pkg,
+            "agents.utils.chat_logger": _make_chat_logger_stub(),
         })
         self.addCleanup(cleanup)
         self.build_module = _load_module("build_under_test", BUILD_PATH)
@@ -236,6 +243,7 @@ class SetupReviewExecutorTests(unittest.IsolatedAsyncioTestCase):
             "agents.tools": tools_pkg,
             "agents.utils": utils_pkg,
             "agents.utils.build_utils": build_utils_mod,
+            "agents.utils.chat_logger": _make_chat_logger_stub(),
             "agents.utils.intent": intent_mod,
             "agents.utils.patch_utils": patch_utils_mod,
             "agents.utils.skill_loader": skill_loader_mod,

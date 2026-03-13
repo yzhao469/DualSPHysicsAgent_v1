@@ -25,6 +25,7 @@ from agents.utils.script_utils import (
     generate_script_patch,
     parse_script,
 )
+from agents.utils.chat_logger import log_message
 from agents.utils.skill_loader import get_skill_topic
 
 logger = logging.getLogger(__name__)
@@ -269,8 +270,10 @@ class ResultsLoopExecutor(Executor):
             {"role": "system", "content": system_prompt},
         ])
 
+        summary_text = "\n".join(summary_parts)
+        log_message(run_dir, "assistant", summary_text, phase="results_loop")
         await ctx.request_info(
-            request_data=ResultsLoopRequest(summary="\n".join(summary_parts)),
+            request_data=ResultsLoopRequest(summary=summary_text),
             response_type=str,
         )
 
@@ -299,6 +302,7 @@ class ResultsLoopExecutor(Executor):
             })
         else:
             history.append({"role": "user", "content": feedback or "done"})
+            log_message(run_dir, "user", feedback or "done", phase="results_loop")
 
         client = AsyncOpenAI()
         analysis_dir = f"{run_dir}/out/analysis"
@@ -320,6 +324,7 @@ class ResultsLoopExecutor(Executor):
             if not msg.tool_calls:
                 text = msg.content or ""
                 ctx.set_state("results_loop_history", history)
+                log_message(run_dir, "assistant", text, phase="results_loop")
                 await ctx.request_info(
                     request_data=ResultsLoopRequest(summary=text),
                     response_type=str,
