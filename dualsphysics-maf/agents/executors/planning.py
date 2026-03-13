@@ -14,6 +14,7 @@ from agent_framework import (
 )
 
 from agents.utils.intent import resolve_datalake_file
+from agents.utils.chat_logger import log_message
 from agents.schemas import ReviewResult
 
 logger = logging.getLogger(__name__)
@@ -59,6 +60,7 @@ class PlanningExecutor(Executor):
         asks the user to clarify.
         """
         logger.info("PlanningExecutor: new scenario (%d chars)", len(scenario))
+        ctx.set_state("scenario", scenario)
 
         available = _list_datalake_files(self.base_dir)
         matched = await resolve_datalake_file(scenario, available) if available else None

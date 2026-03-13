@@ -31,6 +31,7 @@ from agents.schemas import (
     SimulationPlan,
 )
 from agents.utils.build_utils import rebuild_gencase_viz
+from agents.utils.chat_logger import log_message
 from agents.utils.intent import answer_question
 from agents.utils.patch_utils import generate_patch, merge_patch
 from agents.utils.skill_loader import get_skill_content, get_skill_topic
@@ -302,6 +303,7 @@ class SetupReviewExecutor(Executor):
             self._set_recovery_state(ctx)
         self._refresh_system_prompt(ctx, plan_data, run_dir)
 
+        log_message(run_dir, "assistant", summary, phase="setup_review")
         await ctx.request_info(
             request_data=SetupReviewRequest(summary=summary),
             response_type=str,
@@ -357,6 +359,7 @@ class SetupReviewExecutor(Executor):
         else:
             # Append user message
             history.append({"role": "user", "content": feedback or "approve"})
+            log_message(run_dir, "user", feedback or "approve", phase="setup_review")
 
         client = AsyncOpenAI()
 
@@ -378,6 +381,7 @@ class SetupReviewExecutor(Executor):
                 # Text response — show to user and loop
                 text = msg.content or ""
                 ctx.set_state("setup_review_history", history)
+                log_message(run_dir, "assistant", text, phase="setup_review")
                 await ctx.request_info(
                     request_data=SetupReviewRequest(summary=text),
                     response_type=str,
