@@ -38,7 +38,10 @@ export async function respondToWorkflow(message) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ message }),
   });
-  if (!res.ok) throw new Error(`Failed to respond: ${res.status}`);
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || `Failed to respond: ${res.status}`);
+  }
   return res.json();
 }
 
@@ -49,7 +52,10 @@ export async function resetWorkflow() {
   const res = await fetch(`${API_BASE}/workflow/reset`, {
     method: 'POST',
   });
-  if (!res.ok) throw new Error(`Failed to reset: ${res.status}`);
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || `Failed to reset: ${res.status}`);
+  }
   return res.json();
 }
 
@@ -96,12 +102,20 @@ export function getImageUrl(path) {
 
 /**
  * Create a WebSocket connection for real-time events.
- * Returns an object with { close, onMessage }.
+ * Returns an object with { close, ws }.
+ *
+ * @param {Function} onMessage - Called with parsed event data
+ * @param {Function} [onOpen] - Called when connection opens
+ * @param {Function} [onClose] - Called when connection closes (for reconnect logic)
  */
-export function createEventSocket(onMessage) {
+export function createEventSocket(onMessage, onOpen, onClose) {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const wsUrl = `${protocol}//${window.location.host}/ws`;
   const ws = new WebSocket(wsUrl);
+
+  ws.onopen = () => {
+    onOpen?.();
+  };
 
   ws.onmessage = (event) => {
     try {
@@ -116,6 +130,10 @@ export function createEventSocket(onMessage) {
 
   ws.onerror = (err) => {
     console.error('WebSocket error:', err);
+  };
+
+  ws.onclose = () => {
+    onClose?.();
   };
 
   return {

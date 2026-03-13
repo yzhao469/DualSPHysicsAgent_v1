@@ -53,6 +53,7 @@ export default function App() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [toast, setToast] = useState(null);
   const wsRef = useRef(null);
+  const wsConnectedRef = useRef(false);
   const pollRef = useRef(null);
 
   // Show toast notification
@@ -68,36 +69,55 @@ export default function App() {
       .catch(console.error);
   }, []);
 
-  // Set up WebSocket for real-time events
+  // Set up WebSocket for real-time events with auto-reconnect
   useEffect(() => {
-    const socket = createEventSocket((data) => {
-      if (data.state) {
-        setState((prev) => ({ ...prev, ...data.state }));
-      }
-    });
-    wsRef.current = socket;
+    let cancelled = false;
+    let reconnectTimeout = null;
+
+    const connect = () => {
+      if (cancelled) return;
+      const socket = createEventSocket(
+        (data) => {
+          if (data.state) {
+            setState((prev) => ({ ...prev, ...data.state }));
+          }
+        },
+        () => {
+          // onOpen
+          wsConnectedRef.current = true;
+          // Stop fallback polling when WS is connected
+          if (pollRef.current) {
+            clearInterval(pollRef.current);
+            pollRef.current = null;
+          }
+        },
+        () => {
+          // onClose — start fallback polling and schedule reconnect
+          wsConnectedRef.current = false;
+          if (!cancelled) {
+            if (!pollRef.current) {
+              pollRef.current = setInterval(() => {
+                fetchState()
+                  .then((data) => setState(data))
+                  .catch(console.error);
+              }, 3000);
+            }
+            reconnectTimeout = setTimeout(connect, 3000);
+          }
+        },
+      );
+      wsRef.current = socket;
+    };
+
+    connect();
 
     return () => {
-      socket.close();
+      cancelled = true;
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      if (pollRef.current) clearInterval(pollRef.current);
+      wsRef.current?.close();
     };
   }, []);
-
-  // Fallback polling for state (every 3s when workflow is running)
-  useEffect(() => {
-    if (state.workflow_running) {
-      pollRef.current = setInterval(() => {
-        fetchState()
-          .then((data) => setState(data))
-          .catch(console.error);
-      }, 3000);
-    } else if (pollRef.current) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-  }, [state.workflow_running]);
 
   // Handle sending a message
   const handleSend = useCallback(
@@ -131,15 +151,6 @@ export default function App() {
         }
       }
 
-      // Refresh state
-      setTimeout(async () => {
-        try {
-          const data = await fetchState();
-          setState(data);
-        } catch {
-          // ignore
-        }
-      }, 500);
     },
     [state.workflow_running, state.workflow_done, state.pending_request, showToast]
   );
@@ -161,14 +172,6 @@ export default function App() {
   // Handle file save notification
   const handleFileSaved = useCallback(() => {
     showToast('File saved and sent to agent');
-    setTimeout(async () => {
-      try {
-        const data = await fetchState();
-        setState(data);
-      } catch {
-        // ignore
-      }
-    }, 500);
   }, [showToast]);
 
   const tabs = PHASE_TABS[state.phase] || PHASE_TABS.idle;
@@ -224,12 +227,14 @@ export default function App() {
             <XmlEditor
               xmlPath={state.files.key_files?.xml}
               onSaved={handleFileSaved}
+              onError={(msg) => showToast(msg, 'error')}
             />
           )}
           {currentTab === 'script' && (
             <ScriptEditor
               scriptPath={state.files.key_files?.script}
               onSaved={handleFileSaved}
+              onError={(msg) => showToast(msg, 'error')}
             />
           )}
           {currentTab === 'python' && (

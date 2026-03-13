@@ -9,6 +9,7 @@ export default function FilePreview({ path }) {
 
   useEffect(() => {
     if (!path) return;
+    let cancelled = false;
     setLoading(true);
     setData(null);
 
@@ -20,12 +21,12 @@ export default function FilePreview({ path }) {
     }
 
     fetchFileContent(path)
-      .then(setData)
+      .then((result) => { if (!cancelled) setData(result); })
       .catch((err) => {
-        console.error('Preview error:', err);
-        setData({ type: 'error', message: err.message });
+        if (!cancelled) setData({ type: 'error', message: err.message });
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [path]);
 
   if (loading) return <p style={{ color: '#64748b' }}>Loading…</p>;

@@ -3,7 +3,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { fetchFileContent, saveFile, getDownloadUrl } from '../api';
 
-export default function ScriptEditor({ scriptPath, onSaved }) {
+export default function ScriptEditor({ scriptPath, onSaved, onError }) {
   const [content, setContent] = useState('');
   const [editMode, setEditMode] = useState(false);
   const [edited, setEdited] = useState('');
@@ -11,16 +11,18 @@ export default function ScriptEditor({ scriptPath, onSaved }) {
 
   useEffect(() => {
     if (!scriptPath) return;
+    let cancelled = false;
     setLoading(true);
     fetchFileContent(scriptPath)
       .then((data) => {
-        if (data.type === 'text') {
+        if (!cancelled && data.type === 'text') {
           setContent(data.content);
           setEdited(data.content);
         }
       })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+      .catch((err) => { if (!cancelled) console.error(err); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [scriptPath]);
 
   if (!scriptPath) {
@@ -48,7 +50,7 @@ export default function ScriptEditor({ scriptPath, onSaved }) {
       setEditMode(false);
       onSaved?.();
     } catch (err) {
-      console.error('Save failed:', err);
+      onError?.(err.message || 'Failed to save file');
     }
   };
 

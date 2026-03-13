@@ -3,7 +3,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { fetchFileContent, saveFile, getDownloadUrl } from '../api';
 
-export default function XmlEditor({ xmlPath, onSaved }) {
+export default function XmlEditor({ xmlPath, onSaved, onError }) {
   const [content, setContent] = useState('');
   const [editMode, setEditMode] = useState(false);
   const [edited, setEdited] = useState('');
@@ -11,16 +11,18 @@ export default function XmlEditor({ xmlPath, onSaved }) {
 
   useEffect(() => {
     if (!xmlPath) return;
+    let cancelled = false;
     setLoading(true);
     fetchFileContent(xmlPath)
       .then((data) => {
-        if (data.type === 'text') {
+        if (!cancelled && data.type === 'text') {
           setContent(data.content);
           setEdited(data.content);
         }
       })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+      .catch((err) => { if (!cancelled) console.error(err); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [xmlPath]);
 
   if (!xmlPath) {
@@ -42,13 +44,22 @@ export default function XmlEditor({ xmlPath, onSaved }) {
   }
 
   const handleSave = async () => {
+    // Validate XML before saving
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(edited, 'application/xml');
+    const parseError = doc.querySelector('parsererror');
+    if (parseError) {
+      onError?.('Invalid XML: ' + parseError.textContent.split('\n')[0]);
+      return;
+    }
+
     try {
       await saveFile(xmlPath, edited);
       setContent(edited);
       setEditMode(false);
       onSaved?.();
     } catch (err) {
-      console.error('Save failed:', err);
+      onError?.(err.message || 'Failed to save file');
     }
   };
 

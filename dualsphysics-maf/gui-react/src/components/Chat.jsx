@@ -63,6 +63,7 @@ export default function Chat({
                 </div>
                 <div className="message-content">
                   <ReactMarkdown
+                    skipHtml
                     components={{
                       code({ inline, className, children, ...props }) {
                         const match = /language-(\w+)/.exec(className || '');

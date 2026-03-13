@@ -1,8 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getImageUrl } from '../api';
 
 export default function Visualization({ images }) {
   const [selected, setSelected] = useState(0);
+  const [imgError, setImgError] = useState(false);
+
+  // Reset selection when images list changes
+  useEffect(() => {
+    setSelected(0);
+    setImgError(false);
+  }, [images]);
 
   if (!images || images.length === 0) {
     return (
@@ -13,7 +20,8 @@ export default function Visualization({ images }) {
     );
   }
 
-  const imgPath = images[selected] || images[0];
+  const safeIndex = selected < images.length ? selected : 0;
+  const imgPath = images[safeIndex];
   const name = imgPath.split('/').pop();
 
   return (
@@ -34,7 +42,15 @@ export default function Visualization({ images }) {
 
       <div className="viz-image">
         <div>
-          <img src={getImageUrl(imgPath)} alt={name} />
+          {imgError ? (
+            <p style={{ color: '#ef4444' }}>Failed to load image: {name}</p>
+          ) : (
+            <img
+              src={getImageUrl(imgPath)}
+              alt={name}
+              onError={() => setImgError(true)}
+            />
+          )}
           <div className="viz-caption">{name}</div>
         </div>
       </div>
