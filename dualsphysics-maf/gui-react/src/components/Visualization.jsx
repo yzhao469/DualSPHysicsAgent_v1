@@ -14,7 +14,6 @@ export default function Visualization({ images }) {
   if (!images || images.length === 0) {
     return (
       <div className="empty-state">
-        <div className="icon">🖼️</div>
         <p>No visualizations available yet.</p>
       </div>
     );
@@ -43,7 +42,7 @@ export default function Visualization({ images }) {
       <div className="viz-image">
         <div>
           {imgError ? (
-            <p style={{ color: '#ef4444' }}>Failed to load image: {name}</p>
+            <p style={{ color: 'var(--red)' }}>Failed to load image: {name}</p>
           ) : (
             <img
               src={getImageUrl(imgPath)}

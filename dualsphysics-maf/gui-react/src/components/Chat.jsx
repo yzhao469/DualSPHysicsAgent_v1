@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 export default function Chat({
   messages,
@@ -41,22 +41,20 @@ export default function Chat({
       <div className="chat-messages">
         {messages.length === 0 ? (
           <div className="chat-welcome">
-            <h3>👋 Welcome to DualSPHysics Simulation</h3>
+            <h3>DualSPHysics Simulation Console</h3>
             <p>Describe your simulation scenario below to get started.</p>
             <div className="example">
-              <em>
-                Example: Simulate a moderately dense debris flow with
-                shear-thinning non-Newtonian material, 0.8 m wide and 1.0 m
-                tall fluid column in a 4 m channel, density 1500 kg/m³, run
-                for 2 s.
-              </em>
+              Simulate a moderately dense debris flow with
+              shear-thinning non-Newtonian material, 0.8 m wide and 1.0 m
+              tall fluid column in a 4 m channel, density 1500 kg/m&sup3;, run
+              for 2 s.
             </div>
           </div>
         ) : (
           messages.map((msg, i) => (
             <div key={i} className={`message ${msg.role}`}>
               <div className="message-avatar">
-                {msg.role === 'user' ? '👤' : '🤖'}
+                {msg.role === 'user' ? 'U' : 'A'}
               </div>
               <div className="message-body">
                 <div className="message-role">
@@ -71,7 +69,7 @@ export default function Chat({
                         if (!inline && match) {
                           return (
                             <SyntaxHighlighter
-                              style={oneLight}
+                              style={oneDark}
                               language={match[1]}
                               PreTag="div"
                               {...props}

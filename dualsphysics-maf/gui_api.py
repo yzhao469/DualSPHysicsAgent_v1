@@ -252,13 +252,13 @@ async def _api_process_events(
         elif event.type == "executor_failed":
             await session.event_queue.put({
                 "type": "status",
-                "message": f"⚠️ Executor `{event.executor_id}` failed: {event.details}",
+                "message": f"Executor '{event.executor_id}' failed: {event.details}",
             })
 
         elif event.type == "failed":
             await session.event_queue.put({
                 "type": "status",
-                "message": f"❌ Workflow failed: {event.details}",
+                "message": f"Workflow failed: {event.details}",
             })
 
     result = await stream.get_final_response()
@@ -281,7 +281,7 @@ async def _run_workflow(scenario: str, session: Session) -> None:
 
     await session.event_queue.put({
         "type": "status",
-        "message": "🔄 Starting simulation workflow — this may take a moment…",
+        "message": "Starting simulation workflow…",
     })
 
     async with mcp:
@@ -302,7 +302,7 @@ def _workflow_thread(scenario: str, session: Session) -> None:
         logger.exception("Workflow thread error")
         loop = asyncio.new_event_loop()
         loop.run_until_complete(
-            session.event_queue.put({"type": "status", "message": f"❌ Workflow error: {exc}"})
+            session.event_queue.put({"type": "status", "message": f"Workflow error: {exc}"})
         )
         loop.run_until_complete(session.event_queue.put({"type": "done"}))
         loop.close()
@@ -333,7 +333,7 @@ def _apply_event(ev: dict, session: Session) -> None:
         session.messages.append({"role": "assistant", "content": ev["message"]})
 
     elif t == "complete":
-        body = "✅ **Simulation Complete!**\n\n"
+        body = "**Simulation Complete**\n\n"
         for out in ev.get("outputs", []):
             body += "```json\n" + json.dumps(out, indent=2, default=str) + "\n```\n"
         session.messages.append({"role": "assistant", "content": body})

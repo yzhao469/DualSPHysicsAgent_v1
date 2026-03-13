@@ -1,22 +1,14 @@
 import React from 'react';
 import FilePreview from './FilePreview';
 
-function fileIcon(path) {
-  const ext = path.split('.').pop().toLowerCase();
-  return (
-    {
-      png: '🖼️', jpg: '🖼️', jpeg: '🖼️',
-      csv: '📊', vtk: '📦', bi4: '📦',
-      py: '🐍', xml: '📝', sh: '📜', txt: '📄',
-    }[ext] || '📄'
-  );
+function fileExt(path) {
+  return path.split('.').pop().toLowerCase();
 }
 
 export default function FileBrowser({ files, runDir, selectedFile, onSelectFile }) {
   if (!files || files.length === 0) {
     return (
       <div className="empty-state">
-        <div className="icon">📁</div>
         <p>No output files generated yet.</p>
       </div>
     );
@@ -39,7 +31,7 @@ export default function FileBrowser({ files, runDir, selectedFile, onSelectFile 
           <div key={dir} className="file-group">
             <details open>
               <summary>
-                📂 {dir} ({dirFiles.length} files)
+                {dir}/ ({dirFiles.length})
               </summary>
               <div className="file-group-items">
                 {dirFiles.map((fp) => (
@@ -48,7 +40,16 @@ export default function FileBrowser({ files, runDir, selectedFile, onSelectFile 
                     className="file-item-btn"
                     onClick={() => onSelectFile(fp)}
                   >
-                    {fileIcon(fp)} {fp.split('/').pop()}
+                    <span className="file-ext" style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: '10px',
+                      color: 'var(--text-tertiary)',
+                      textTransform: 'uppercase',
+                      minWidth: '28px',
+                    }}>
+                      {fileExt(fp)}
+                    </span>
+                    {fp.split('/').pop()}
                   </button>
                 ))}
               </div>
@@ -60,9 +61,9 @@ export default function FileBrowser({ files, runDir, selectedFile, onSelectFile 
       {selectedFile && (
         <div className="file-preview-overlay">
           <div className="file-preview-header">
-            <h4>Viewing: {selectedFile.split('/').pop()}</h4>
+            <h4>{selectedFile.split('/').pop()}</h4>
             <button className="btn" onClick={() => onSelectFile(null)}>
-              ✕ Close
+              Close
             </button>
           </div>
           <div className="file-preview-body">

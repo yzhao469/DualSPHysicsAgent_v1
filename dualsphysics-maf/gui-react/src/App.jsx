@@ -16,26 +16,26 @@ import {
 } from './api';
 
 const PHASE_TABS = {
-  idle: [{ id: 'chat', label: '💬 Chat' }],
-  running: [{ id: 'chat', label: '💬 Chat' }],
+  idle: [{ id: 'chat', label: 'Chat' }],
+  running: [{ id: 'chat', label: 'Chat' }],
   setup_review: [
-    { id: 'chat', label: '💬 Chat' },
-    { id: 'xml', label: '📝 XML Editor' },
-    { id: 'viz', label: '🖼️ Visualization' },
+    { id: 'chat', label: 'Chat' },
+    { id: 'xml', label: 'XML Editor' },
+    { id: 'viz', label: 'Visualization' },
   ],
   results_loop: [
-    { id: 'chat', label: '💬 Chat' },
-    { id: 'script', label: '📜 Shell Script' },
-    { id: 'python', label: '🐍 Python Code' },
-    { id: 'viz', label: '🖼️ Visualization' },
-    { id: 'files', label: '📁 Files' },
+    { id: 'chat', label: 'Chat' },
+    { id: 'script', label: 'Shell Script' },
+    { id: 'python', label: 'Python' },
+    { id: 'viz', label: 'Visualization' },
+    { id: 'files', label: 'Files' },
   ],
   complete: [
-    { id: 'chat', label: '💬 Chat' },
-    { id: 'script', label: '📜 Shell Script' },
-    { id: 'python', label: '🐍 Python Code' },
-    { id: 'viz', label: '🖼️ Visualization' },
-    { id: 'files', label: '📁 Files' },
+    { id: 'chat', label: 'Chat' },
+    { id: 'script', label: 'Shell Script' },
+    { id: 'python', label: 'Python' },
+    { id: 'viz', label: 'Visualization' },
+    { id: 'files', label: 'Files' },
   ],
 };
 
@@ -195,7 +195,7 @@ export default function App() {
 
       <div className="main-content">
         <div className="main-header">
-          <h2>🌊 DualSPHysics Simulation</h2>
+          <h2>Simulation Console</h2>
         </div>
 
         {/* Tabs */}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { fetchFileContent, getDownloadUrl } from '../api';
 
 function PythonCard({ path }) {
@@ -19,23 +19,23 @@ function PythonCard({ path }) {
   return (
     <div className="python-card">
       <div className="python-card-header" onClick={() => setOpen(!open)}>
-        <h4>🐍 {name}</h4>
+        <h4>{name}</h4>
         <a
           className="btn"
           href={getDownloadUrl(path)}
           download
           onClick={(e) => e.stopPropagation()}
         >
-          ⬇️ Download
+          Download
         </a>
       </div>
       {open && content !== null && (
         <div className="python-card-body">
           <SyntaxHighlighter
             language="python"
-            style={oneLight}
+            style={oneDark}
             showLineNumbers
-            customStyle={{ margin: 0, borderRadius: 0, fontSize: '13px' }}
+            customStyle={{ margin: 0, borderRadius: 0, fontSize: '12px' }}
           >
             {content}
           </SyntaxHighlighter>
@@ -49,7 +49,6 @@ export default function PythonViewer({ scripts }) {
   if (!scripts || scripts.length === 0) {
     return (
       <div className="empty-state">
-        <div className="icon">🐍</div>
         <p>
           No Python scripts generated yet. The agent creates analysis scripts
           during post-processing.

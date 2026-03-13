@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { fetchFileContent, saveFile, getDownloadUrl } from '../api';
 
 export default function ScriptEditor({ scriptPath, onSaved, onError }) {
@@ -28,7 +28,6 @@ export default function ScriptEditor({ scriptPath, onSaved, onError }) {
   if (!scriptPath) {
     return (
       <div className="empty-state">
-        <div className="icon">📜</div>
         <p>No post-processing script available yet.</p>
       </div>
     );
@@ -37,7 +36,6 @@ export default function ScriptEditor({ scriptPath, onSaved, onError }) {
   if (loading) {
     return (
       <div className="empty-state">
-        <div className="icon">⏳</div>
         <p>Loading file…</p>
       </div>
     );
@@ -66,16 +64,16 @@ export default function ScriptEditor({ scriptPath, onSaved, onError }) {
               if (e.target.checked) setEdited(content);
             }}
           />
-          ✏️ Edit
+          Edit
         </label>
         <div style={{ flex: 1 }} />
         {editMode && (
           <button className="btn btn-primary" onClick={handleSave}>
-            💾 Save Changes
+            Save
           </button>
         )}
         <a className="btn" href={getDownloadUrl(scriptPath)} download>
-          ⬇️ Download
+          Download
         </a>
       </div>
 
@@ -90,9 +88,9 @@ export default function ScriptEditor({ scriptPath, onSaved, onError }) {
         ) : (
           <SyntaxHighlighter
             language="bash"
-            style={oneLight}
+            style={oneDark}
             showLineNumbers
-            customStyle={{ borderRadius: '8px', fontSize: '13px' }}
+            customStyle={{ borderRadius: '5px', fontSize: '12px', border: '1px solid rgba(255,255,255,0.06)' }}
           >
             {content}
           </SyntaxHighlighter>

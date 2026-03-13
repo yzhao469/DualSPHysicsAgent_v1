@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { fetchFileContent, saveFile, getDownloadUrl } from '../api';
 
 export default function XmlEditor({ xmlPath, onSaved, onError }) {
@@ -28,7 +28,6 @@ export default function XmlEditor({ xmlPath, onSaved, onError }) {
   if (!xmlPath) {
     return (
       <div className="empty-state">
-        <div className="icon">📝</div>
         <p>No XML file available yet. Start a simulation to generate one.</p>
       </div>
     );
@@ -37,7 +36,6 @@ export default function XmlEditor({ xmlPath, onSaved, onError }) {
   if (loading) {
     return (
       <div className="empty-state">
-        <div className="icon">⏳</div>
         <p>Loading file…</p>
       </div>
     );
@@ -75,16 +73,16 @@ export default function XmlEditor({ xmlPath, onSaved, onError }) {
               if (e.target.checked) setEdited(content);
             }}
           />
-          ✏️ Edit
+          Edit
         </label>
         <div style={{ flex: 1 }} />
         {editMode && (
           <button className="btn btn-primary" onClick={handleSave}>
-            💾 Save Changes
+            Save
           </button>
         )}
         <a className="btn" href={getDownloadUrl(xmlPath)} download>
-          ⬇️ Download
+          Download
         </a>
       </div>
 
@@ -99,9 +97,9 @@ export default function XmlEditor({ xmlPath, onSaved, onError }) {
         ) : (
           <SyntaxHighlighter
             language="xml"
-            style={oneLight}
+            style={oneDark}
             showLineNumbers
-            customStyle={{ borderRadius: '8px', fontSize: '13px' }}
+            customStyle={{ borderRadius: '5px', fontSize: '12px', border: '1px solid rgba(255,255,255,0.06)' }}
           >
             {content}
           </SyntaxHighlighter>
