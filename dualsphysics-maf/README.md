@@ -21,10 +21,27 @@ LLM-assisted workflow for DualSPHysics non-Newtonian simulations.
    .venv/bin/python main.py
    ```
 
-   **Web GUI** (Streamlit):
+   **Web GUI** (React + FastAPI):
    ```bash
-   .venv/bin/streamlit run gui.py
+   # Install frontend dependencies (first time only)
+   cd gui-react && npm install && cd ..
+
+   # Start the API server
+   .venv/bin/uvicorn gui_api:app --host 0.0.0.0 --port 8000
+
+   # In a separate terminal, start the React dev server
+   cd gui-react && npm run dev
    ```
+   Then open [http://localhost:5173](http://localhost:5173) in your browser.
+
+   For a **production build** (single server):
+   ```bash
+   cd gui-react && npm run build && cd ..
+   .venv/bin/uvicorn gui_api:app --host 0.0.0.0 --port 8000
+   ```
+   Open [http://localhost:8000](http://localhost:8000) — the FastAPI server
+   serves the React static assets automatically.
+
    The GUI provides a chat interface, an XML editor, image viewer,
    shell-script editor, Python code viewer, and a file browser.
 
@@ -65,7 +82,8 @@ Key folders under `dualsphysics-maf` have README files that document file respon
 | `README.md` | This index README for `dualsphysics-maf` folder-level documentation. |
 | `datalake/` | Runtime working data folder used by the workflow to store/edit the active case XML (`Case_Def.xml`). |
 | `main.py` | Main interactive workflow runner (planning → review → build → simulation) using event-driven HITL responses. |
-| `gui.py` | Streamlit web GUI — chat interface, XML/script editors, image viewer, and file browser for the simulation workflow. |
+| `gui_api.py` | FastAPI backend — REST + WebSocket API for the React GUI, managing workflow state, file serving, and real-time event streaming. |
+| `gui-react/` | React frontend — chat interface, XML/script editors, image viewer, Python code viewer, and file browser. |
 | `main_smoke.py` | Alternate smoke entrypoint for explicit-parameter runs that bypass scenario-to-parameter reasoning. |
 | `pyproject.toml` | Project metadata and pinned Python dependencies. |
 | `requirements.txt` | Legacy dependency list (prefer `pip install -e .` via `pyproject.toml`). |
