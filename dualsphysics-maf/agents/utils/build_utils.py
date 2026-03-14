@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 async def rebuild_gencase_viz(mcp: MCPStdioTool, run_dir: str) -> None:
-    """Re-run GenCase and open ParaView visualization.
+    """Re-run GenCase and regenerate visualization.
 
     Assumes the Case_Def.xml in *run_dir* has already been updated.
     """

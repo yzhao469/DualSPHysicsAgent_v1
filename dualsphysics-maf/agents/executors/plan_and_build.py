@@ -53,7 +53,7 @@ _TOOLS = [
             "name": "patch_and_rebuild",
             "description": (
                 "Apply changes to the simulation case XML based on the user's "
-                "description. Re-runs GenCase and reopens ParaView."
+                "description. Re-runs GenCase and regenerates the visualization."
             ),
             "parameters": {
                 "type": "object",
@@ -193,7 +193,7 @@ def _build_system_prompt(
         )
     return (
         "You are a helpful assistant reviewing a DualSPHysics simulation setup. "
-        "The user has been shown the simulation plan and a ParaView visualization "
+        "The user has been shown the simulation plan and a visualization "
         "of the particle geometry.\n\n"
         f"### Build Status\n{build_status}\n\n"
         f"{failure_guidance}"
@@ -244,7 +244,7 @@ def _format_plan_summary(plan: SimulationPlan) -> str:
     lines += [
         "",
         "=" * 64,
-        "ParaView should be open with the particle configuration.",
+        "A visualization of the particle configuration has been generated.",
         "Approve, request changes, or ask a question:",
     ]
     return "\n".join(lines)
@@ -502,7 +502,7 @@ class PlanAndBuildExecutor(Executor):
                 history.append({
                     "role": "tool",
                     "tool_call_id": pending_manual_edit,
-                    "content": "Manual edit complete. GenCase rebuilt and ParaView reopened.",
+                    "content": "Manual edit complete. GenCase rebuilt and visualization regenerated.",
                 })
             except Exception as exc:
                 logger.exception("Manual edit rebuild failed")
@@ -675,7 +675,7 @@ class PlanAndBuildExecutor(Executor):
         run_dir: str,
         ctx: WorkflowContext,
     ) -> str:
-        """Apply LLM patch, rebuild gencase, reopen ParaView."""
+        """Apply LLM patch, rebuild gencase, regenerate visualization."""
         Path(run_dir).mkdir(parents=True, exist_ok=True)
         case_xml = f"{run_dir}/Case_Def.xml"
         if Path(case_xml).exists():
@@ -721,4 +721,4 @@ class PlanAndBuildExecutor(Executor):
 
         await rebuild_gencase_viz(self.mcp, run_dir)
 
-        return "Patch applied successfully. ParaView should reopen with the updated geometry."
+        return "Patch applied successfully. Visualization regenerated with the updated geometry."

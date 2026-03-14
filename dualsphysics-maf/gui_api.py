@@ -116,7 +116,7 @@ def _get_session() -> Session:
 
 _BANNER_RE = re.compile(r"^={3,}\s*$", re.MULTILINE)
 _TERMINAL_PROMPTS = [
-    "ParaView should be open with the particle configuration.",
+    "A visualization of the particle configuration has been generated.",
     "Approve, request changes, or ask a question:",
     "Request changes to the post-processing script, run analysis,",
     "ask questions, or type 'done' to finish:",
