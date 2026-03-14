@@ -1,45 +1,51 @@
-"""SetupReviewExecutor — LLM tool-use review loop for plan + viz.
+"""PlanAndBuildExecutor — planning, build pipeline, and setup review.
 
-Replaces the old ReviewExecutor (plan+viz phases), PatchExecutor, and
-ManualEditExecutor with a single conversational loop backed by OpenAI
-function calling.
-
-The user sees the plan summary and ParaView visualization together, then
-chats with the LLM to approve, request changes, ask questions, or replan.
+Merges the former PlanningExecutor, BuildExecutor, and SetupReviewExecutor
+into a single executor. Handles:
+  1. Wrapping scenario/revision into AgentExecutorRequest
+  2. Running the deterministic build pipeline from the agent's plan
+  3. LLM tool-use review loop for plan + viz
 """
 
 import json
 import logging
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 
 from openai import AsyncOpenAI
 
 from agent_framework import (
+    AgentExecutorRequest,
+    AgentExecutorResponse,
     Executor,
     MCPStdioTool,
+    Message,
     WorkflowContext,
     handler,
     response_handler,
 )
 
 from agents.schemas import (
-    BuildResult,
     PhysicsParams,
     ReviewResult,
     SetupReviewRequest,
     SimulationPlan,
 )
+from agents.tools.visualize_geometry import visualize_geometry
 from agents.utils.build_utils import rebuild_gencase_viz
 from agents.utils.chat_logger import log_message
-from agents.utils.intent import answer_question
+from agents.utils.intent import answer_question, resolve_datalake_file
 from agents.utils.patch_utils import generate_patch, merge_patch
 from agents.utils.skill_loader import get_skill_content, get_skill_topic
 
 logger = logging.getLogger(__name__)
 MAX_BUILD_RECOVERY_ATTEMPTS = 3
 
+# ─────────────────────────────────────────────────────────────────────────────
 # OpenAI function definitions for the setup review LLM
+# ─────────────────────────────────────────────────────────────────────────────
+
 _TOOLS = [
     {
         "type": "function",
@@ -150,6 +156,21 @@ _TOOLS = [
 ]
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _list_datalake_files(base_dir: str) -> list[str]:
+    """Return relative paths of all XML files in the datalake directory."""
+    datalake = Path(base_dir) / "datalake"
+    if not datalake.is_dir():
+        return []
+    return sorted(
+        str(p.relative_to(base_dir)) for p in datalake.glob("**/*.xml")
+    )
+
+
 def _build_system_prompt(
     plan_data: dict,
     run_dir: str,
@@ -229,13 +250,179 @@ def _format_plan_summary(plan: SimulationPlan) -> str:
     return "\n".join(lines)
 
 
-class SetupReviewExecutor(Executor):
-    """LLM tool-use conversational review of plan + visualization."""
+# ─────────────────────────────────────────────────────────────────────────────
+# Executor
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class PlanAndBuildExecutor(Executor):
+    """Plans, builds, and reviews the simulation setup."""
 
     def __init__(self, mcp: MCPStdioTool, base_dir: str) -> None:
-        super().__init__(id="setup_review")
+        super().__init__(id="plan_and_build")
         self.mcp = mcp
         self.base_dir = base_dir
+
+    # ── Planning handlers ────────────────────────────────────────────────
+
+    def _inject_datalake(self, scenario: str, rel_path: str, abs_path: Path, ctx: WorkflowContext) -> str:
+        """Read datalake XML and inject it into the scenario text."""
+        xml_content = abs_path.read_text()
+        ctx.set_state("base_xml", str(abs_path))
+        logger.info("PlanAndBuildExecutor: injected datalake file %s", abs_path)
+        return (
+            f"{scenario}\n\n"
+            f"### Existing Case XML ({rel_path})\n"
+            f"```xml\n{xml_content}\n```\n\n"
+            "Modify this existing case according to the user's instructions. "
+            "You may reuse or adjust the geometry, parameters, and probe points."
+        )
+
+    @handler
+    async def start(self, scenario: str, ctx: WorkflowContext[AgentExecutorRequest | ReviewResult]) -> None:
+        """Initial entry: receive a natural-language scenario."""
+        logger.info("PlanAndBuildExecutor: new scenario (%d chars)", len(scenario))
+        ctx.set_state("scenario", scenario)
+
+        available = _list_datalake_files(self.base_dir)
+        matched = await resolve_datalake_file(scenario, available) if available else None
+
+        if matched:
+            abs_path = Path(self.base_dir) / matched
+            text = self._inject_datalake(scenario, matched, abs_path, ctx)
+            msg = Message("user", text=text)
+            await ctx.send_message(AgentExecutorRequest(messages=[msg], should_respond=True))
+            return
+
+        msg = Message("user", text=scenario)
+        await ctx.send_message(AgentExecutorRequest(messages=[msg], should_respond=True))
+
+    @handler
+    async def on_revision(self, review: ReviewResult, ctx: WorkflowContext[AgentExecutorRequest | ReviewResult]) -> None:
+        """Full replan: the user wants to start over with a different scenario."""
+        text = f"Please revise the simulation: {review.feedback}"
+        logger.info("PlanAndBuildExecutor: revision request — %s", text)
+        msg = Message("user", text=text)
+        await ctx.send_message(AgentExecutorRequest(messages=[msg], should_respond=True))
+
+    # ── Build + review init ──────────────────────────────────────────────
+
+    def _new_run_dir(self) -> str:
+        """Create a timestamped run directory path for the current build."""
+        ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        return f"{self.base_dir}/runs/run_{ts}"
+
+    async def _build(self, plan_data: dict, base_xml: str, run_dir: str) -> str:
+        """set_geometry -> modify_xml -> generate_points -> run_gencase -> visualize."""
+        geometry_xml: str = plan_data["geometry_xml"]
+        params = PhysicsParams(**plan_data["params"])
+        probe_points: list[list[float]] = plan_data["probe_points"]
+
+        Path(run_dir).mkdir(parents=True, exist_ok=True)
+        case_xml = f"{run_dir}/Case_Def.xml"
+
+        # 1. Set geometry
+        logger.info(">>> set_geometry")
+        r = await self.mcp.call_tool(
+            "set_geometry",
+            base_xml=base_xml,
+            output_xml=case_xml,
+            geometry_xml=geometry_xml,
+        )
+        if r.startswith("ERROR"):
+            raise RuntimeError(f"set_geometry failed: {r}")
+        logger.info("set_geometry OK")
+
+        # 2. Modify physics parameters
+        logger.info(">>> modify_xml")
+        r = await self.mcp.call_tool(
+            "modify_xml",
+            base_xml=case_xml,
+            output_xml=case_xml,
+            **params.model_dump(),
+        )
+        logger.info("modify_xml OK: %s", r)
+
+        # 3. Generate probe points file
+        logger.info(">>> generate_points_file")
+        r = await self.mcp.call_tool(
+            "generate_points_file",
+            output_path=f"{run_dir}/PointsMeasure_Points.txt",
+            probe_points=probe_points,
+        )
+        logger.info("generate_points_file OK: %s", r)
+
+        # 4. Run GenCase
+        logger.info(">>> run_gencase")
+        r = await self.mcp.call_tool(
+            "run_gencase",
+            xml_path=f"{run_dir}/Case_Def",  # no .xml extension
+            output_dir=f"{run_dir}/out",
+        )
+        result = json.loads(r) if isinstance(r, str) else r
+        if result.get("returncode", -1) != 0:
+            raise RuntimeError(f"run_gencase failed: {result.get('stderr', r)}")
+        logger.info("run_gencase OK")
+
+        # 5. Visualize (direct Python call, not MCP)
+        logger.info(">>> visualize_geometry")
+        viz_result = visualize_geometry(f"{run_dir}/out")
+        logger.info("visualize_geometry: %s", viz_result)
+
+        return run_dir
+
+    @handler
+    async def on_plan(self, result: AgentExecutorResponse, ctx: WorkflowContext[AgentExecutorRequest | ReviewResult]) -> None:
+        """Parse the agent's SimulationPlan, build, then start setup review."""
+        raw_text = result.agent_response.text
+        logger.info("PlanAndBuildExecutor: agent response length: %d chars", len(raw_text))
+
+        plan = SimulationPlan.model_validate_json(raw_text)
+        plan_data = plan.model_dump()
+        ctx.set_state("plan", plan_data)
+
+        base_xml = ctx.get_state("base_xml") or f"{self.base_dir}/cases/BaseCase_Def.xml"
+        run_dir = self._new_run_dir()
+        ctx.set_state("run_dir", run_dir)
+
+        # Log the initial scenario now that run_dir exists
+        scenario = ctx.get_state("scenario") or ""
+        if scenario:
+            log_message(run_dir, "user", scenario, phase="planning")
+
+        # Run build pipeline
+        build_error: str | None = None
+        try:
+            await self._build(plan_data, base_xml, run_dir)
+        except Exception as exc:
+            logger.exception("Build pipeline failed")
+            build_error = str(exc)
+
+        # Build plan summary
+        summary = _format_plan_summary(plan)
+        if build_error:
+            logger.warning("Build failed: %s — entering setup review recovery loop", build_error)
+            summary = (
+                f"{summary}\n\n"
+                "Build failed before the setup could be reviewed.\n"
+                f"Error:\n{build_error}\n\n"
+                "You can request a fix, manually edit the XML, ask a question, or replan."
+            )
+
+        # Initialize conversation history
+        if build_error:
+            self._set_recovery_state(ctx, build_error, retry_count=0)
+        else:
+            self._set_recovery_state(ctx)
+        self._refresh_system_prompt(ctx, plan_data, run_dir)
+
+        log_message(run_dir, "assistant", summary, phase="setup_review")
+        await ctx.request_info(
+            request_data=SetupReviewRequest(summary=summary),
+            response_type=str,
+        )
+
+    # ── Recovery state helpers ───────────────────────────────────────────
 
     @staticmethod
     def _set_recovery_state(
@@ -243,15 +430,13 @@ class SetupReviewExecutor(Executor):
         error_message: str | None = None,
         retry_count: int = 0,
     ) -> None:
-        """Store the current bounded recovery state."""
         ctx.set_state("setup_review_retry_count", retry_count)
         ctx.set_state("setup_review_last_error", error_message)
 
     @staticmethod
     def _record_recovery_failure(ctx: WorkflowContext, error_message: str) -> int:
-        """Track a failed recovery attempt and return the updated count."""
         retry_count = (ctx.get_state("setup_review_retry_count") or 0) + 1
-        SetupReviewExecutor._set_recovery_state(ctx, error_message, retry_count)
+        PlanAndBuildExecutor._set_recovery_state(ctx, error_message, retry_count)
         return retry_count
 
     @staticmethod
@@ -260,7 +445,6 @@ class SetupReviewExecutor(Executor):
         plan_data: dict,
         run_dir: str,
     ) -> list[dict]:
-        """Regenerate the system prompt to reflect the latest recovery state."""
         history = ctx.get_state("setup_review_history") or []
         system_prompt = _build_system_prompt(
             plan_data,
@@ -276,45 +460,14 @@ class SetupReviewExecutor(Executor):
         ctx.set_state("setup_review_history", history)
         return history
 
-    @handler
-    async def on_build_complete(
-        self,
-        result: BuildResult,
-        ctx: WorkflowContext[ReviewResult],
-    ) -> None:
-        """After auto-build: show plan + viz, start review loop."""
-        plan_data = ctx.get_state("plan")
-        plan = SimulationPlan.model_validate(plan_data)
-        summary = _format_plan_summary(plan)
-        if not result.success:
-            logger.warning("Build failed: %s — entering setup review recovery loop", result.message)
-            summary = (
-                f"{summary}\n\n"
-                "Build failed before the setup could be reviewed.\n"
-                f"Error:\n{result.message}\n\n"
-                "You can request a fix, manually edit the XML, ask a question, or replan."
-            )
-
-        # Initialize conversation history
-        run_dir = ctx.get_state("run_dir") or result.run_dir
-        if not result.success:
-            self._set_recovery_state(ctx, result.message, retry_count=0)
-        else:
-            self._set_recovery_state(ctx)
-        self._refresh_system_prompt(ctx, plan_data, run_dir)
-
-        log_message(run_dir, "assistant", summary, phase="setup_review")
-        await ctx.request_info(
-            request_data=SetupReviewRequest(summary=summary),
-            response_type=str,
-        )
+    # ── Setup review HITL loop ───────────────────────────────────────────
 
     @response_handler
     async def on_user_reply(
         self,
         request: SetupReviewRequest,
         feedback: str,
-        ctx: WorkflowContext[ReviewResult],
+        ctx: WorkflowContext[AgentExecutorRequest | ReviewResult],
     ) -> None:
         """Process user reply through the LLM tool-use loop."""
         history = ctx.get_state("setup_review_history") or []
@@ -332,10 +485,8 @@ class SetupReviewExecutor(Executor):
                     ReviewResult(route="sim", feedback="approved")
                 )
                 return
-            # User declined — continue the review conversation
             history.append({"role": "user", "content": feedback or "no"})
             log_message(run_dir, "user", feedback or "no", phase="setup_review")
-            # Fall through to the LLM loop
 
         # Check if we're resuming after a manual edit pause
         pending_manual_edit = ctx.get_state("pending_manual_edit")
@@ -371,9 +522,7 @@ class SetupReviewExecutor(Executor):
                         )
                     )
                     return
-            # Fall through to the LLM loop so it can respond
         else:
-            # Append user message
             history.append({"role": "user", "content": feedback or "approve"})
             log_message(run_dir, "user", feedback or "approve", phase="setup_review")
 
@@ -390,11 +539,9 @@ class SetupReviewExecutor(Executor):
             choice = response.choices[0]
             msg = choice.message
 
-            # Append assistant message to history
             history.append(msg.model_dump(exclude_none=True))
 
             if not msg.tool_calls:
-                # Text response — show to user and loop
                 text = msg.content or ""
                 ctx.set_state("setup_review_history", history)
                 log_message(run_dir, "assistant", text, phase="setup_review")
@@ -404,7 +551,6 @@ class SetupReviewExecutor(Executor):
                 )
                 return
 
-            # Process tool calls
             for tc in msg.tool_calls:
                 fn_name = tc.function.name
                 fn_args = json.loads(tc.function.arguments)
@@ -422,7 +568,6 @@ class SetupReviewExecutor(Executor):
                             ),
                         })
                         continue
-                    # Ask the user to explicitly confirm before running sim
                     history.append({
                         "role": "tool",
                         "tool_call_id": tc.id,
@@ -485,7 +630,6 @@ class SetupReviewExecutor(Executor):
                             return
 
                 elif fn_name == "manual_edit":
-                    # Pause the loop so the user can edit the file
                     case_xml = f"{run_dir}/Case_Def.xml"
                     ctx.set_state("setup_review_history", history)
                     ctx.set_state("pending_manual_edit", tc.id)
@@ -519,7 +663,6 @@ class SetupReviewExecutor(Executor):
                         "content": answer,
                     })
 
-            # Continue loop — LLM may chain more tool calls or produce text
             ctx.set_state("setup_review_history", history)
 
     async def _patch_and_rebuild(
@@ -541,7 +684,6 @@ class SetupReviewExecutor(Executor):
         patch = await generate_patch(current_xml, plan_data, changes)
         logger.info("LLM patch keys: %s", list(patch.keys()))
 
-        # Apply geometry patch
         if "geometry_xml" in patch:
             logger.info(">>> set_geometry (patch)")
             r = await self.mcp.call_tool(
@@ -553,7 +695,6 @@ class SetupReviewExecutor(Executor):
             if r.startswith("ERROR"):
                 raise RuntimeError(f"set_geometry failed: {r}")
 
-        # Apply params patch
         if "params" in patch:
             logger.info(">>> modify_xml (patch)")
             merged_params = {**plan_data["params"], **patch["params"]}
@@ -564,7 +705,6 @@ class SetupReviewExecutor(Executor):
                 **merged_params,
             )
 
-        # Apply probe points patch
         if "probe_points" in patch:
             logger.info(">>> generate_points_file (patch)")
             await self.mcp.call_tool(
@@ -576,7 +716,6 @@ class SetupReviewExecutor(Executor):
         merge_patch(plan_data, patch)
         ctx.set_state("plan", plan_data)
 
-        # Rebuild gencase + viz
         await rebuild_gencase_viz(self.mcp, run_dir)
 
         return "Patch applied successfully. ParaView should reopen with the updated geometry."

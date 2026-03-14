@@ -1,4 +1,4 @@
-"""Simulation driver — HITL event loop for the 6-executor workflow."""
+"""Simulation driver — HITL event loop for the 3-executor workflow."""
 
 import asyncio
 import json

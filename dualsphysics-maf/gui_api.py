@@ -322,9 +322,9 @@ def _apply_event(ev: dict, session: Session) -> None:
             clean = _clean_summary(ev["summary"])
             session.messages.append({"role": "assistant", "content": clean})
         src = ev.get("source", "")
-        if "setup_review" in src:
+        if "plan_and_build" in src:
             session.phase = "setup_review"
-        elif "results_loop" in src:
+        elif "analyze" in src:
             session.phase = "results_loop"
         if not session.run_dir:
             session.run_dir = _find_latest_run_dir()

@@ -58,23 +58,3 @@ class ReviewResult:
 
     route: Literal["sim", "full_replan"]
     feedback: str
-
-
-@dataclass
-class AnalysisResult:
-    """Output of AnalyzeExecutor."""
-
-    run_dir: str
-    success: bool
-    message: str  # Summary of what was produced
-    output_files: list[str]
-    script_path: str | None = None  # Path to postprocess.sh
-
-
-@dataclass
-class BuildResult:
-    """Output of BuildExecutor after the build pipeline."""
-
-    run_dir: str
-    success: bool
-    message: str
