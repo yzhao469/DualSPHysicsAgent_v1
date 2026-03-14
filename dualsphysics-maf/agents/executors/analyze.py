@@ -143,6 +143,27 @@ _TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "revise_setup",
+            "description": (
+                "Go back to the setup phase to change the simulation configuration "
+                "(geometry, parameters, probes) and re-run. Use this when the user "
+                "wants to modify the simulation itself, not just post-processing."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "reason": {
+                        "type": "string",
+                        "description": "What the user wants to change about the simulation setup.",
+                    },
+                },
+                "required": ["reason"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "done",
             "description": "User is finished with the analysis. End the workflow.",
             "parameters": {"type": "object", "properties": {}},
@@ -201,6 +222,8 @@ def _build_results_system_prompt(
         "- Python scripts run with out/analysis/ as cwd. Use relative paths.\n"
         "- PartVTK CSV uses semicolon separator. Use numpy.genfromtxt with delimiter=';'.\n"
         "- In Python, use matplotlib with Agg backend for plots.\n"
+        "- Use `revise_setup` when the user wants to go back and change the simulation "
+        "setup (geometry, parameters, probes) and re-run the simulation.\n"
         "- When the user is done (says 'done', 'exit', 'finished', etc.), call `done`.\n"
     )
 
@@ -233,7 +256,7 @@ class AnalyzeExecutor(Executor):
 
     @handler
     async def on_sim_complete(
-        self, trigger: ReviewResult, ctx: WorkflowContext[None]
+        self, trigger: ReviewResult, ctx: WorkflowContext[ReviewResult]
     ) -> None:
         """Generate postprocess.sh, run it, then start the interactive results loop."""
         run_dir = ctx.get_state("run_dir")
@@ -379,13 +402,28 @@ class AnalyzeExecutor(Executor):
         self,
         request: ResultsLoopRequest,
         feedback: str,
-        ctx: WorkflowContext[None],
+        ctx: WorkflowContext[ReviewResult],
     ) -> None:
         """Process user reply through the LLM tool-use loop."""
         history = ctx.get_state("results_loop_history") or []
         run_dir = ctx.get_state("run_dir")
         plan_data = ctx.get_state("plan") or {}
         script_path = ctx.get_state("script_path")
+
+        # Check if we're resuming after a revise_setup confirmation prompt
+        pending_revise = ctx.get_state("pending_revise_setup")
+        if pending_revise:
+            ctx.set_state("pending_revise_setup", None)
+            confirmed = feedback.strip().lower() in ("yes", "y", "confirm", "ok", "go", "")
+            if confirmed:
+                ctx.set_state("results_loop_history", history)
+                await ctx.send_message(
+                    ReviewResult(route="full_replan", feedback=pending_revise)
+                )
+                return
+            # User declined — continue the results conversation
+            history.append({"role": "user", "content": feedback or "no"})
+            log_message(run_dir, "user", feedback or "no", phase="results_loop")
 
         # Check if we're resuming after a manual edit pause
         pending_manual_edit = ctx.get_state("pending_manual_edit_results")
@@ -432,7 +470,28 @@ class AnalyzeExecutor(Executor):
                 fn_name = tc.function.name
                 fn_args = json.loads(tc.function.arguments)
 
-                if fn_name == "done":
+                if fn_name == "revise_setup":
+                    reason = fn_args["reason"]
+                    history.append({
+                        "role": "tool",
+                        "tool_call_id": tc.id,
+                        "content": "Waiting for user confirmation to go back to setup.",
+                    })
+                    ctx.set_state("results_loop_history", history)
+                    ctx.set_state("pending_revise_setup", reason)
+                    await ctx.request_info(
+                        request_data=ResultsLoopRequest(
+                            summary=(
+                                f"Going back to setup will re-run the simulation from scratch.\n"
+                                f"Reason: {reason}"
+                            ),
+                            confirm_revise=True,
+                        ),
+                        response_type=str,
+                    )
+                    return
+
+                elif fn_name == "done":
                     ctx.set_state("results_loop_history", history)
                     await ctx.yield_output({
                         "status": "complete",

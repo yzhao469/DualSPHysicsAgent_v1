@@ -230,12 +230,16 @@ async def _api_process_events(
             confirm_sim = (
                 isinstance(data, SetupReviewRequest) and data.confirm_sim
             )
+            confirm_revise = (
+                isinstance(data, ResultsLoopRequest) and data.confirm_revise
+            )
             await session.event_queue.put({
                 "type": "request_info",
                 "summary": summary,
                 "source": event.source_executor_id or "",
                 "request_id": event.request_id,
                 "confirm_sim": confirm_sim,
+                "confirm_revise": confirm_revise,
             })
             # Wait for user response
             while True:
@@ -396,6 +400,7 @@ async def get_state():
         "workflow_done": session.workflow_done,
         "pending_request": session.pending_request is not None,
         "confirm_sim": (session.pending_request or {}).get("confirm_sim", False),
+        "confirm_revise": (session.pending_request or {}).get("confirm_revise", False),
         "run_dir": session.run_dir,
         "selected_file": session.selected_file,
         "files": files,
@@ -549,6 +554,7 @@ async def websocket_endpoint(ws: WebSocket):
                         "workflow_done": session.workflow_done,
                         "pending_request": session.pending_request is not None,
                         "confirm_sim": (session.pending_request or {}).get("confirm_sim", False),
+                        "confirm_revise": (session.pending_request or {}).get("confirm_revise", False),
                         "run_dir": session.run_dir,
                         "messages": session.messages,
                         "files": _discover_files(session.run_dir),

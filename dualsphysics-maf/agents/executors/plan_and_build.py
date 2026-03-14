@@ -300,8 +300,11 @@ class PlanAndBuildExecutor(Executor):
     @handler
     async def on_revision(self, review: ReviewResult, ctx: WorkflowContext[AgentExecutorRequest | ReviewResult]) -> None:
         """Full replan: the user wants to start over with a different scenario."""
+        plan_data = ctx.get_state("plan")
         text = f"Please revise the simulation: {review.feedback}"
-        logger.info("PlanAndBuildExecutor: revision request — %s", text)
+        if plan_data:
+            text += f"\n\n### Previous Plan\n```json\n{json.dumps(plan_data, indent=2)}\n```"
+        logger.info("PlanAndBuildExecutor: revision request — %s", review.feedback)
         msg = Message("user", text=text)
         await ctx.send_message(AgentExecutorRequest(messages=[msg], should_respond=True))
 

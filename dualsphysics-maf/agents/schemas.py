@@ -50,6 +50,7 @@ class ResultsLoopRequest:
     """Data attached to a HITL request_info call in the results loop."""
 
     summary: str
+    confirm_revise: bool = False
 
 
 @dataclass
