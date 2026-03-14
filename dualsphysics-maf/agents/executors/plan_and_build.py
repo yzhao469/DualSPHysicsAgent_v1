@@ -18,6 +18,7 @@ from openai import AsyncOpenAI
 from agent_framework import (
     AgentExecutorRequest,
     AgentExecutorResponse,
+    Content,
     Executor,
     MCPStdioTool,
     Message,
@@ -161,14 +162,23 @@ _TOOLS = [
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+_DATALAKE_EXTENSIONS = {".xml", ".png", ".jpg", ".jpeg"}
+
+
 def _list_datalake_files(base_dir: str) -> list[str]:
-    """Return relative paths of all XML files in the datalake directory."""
+    """Return relative paths of all XML and image files in the datalake directory."""
     datalake = Path(base_dir) / "datalake"
     if not datalake.is_dir():
         return []
     return sorted(
-        str(p.relative_to(base_dir)) for p in datalake.glob("**/*.xml")
+        str(p.relative_to(base_dir))
+        for p in datalake.rglob("*")
+        if p.suffix.lower() in _DATALAKE_EXTENSIONS
     )
+
+
+def _is_image_file(path: Path) -> bool:
+    return path.suffix.lower() in {".png", ".jpg", ".jpeg"}
 
 
 def _build_system_prompt(
@@ -265,18 +275,34 @@ class PlanAndBuildExecutor(Executor):
 
     # ── Planning handlers ────────────────────────────────────────────────
 
-    def _inject_datalake(self, scenario: str, rel_path: str, abs_path: Path, ctx: WorkflowContext) -> str:
-        """Read datalake XML and inject it into the scenario text."""
+    def _inject_datalake_xml(self, scenario: str, rel_path: str, abs_path: Path, ctx: WorkflowContext) -> Message:
+        """Read datalake XML and inject it into the scenario as a text message."""
         xml_content = abs_path.read_text()
         ctx.set_state("base_xml", str(abs_path))
-        logger.info("PlanAndBuildExecutor: injected datalake file %s", abs_path)
-        return (
+        logger.info("PlanAndBuildExecutor: injected datalake XML %s", abs_path)
+        text = (
             f"{scenario}\n\n"
             f"### Existing Case XML ({rel_path})\n"
             f"```xml\n{xml_content}\n```\n\n"
             "Modify this existing case according to the user's instructions. "
             "You may reuse or adjust the geometry, parameters, and probe points."
         )
+        return Message("user", text=text)
+
+    def _inject_datalake_image(self, scenario: str, rel_path: str, abs_path: Path) -> Message:
+        """Read a datalake image and create a multimodal message."""
+        image_bytes = abs_path.read_bytes()
+        suffix = abs_path.suffix.lower()
+        media_type = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}[suffix]
+        logger.info("PlanAndBuildExecutor: injected datalake image %s", abs_path)
+        text = (
+            f"{scenario}\n\n"
+            f"### Reference Geometry Image ({rel_path})\n"
+            "The image above shows the target geometry. Study it carefully and "
+            "create DualSPHysics XML geometry that reproduces this configuration. "
+            "Pay attention to dimensions, shapes, positions, and boundaries."
+        )
+        return Message("user", [text, Content.from_data(image_bytes, media_type)])
 
     @handler
     async def start(self, scenario: str, ctx: WorkflowContext[AgentExecutorRequest | ReviewResult]) -> None:
@@ -289,8 +315,10 @@ class PlanAndBuildExecutor(Executor):
 
         if matched:
             abs_path = Path(self.base_dir) / matched
-            text = self._inject_datalake(scenario, matched, abs_path, ctx)
-            msg = Message("user", text=text)
+            if _is_image_file(abs_path):
+                msg = self._inject_datalake_image(scenario, matched, abs_path)
+            else:
+                msg = self._inject_datalake_xml(scenario, matched, abs_path, ctx)
             await ctx.send_message(AgentExecutorRequest(messages=[msg], should_respond=True))
             return
 
