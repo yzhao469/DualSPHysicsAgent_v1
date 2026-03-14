@@ -116,7 +116,7 @@ def _get_session() -> Session:
 
 _BANNER_RE = re.compile(r"^={3,}\s*$", re.MULTILINE)
 _TERMINAL_PROMPTS = [
-    "ParaView should be open with the particle configuration.",
+    "A visualization of the particle configuration has been generated.",
     "Approve, request changes, or ask a question:",
     "Request changes to the post-processing script, run analysis,",
     "ask questions, or type 'done' to finish:",
@@ -230,12 +230,16 @@ async def _api_process_events(
             confirm_sim = (
                 isinstance(data, SetupReviewRequest) and data.confirm_sim
             )
+            confirm_revise = (
+                isinstance(data, ResultsLoopRequest) and data.confirm_revise
+            )
             await session.event_queue.put({
                 "type": "request_info",
                 "summary": summary,
                 "source": event.source_executor_id or "",
                 "request_id": event.request_id,
                 "confirm_sim": confirm_sim,
+                "confirm_revise": confirm_revise,
             })
             # Wait for user response
             while True:
@@ -322,9 +326,9 @@ def _apply_event(ev: dict, session: Session) -> None:
             clean = _clean_summary(ev["summary"])
             session.messages.append({"role": "assistant", "content": clean})
         src = ev.get("source", "")
-        if "setup_review" in src:
+        if "plan_and_build" in src:
             session.phase = "setup_review"
-        elif "results_loop" in src:
+        elif "analyze" in src:
             session.phase = "results_loop"
         if not session.run_dir:
             session.run_dir = _find_latest_run_dir()
@@ -396,6 +400,7 @@ async def get_state():
         "workflow_done": session.workflow_done,
         "pending_request": session.pending_request is not None,
         "confirm_sim": (session.pending_request or {}).get("confirm_sim", False),
+        "confirm_revise": (session.pending_request or {}).get("confirm_revise", False),
         "run_dir": session.run_dir,
         "selected_file": session.selected_file,
         "files": files,
@@ -549,6 +554,7 @@ async def websocket_endpoint(ws: WebSocket):
                         "workflow_done": session.workflow_done,
                         "pending_request": session.pending_request is not None,
                         "confirm_sim": (session.pending_request or {}).get("confirm_sim", False),
+                        "confirm_revise": (session.pending_request or {}).get("confirm_revise", False),
                         "run_dir": session.run_dir,
                         "messages": session.messages,
                         "files": _discover_files(session.run_dir),

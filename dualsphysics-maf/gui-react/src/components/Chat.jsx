@@ -10,6 +10,7 @@ export default function Chat({
   workflowDone,
   pendingRequest,
   confirmSim,
+  confirmRevise,
   onSend,
 }) {
   const [input, setInput] = useState('');
@@ -115,8 +116,27 @@ export default function Chat({
         </div>
       )}
 
+      {/* Revise setup confirm buttons */}
+      {confirmRevise && pendingRequest && (
+        <div className="confirm-sim-bar">
+          <span>Go back to setup and re-run the simulation?</span>
+          <button
+            className="btn confirm-btn"
+            onClick={() => onSend('yes')}
+          >
+            Revise Setup
+          </button>
+          <button
+            className="btn decline-btn"
+            onClick={() => onSend('no, continue analysis')}
+          >
+            Stay Here
+          </button>
+        </div>
+      )}
+
       {/* Input bar */}
-      {!confirmSim && (
+      {!confirmSim && !confirmRevise && (
         <form className="chat-input-bar" onSubmit={handleSubmit}>
           <input
             type="text"

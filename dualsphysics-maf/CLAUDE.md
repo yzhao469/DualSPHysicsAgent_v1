@@ -14,75 +14,34 @@ Run with: `.venv/bin/python`
 
 ---
 
-## Architecture (2026-03-06 — 6-Executor Workflow with LLM Tool-Use Loops)
+## Architecture (2026-03-14 — 3-Executor Workflow with LLM Tool-Use Loops)
 
 **Core pattern**: LLM reasons only (returns structured JSON or uses function calling),
 Python code orchestrates all MCP tool calls deterministically.
 
 **Two HITL interaction points**, both using OpenAI function-calling conversation loops:
-1. **SetupReviewExecutor** — after auto-build, user reviews plan + geometry viz
-2. **ResultsLoopExecutor** — after simulation + default post-proc, user interacts for analysis
+1. **PlanAndBuildExecutor** — plans, builds, and reviews setup (HITL loop #1)
+2. **AnalyzeExecutor** — default post-proc + interactive analysis (HITL loop #2)
 
 ### Workflow Graph
 
 ```
-                  ┌──────────────┐
-                  │  Planning    │  Wraps scenario → AgentExecutorRequest
-                  │  Executor    │  Detects datalake files
-                  └──────┬───────┘
-                         │
-                         ▼
-                  ┌──────────────┐
-                  │    Agent     │  GPT-4o → SimulationPlan JSON
-                  │   Executor   │  (structured output via response_format)
-                  └──────┬───────┘
-                         │
-                         ▼
-                  ┌──────────────┐
-                  │    Build     │  Auto-build (no review gate)
-                  │   Executor   │  set_geometry → modify_xml → generate_points
-                  │              │  → run_gencase → visualize (pyvista PNG)
-                  └──────┬───────┘
-                         │
-                         ▼
-              ┌────────────────────┐
-              │  SetupReview       │  LLM tool-use conversation loop
-              │  Executor          │  Tools: patch_and_rebuild, answer_question,
-              │  (HITL loop #1)    │         manual_edit, approve, replan
-              └────────┬───────────┘
-                       │
-              ┌────────┴────────┐
-              ▼                 ▼
-         ┌─────────┐    ┌──────────────┐
-         │   Sim   │    │  Planning    │  (full replan)
-         │Executor │    │  Executor    │
-         └────┬────┘    └──────────────┘
-              │
-              ▼
-        ┌──────────────┐
-        │   Analyze    │  Default post-processing only
-        │   Executor   │  PartVTK + MeasureTool + metrics + ParaView
-        └──────┬───────┘
-               │
-               ▼
-        ┌────────────────────┐
-        │  ResultsLoop       │  LLM tool-use conversation loop (terminal)
-        │  Executor          │  Tools: run_postprocess, run_python_analysis,
-        │  (HITL loop #2)    │         answer_question, done
-        └────────────────────┘
+  PlanAndBuildExecutor ──→ AgentExecutor ──→ PlanAndBuildExecutor
+       │ AgentExecutorRequest  →  agent        (on_plan: build + review)
+       │ ReviewResult(sim)     →  SimExecutor
+       │ ReviewResult(replan)  →  self         (on_revision)
+       │
+  SimExecutor → AnalyzeExecutor (default post-proc + results loop, terminal)
 ```
 
-### 6 Custom Executors (+1 Framework-Provided)
+### 3 Custom Executors (+1 Framework-Provided)
 
 | # | Executor | ID | Trigger | Output |
 |---|----------|----|---------|--------|
-| 1 | `PlanningExecutor` | `planning` | `str` (scenario) or `ReviewResult` (replan) | `AgentExecutorRequest` |
+| 1 | `PlanAndBuildExecutor` | `plan_and_build` | `str` (scenario), `ReviewResult` (replan), or `AgentExecutorResponse` (build+review) | `AgentExecutorRequest` or `ReviewResult` |
 | 2 | `AgentExecutor` (MAF) | — | `AgentExecutorRequest` | `AgentExecutorResponse` |
-| 3 | `BuildExecutor` | `build` | `AgentExecutorResponse` | `BuildResult` |
-| 4 | `SetupReviewExecutor` | `setup_review` | `BuildResult` | `ReviewResult` |
-| 5 | `SimExecutor` | `sim` | `ReviewResult` | `ReviewResult` |
-| 6 | `AnalyzeExecutor` | `analyze` | `ReviewResult` | `AnalysisResult` |
-| 7 | `ResultsLoopExecutor` | `results_loop` | `AnalysisResult` | terminal (`yield_output`) |
+| 3 | `SimExecutor` | `sim` | `ReviewResult` | `ReviewResult` |
+| 4 | `AnalyzeExecutor` | `analyze` | `ReviewResult` | terminal (`yield_output`) |
 
 ### HITL Mechanism
 
@@ -116,20 +75,17 @@ Python code orchestrates all MCP tool calls deterministically.
 ### Workflow + Agents
 | File | Description |
 |------|-------------|
-| `agents/schemas.py` | `SimulationPlan`, `PhysicsParams`, `SetupReviewRequest`, `ResultsLoopRequest`, `ReviewResult`, `BuildResult`, `AnalysisResult` |
+| `agents/schemas.py` | `SimulationPlan`, `PhysicsParams`, `SetupReviewRequest`, `ResultsLoopRequest`, `ReviewResult` |
 | `agents/simulation_agent.py` | SimulationPlanner Agent (GPT-4o + SkillsProvider) |
-| `agents/workflow.py` | WorkflowBuilder: 6 executors + switch_case routing |
-| `agents/executors/planning.py` | PlanningExecutor |
-| `agents/executors/build.py` | BuildExecutor (auto-build from AgentExecutorResponse) |
-| `agents/executors/setup_review.py` | SetupReviewExecutor (LLM tool-use loop: plan + viz) |
+| `agents/workflow.py` | WorkflowBuilder: 3 executors + switch_case routing |
+| `agents/executors/plan_and_build.py` | PlanAndBuildExecutor (planning + build + setup review HITL loop) |
 | `agents/executors/sim.py` | SimExecutor (auto GPU detection) |
-| `agents/executors/analyze.py` | AnalyzeExecutor (default post-processing only) |
-| `agents/executors/results_loop.py` | ResultsLoopExecutor (LLM tool-use loop: interactive analysis) |
+| `agents/executors/analyze.py` | AnalyzeExecutor (default post-processing + results loop HITL) |
 
 ### Utilities
 | File | Description |
 |------|-------------|
-| `agents/utils/build_utils.py` | `rebuild_gencase_viz()` — shared by SetupReviewExecutor |
+| `agents/utils/build_utils.py` | `rebuild_gencase_viz()` — shared by PlanAndBuildExecutor |
 | `agents/utils/intent.py` | `resolve_datalake_file()` + `answer_question()` |
 | `agents/utils/patch_utils.py` | `generate_patch()` + `merge_patch()` for LLM XML patching |
 | `agents/utils/skill_loader.py` | `get_skill_content()` (xml) + `get_postprocess_skill_content()` |
