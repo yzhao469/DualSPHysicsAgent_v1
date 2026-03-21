@@ -1,6 +1,6 @@
 /* ══════════════════════════════════════════════════════════════════
    DualSPHysics Simulation Console
-   Engineering-grade dark interface
+   Engineering-grade light interface
    ══════════════════════════════════════════════════════════════════ */
 
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
@@ -15,36 +15,36 @@
 }
 
 :root {
-  /* Surface layers (darkest → lightest) */
-  --surface-0: #0f1114;
-  --surface-1: #161a1e;
-  --surface-2: #1c2127;
-  --surface-3: #242a31;
-  --surface-4: #2c333b;
+  /* Surface layers (lightest → slightly darker) */
+  --surface-0: #f0f4f8;
+  --surface-1: #ffffff;
+  --surface-2: #e8edf3;
+  --surface-3: #dde3ec;
+  --surface-4: #d0d7e3;
 
   /* Accent — amber instrument readout */
-  --accent: #d4a04a;
-  --accent-dim: rgba(212, 160, 74, 0.15);
-  --accent-hover: #e8b45e;
+  --accent: #b8860b;
+  --accent-dim: rgba(184, 134, 11, 0.12);
+  --accent-hover: #a07608;
 
   /* Functional accents */
-  --teal: #3ab5a0;
-  --teal-dim: rgba(58, 181, 160, 0.12);
-  --red: #d94f4f;
-  --red-dim: rgba(217, 79, 79, 0.12);
-  --blue: #5b8dda;
-  --blue-dim: rgba(91, 141, 218, 0.12);
+  --teal: #1a8a78;
+  --teal-dim: rgba(26, 138, 120, 0.1);
+  --red: #c0392b;
+  --red-dim: rgba(192, 57, 43, 0.1);
+  --blue: #2563b0;
+  --blue-dim: rgba(37, 99, 176, 0.1);
 
   /* Text hierarchy */
-  --text-primary: #e0e4e8;
-  --text-secondary: #8891a0;
-  --text-tertiary: #5a6370;
-  --text-inverse: #0f1114;
+  --text-primary: #1a2233;
+  --text-secondary: #4a5568;
+  --text-tertiary: #718096;
+  --text-inverse: #ffffff;
 
   /* Borders */
-  --border: rgba(255, 255, 255, 0.06);
-  --border-strong: rgba(255, 255, 255, 0.1);
-  --border-accent: rgba(212, 160, 74, 0.3);
+  --border: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.14);
+  --border-accent: rgba(184, 134, 11, 0.35);
 
   /* Typography */
   --font-ui: 'IBM Plex Sans', -apple-system, sans-serif;
@@ -56,9 +56,9 @@
   --radius-lg: 8px;
 
   /* Shadows */
-  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.03);
-  --shadow-drop: 0 2px 8px rgba(0, 0, 0, 0.3);
-  --shadow-glow: 0 0 12px rgba(212, 160, 74, 0.08);
+  --shadow-inset: inset 0 1px 0 rgba(0, 0, 0, 0.04);
+  --shadow-drop: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --shadow-glow: 0 0 12px rgba(184, 134, 11, 0.1);
 }
 
 html, body, #root {
@@ -977,13 +977,13 @@ html, body, #root {
 .toast.success {
   background: var(--surface-2);
   color: var(--teal);
-  border-color: rgba(58, 181, 160, 0.3);
+  border-color: rgba(26, 138, 120, 0.3);
 }
 
 .toast.error {
   background: var(--surface-2);
   color: var(--red);
-  border-color: rgba(217, 79, 79, 0.3);
+  border-color: rgba(192, 57, 43, 0.3);
 }
 
 @keyframes slideUp {
@@ -991,7 +991,7 @@ html, body, #root {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ── Syntax highlighter overrides for dark theme ──────────────── */
+/* ── Syntax highlighter overrides for light theme ──────────────── */
 .message-content pre > div {
   background: var(--surface-2) !important;
   border-radius: var(--radius);
