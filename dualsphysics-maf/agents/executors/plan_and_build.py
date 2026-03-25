@@ -38,7 +38,7 @@ from agents.schemas import (
 from agents.tools.visualize_geometry import visualize_geometry
 from agents.utils.build_utils import rebuild_gencase_viz
 from agents.utils.chat_logger import log_message
-from agents.utils.context_trimmer import trim_responses_api_history
+from agents.utils.context_trimmer import trim_chat_completions_history
 from agents.utils.intent import answer_question, resolve_datalake_files
 from agents.utils.patch_utils import generate_patch, merge_patch
 from agents.utils.skill_loader import get_skill_content, get_skill_topic
@@ -97,102 +97,114 @@ def _check_mcp_tool_result(tool_name: str, response: str | dict) -> None:
         raise RuntimeError(f"{tool_name} failed: {response}")
 
 # ─────────────────────────────────────────────────────────────────────────────
-# OpenAI function definitions for the setup review LLM (Responses API format)
+# OpenAI function definitions for the setup review LLM (Chat Completions API)
 # ─────────────────────────────────────────────────────────────────────────────
 
 _TOOLS = [
     {
         "type": "function",
-        "name": "patch_and_rebuild",
-        "description": (
-            "Apply changes to the simulation case XML based on the user's "
-            "description. Re-runs GenCase and regenerates the visualization."
-        ),
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "changes": {
-                    "type": "string",
-                    "description": "Description of what to change in the simulation setup.",
+        "function": {
+            "name": "patch_and_rebuild",
+            "description": (
+                "Apply changes to the simulation case XML based on the user's "
+                "description. Re-runs GenCase and regenerates the visualization."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "changes": {
+                        "type": "string",
+                        "description": "Description of what to change in the simulation setup.",
+                    },
                 },
+                "required": ["changes"],
             },
-            "required": ["changes"],
         },
     },
     {
         "type": "function",
-        "name": "answer_question",
-        "description": (
-            "Answer a question about the simulation plan, physics, "
-            "DualSPHysics, or the current setup."
-        ),
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "question": {
-                    "type": "string",
-                    "description": "The question to answer.",
+        "function": {
+            "name": "answer_question",
+            "description": (
+                "Answer a question about the simulation plan, physics, "
+                "DualSPHysics, or the current setup."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "question": {
+                        "type": "string",
+                        "description": "The question to answer.",
+                    },
                 },
+                "required": ["question"],
             },
-            "required": ["question"],
         },
     },
     {
         "type": "function",
-        "name": "approve",
-        "description": "User is satisfied with the setup. Proceed to simulation.",
-        "parameters": {"type": "object", "properties": {}},
-    },
-    {
-        "type": "function",
-        "name": "manual_edit",
-        "description": (
-            "Let the user manually edit the Case_Def.xml file directly. "
-            "Use this when the user says they want to edit the file themselves."
-        ),
-        "parameters": {"type": "object", "properties": {}},
-    },
-    {
-        "type": "function",
-        "name": "get_reference",
-        "description": (
-            "Fetch detailed reference for a specific XML/geometry topic. "
-            "Use this when you need exact syntax, drawing primitives, "
-            "transform rules, or composition examples."
-        ),
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "topic": {
-                    "type": "string",
-                    "enum": [
-                        "xml-overview",
-                        "drawing-shapes",
-                        "fill-and-modification",
-                        "transforms-and-variables",
-                        "composition-patterns",
-                    ],
-                    "description": "Which reference to fetch.",
-                },
-            },
-            "required": ["topic"],
+        "function": {
+            "name": "approve",
+            "description": "User is satisfied with the setup. Proceed to simulation.",
+            "parameters": {"type": "object", "properties": {}},
         },
     },
     {
         "type": "function",
-        "name": "replan",
-        "description": (
-            "Scrap the current plan and start over with a different scenario."
-        ),
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "new_scenario": {
-                    "type": "string",
-                    "description": "The new scenario description.",
+        "function": {
+            "name": "manual_edit",
+            "description": (
+                "Let the user manually edit the Case_Def.xml file directly. "
+                "Use this when the user says they want to edit the file themselves."
+            ),
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_reference",
+            "description": (
+                "Fetch detailed reference for a specific XML/geometry topic. "
+                "Use this when you need exact syntax, drawing primitives, "
+                "transform rules, or composition examples."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "topic": {
+                        "type": "string",
+                        "enum": [
+                            "xml-overview",
+                            "drawing-shapes",
+                            "fill-and-modification",
+                            "transforms-and-variables",
+                            "composition-patterns",
+                        ],
+                        "description": "Which reference to fetch.",
+                    },
                 },
+                "required": ["topic"],
             },
-            "required": ["new_scenario"],
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "replan",
+            "description": (
+                "Scrap the current plan and start over with a different scenario."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "new_scenario": {
+                        "type": "string",
+                        "description": "The new scenario description.",
+                    },
+                },
+                "required": ["new_scenario"],
+            },
         },
     },
 ]
@@ -309,65 +321,47 @@ def _format_plan_summary(plan: SimulationPlan) -> str:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Responses API history helpers
+# Chat Completions API history helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+def _system_message(text: str) -> dict:
+    """Build a Chat Completions system message."""
+    return {"role": "system", "content": text}
+
+
 def _user_message(text: str) -> dict:
-    """Build a Responses API user message item."""
-    return {
-        "type": "message",
-        "role": "user",
-        "content": [{"type": "input_text", "text": text}],
-    }
+    """Build a Chat Completions user message."""
+    return {"role": "user", "content": text}
 
 
 def _user_message_with_images(text: str, images: list[tuple[str, str]]) -> dict:
-    """Build a Responses API user message with text + one or more images.
+    """Build a Chat Completions user message with text + one or more images.
 
     Args:
         text: The text content.
         images: List of (base64_data, media_type) tuples.
     """
-    content: list[dict] = [{"type": "input_text", "text": text}]
+    content: list[dict] = [{"type": "text", "text": text}]
     for img_b64, media_type in images:
         content.append({
-            "type": "input_image",
-            "image_url": f"data:{media_type};base64,{img_b64}",
+            "type": "image_url",
+            "image_url": {"url": f"data:{media_type};base64,{img_b64}"},
         })
-    return {
-        "type": "message",
-        "role": "user",
-        "content": content,
-    }
+    return {"role": "user", "content": content}
 
 
 def _assistant_message(text: str) -> dict:
-    """Build a Responses API assistant message item."""
+    """Build a Chat Completions assistant message."""
+    return {"role": "assistant", "content": text}
+
+
+def _tool_result(tool_call_id: str, output: str) -> dict:
+    """Build a Chat Completions tool result message."""
     return {
-        "type": "message",
-        "role": "assistant",
-        "content": [{"type": "output_text", "text": text}],
-    }
-
-
-def _function_call_item(fc) -> dict:
-    """Serialize a function_call output item for history."""
-    return {
-        "type": "function_call",
-        "id": fc.id,
-        "call_id": fc.call_id,
-        "name": fc.name,
-        "arguments": fc.arguments,
-    }
-
-
-def _function_call_output(call_id: str, output: str) -> dict:
-    """Build a function_call_output item for history."""
-    return {
-        "type": "function_call_output",
-        "call_id": call_id,
-        "output": output,
+        "role": "tool",
+        "tool_call_id": tool_call_id,
+        "content": output,
     }
 
 
@@ -603,7 +597,7 @@ class PlanAndBuildExecutor(Executor):
             self._set_recovery_state(ctx)
         self._refresh_instructions(ctx, plan_data, run_dir)
 
-        # Initialize conversation history (Responses API format — no system message)
+        # Initialize conversation history (Chat Completions API format)
         history: list[dict] = []
 
         # Inject datalake reference images into setup review history so the
@@ -661,7 +655,7 @@ class PlanAndBuildExecutor(Executor):
         plan_data: dict,
         run_dir: str,
     ) -> str:
-        """Rebuild and store the review LLM instructions (used as Responses API `instructions`)."""
+        """Rebuild and store the review LLM instructions (used as system message)."""
         instructions = _build_instructions(
             plan_data,
             run_dir,
@@ -680,7 +674,7 @@ class PlanAndBuildExecutor(Executor):
         feedback: str,
         ctx: WorkflowContext[AgentExecutorRequest | ReviewResult],
     ) -> None:
-        """Process user reply through the LLM tool-use loop (Responses API)."""
+        """Process user reply through the LLM tool-use loop (Chat Completions API)."""
         history = ctx.get_state("setup_review_history") or []
         instructions = ctx.get_state("setup_review_instructions") or ""
         plan_data = ctx.get_state("plan")
@@ -708,7 +702,7 @@ class PlanAndBuildExecutor(Executor):
                 await rebuild_gencase_viz(self.mcp, run_dir)
                 self._set_recovery_state(ctx)
                 instructions = self._refresh_instructions(ctx, plan_data, run_dir)
-                history.append(_function_call_output(
+                history.append(_tool_result(
                     pending_manual_edit,
                     "Manual edit complete. GenCase rebuilt and visualization regenerated.",
                 ))
@@ -716,7 +710,7 @@ class PlanAndBuildExecutor(Executor):
                 logger.exception("Manual edit rebuild failed")
                 retry_count = self._record_recovery_failure(ctx, str(exc))
                 instructions = self._refresh_instructions(ctx, plan_data, run_dir)
-                history.append(_function_call_output(
+                history.append(_tool_result(
                     pending_manual_edit,
                     f"Rebuild failed: {exc}",
                 ))
@@ -740,31 +734,27 @@ class PlanAndBuildExecutor(Executor):
 
         while True:
             # Trim older entries to prevent unbounded context growth
-            trim_responses_api_history(history)
+            trim_chat_completions_history(history)
 
-            response = await client.responses.create(
+            # Build messages list: system message + conversation history
+            messages = [_system_message(instructions)] + history
+
+            response = await client.chat.completions.create(
                 model=os.getenv("INTENT_MODEL", "gpt-4o-mini"),
                 temperature=0,
-                input=history,
-                instructions=instructions,
+                messages=messages,
                 tools=_TOOLS,
             )
 
-            # Separate output into text and function calls
-            function_calls = []
-            assistant_text = ""
+            choice = response.choices[0]
+            msg = choice.message
 
-            for item in response.output:
-                if item.type == "message":
-                    for content_block in item.content:
-                        if content_block.type == "output_text":
-                            assistant_text += content_block.text
-                    history.append(_assistant_message(assistant_text))
-                elif item.type == "function_call":
-                    function_calls.append(item)
-                    history.append(_function_call_item(item))
+            # Add the full assistant message to history
+            history.append(msg.model_dump(exclude_none=True))
 
-            if not function_calls:
+            assistant_text = msg.content or ""
+
+            if not msg.tool_calls:
                 # Pure text response — send to user
                 ctx.set_state("setup_review_history", history)
                 log_message(run_dir, "assistant", assistant_text, phase="setup_review")
@@ -774,22 +764,22 @@ class PlanAndBuildExecutor(Executor):
                 )
                 return
 
-            for fc in function_calls:
-                fn_name = fc.name
-                fn_args = json.loads(fc.arguments)
+            for tc in msg.tool_calls:
+                fn_name = tc.function.name
+                fn_args = json.loads(tc.function.arguments)
 
                 if fn_name == "approve":
                     last_error = ctx.get_state("setup_review_last_error")
                     if last_error:
-                        history.append(_function_call_output(
-                            fc.call_id,
+                        history.append(_tool_result(
+                            tc.id,
                             "Cannot approve yet because the current setup still has an "
                             f"unresolved build error: {last_error}. "
                             "Fix it first with `patch_and_rebuild`, `manual_edit`, or `replan`.",
                         ))
                         continue
-                    history.append(_function_call_output(
-                        fc.call_id,
+                    history.append(_tool_result(
+                        tc.id,
                         "Waiting for user confirmation to proceed.",
                     ))
                     ctx.set_state("setup_review_history", history)
@@ -821,12 +811,12 @@ class PlanAndBuildExecutor(Executor):
                         )
                         self._set_recovery_state(ctx)
                         instructions = self._refresh_instructions(ctx, plan_data, run_dir)
-                        history.append(_function_call_output(fc.call_id, result_text))
+                        history.append(_tool_result(tc.id, result_text))
                     except Exception as exc:
                         logger.exception("patch_and_rebuild failed")
                         retry_count = self._record_recovery_failure(ctx, str(exc))
                         instructions = self._refresh_instructions(ctx, plan_data, run_dir)
-                        history.append(_function_call_output(fc.call_id, f"Error: {exc}"))
+                        history.append(_tool_result(tc.id, f"Error: {exc}"))
                         if retry_count >= MAX_BUILD_RECOVERY_ATTEMPTS:
                             ctx.set_state("setup_review_history", history)
                             await ctx.send_message(
@@ -843,7 +833,7 @@ class PlanAndBuildExecutor(Executor):
                 elif fn_name == "manual_edit":
                     case_xml = f"{run_dir}/Case_Def.xml"
                     ctx.set_state("setup_review_history", history)
-                    ctx.set_state("pending_manual_edit", fc.call_id)
+                    ctx.set_state("pending_manual_edit", tc.id)
                     await ctx.request_info(
                         request_data=SetupReviewRequest(
                             summary=(
@@ -858,13 +848,13 @@ class PlanAndBuildExecutor(Executor):
                 elif fn_name == "get_reference":
                     topic = fn_args["topic"]
                     ref_content = get_skill_topic(topic)
-                    history.append(_function_call_output(fc.call_id, ref_content))
+                    history.append(_tool_result(tc.id, ref_content))
 
                 elif fn_name == "answer_question":
                     question = fn_args["question"]
                     plan_context = json.dumps(plan_data, indent=2)
                     answer = await answer_question(question, plan_context)
-                    history.append(_function_call_output(fc.call_id, answer))
+                    history.append(_tool_result(tc.id, answer))
 
             ctx.set_state("setup_review_history", history)
 
