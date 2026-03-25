@@ -1,7 +1,7 @@
 """Context window management for HITL conversation loops.
 
 Implements a sliding-window strategy that keeps recent messages intact and
-summarises older tool results to prevent unbounded context growth.
+summarizes older tool results to prevent unbounded context growth.
 
 Both the setup-review loop (Responses API format) and the results loop
 (Chat Completions format) use this module.
@@ -73,7 +73,7 @@ def trim_chat_completions_history(
         if role == "tool":
             content = item.get("content", "")
             if len(content) > _MAX_TOOL_RESULT_CHARS:
-                # Summarise: keep first line, indicate truncation
+                # Summarize: keep first line, indicate truncation
                 first_line = content.split("\n", 1)[0][:200]
                 item["content"] = f"{first_line}… (output trimmed, {len(content)} chars original)"
                 trimmed_count += 1
@@ -104,7 +104,7 @@ def trim_responses_api_history(
     max_recent: int = DEFAULT_MAX_RECENT_ITEMS,
 ) -> list[dict]:
     """Trim a Responses API history list, keeping the most recent
-    *max_recent* items intact and summarising older ones.
+    *max_recent* items intact and summarizing older ones.
 
     Responses API items use ``type`` rather than ``role``:
       - ``{"type": "message", "role": "user", …}``
