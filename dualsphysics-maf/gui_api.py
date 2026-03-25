@@ -205,22 +205,25 @@ _files_cache: dict | None = None
 _files_cache_dir: str | None = None
 _files_cache_time: float = 0.0
 _FILES_CACHE_TTL: float = 5.0  # seconds
+_files_cache_lock = threading.Lock()
 
 
 def _discover_files_cached(run_dir: str | None) -> dict:
     """Return _discover_files result, cached for up to _FILES_CACHE_TTL seconds."""
     global _files_cache, _files_cache_dir, _files_cache_time
     now = time.monotonic()
-    if (
-        _files_cache is not None
-        and _files_cache_dir == run_dir
-        and (now - _files_cache_time) < _FILES_CACHE_TTL
-    ):
-        return _files_cache
+    with _files_cache_lock:
+        if (
+            _files_cache is not None
+            and _files_cache_dir == run_dir
+            and (now - _files_cache_time) < _FILES_CACHE_TTL
+        ):
+            return _files_cache
     result = _discover_files(run_dir)
-    _files_cache = result
-    _files_cache_dir = run_dir
-    _files_cache_time = now
+    with _files_cache_lock:
+        _files_cache = result
+        _files_cache_dir = run_dir
+        _files_cache_time = time.monotonic()
     return result
 
 
