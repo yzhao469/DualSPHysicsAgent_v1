@@ -15,28 +15,29 @@ from agents.utils.skill_loader import get_postprocess_skill_content, get_skill_c
 logger = logging.getLogger(__name__)
 
 
-async def resolve_datalake_file(scenario: str, available_files: list[str]) -> str | None:
-    """Ask GPT-4o-mini whether the user's scenario references a datalake file.
+async def resolve_datalake_files(scenario: str, available_files: list[str]) -> list[str]:
+    """Ask the LLM which datalake files are relevant to the user's scenario.
 
     Args:
         scenario: The user's natural-language scenario.
         available_files: List of relative paths (e.g. ["datalake/Case_Def.xml"]).
 
     Returns:
-        The matched relative path, or None if the user isn't referencing a file.
+        List of matched relative paths (may be empty).
     """
     if not available_files:
-        return None
+        return []
 
     file_list = "\n".join(f"  - {f}" for f in available_files)
     system = (
         "You are a file-reference resolver. The user is describing a simulation scenario. "
-        "Determine if they are referencing an existing case file from the list below.\n\n"
+        "Determine which files from the list below are relevant to their scenario.\n\n"
         f"Available files:\n{file_list}\n\n"
-        "Return JSON with a single key: {\"file\": \"<relative_path>\"} if the user is "
-        "referencing one of the files above (use fuzzy matching — e.g. 'MyCase' could match "
-        "'Case_Def.xml' if it's the only plausible match). "
-        "Return {\"file\": null} if the user is NOT referencing any existing file."
+        "Return JSON: {\"files\": [\"<path1>\", \"<path2>\", ...]} with all relevant files. "
+        "Use fuzzy matching — e.g. 'debris flow' could match 'datalake/3d_debrisflow.jpg'. "
+        "Include reference images, mesh files (STL/VTK/PLY), CSV data, and XML case files "
+        "that are relevant to the scenario. "
+        "Return {\"files\": []} if no files are relevant."
     )
 
     client = AsyncOpenAI()
@@ -50,14 +51,11 @@ async def resolve_datalake_file(scenario: str, available_files: list[str]) -> st
         ],
     )
 
-    raw = response.choices[0].message.content or '{"file": null}'
+    raw = response.choices[0].message.content or '{"files": []}'
     result = json.loads(raw)
-    matched = result.get("file")
-    if matched and matched in available_files:
-        logger.info("resolve_datalake_file(%r) -> %s", scenario, matched)
-        return matched
-    logger.info("resolve_datalake_file(%r) -> None", scenario)
-    return None
+    matched = [f for f in result.get("files", []) if f in available_files]
+    logger.info("resolve_datalake_files(%r) -> %s", scenario, matched)
+    return matched
 
 
 async def answer_question(question: str, plan_context: str, domain: str = "xml") -> str:

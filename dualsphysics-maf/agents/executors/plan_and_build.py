@@ -11,6 +11,7 @@ import base64
 import json
 import logging
 import os
+import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -37,7 +38,7 @@ from agents.schemas import (
 from agents.tools.visualize_geometry import visualize_geometry
 from agents.utils.build_utils import rebuild_gencase_viz
 from agents.utils.chat_logger import log_message
-from agents.utils.intent import answer_question, resolve_datalake_file
+from agents.utils.intent import answer_question, resolve_datalake_files
 from agents.utils.patch_utils import generate_patch, merge_patch
 from agents.utils.skill_loader import get_skill_content, get_skill_topic
 
@@ -151,7 +152,7 @@ _TOOLS = [
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-_DATALAKE_EXTENSIONS = {".xml", ".png", ".jpg", ".jpeg"}
+_DATALAKE_EXTENSIONS = {".xml", ".png", ".jpg", ".jpeg", ".stl", ".vtk", ".ply", ".csv"}
 
 
 def _list_datalake_files(base_dir: str) -> list[str]:
@@ -168,6 +169,13 @@ def _list_datalake_files(base_dir: str) -> list[str]:
 
 def _is_image_file(path: Path) -> bool:
     return path.suffix.lower() in {".png", ".jpg", ".jpeg"}
+
+
+_MESH_EXTENSIONS = {".stl", ".vtk", ".ply", ".csv"}
+
+
+def _is_mesh_file(path: Path) -> bool:
+    return path.suffix.lower() in _MESH_EXTENSIONS
 
 
 def _build_instructions(
@@ -263,18 +271,23 @@ def _user_message(text: str) -> dict:
     }
 
 
-def _user_message_with_image(text: str, image_b64: str, media_type: str) -> dict:
-    """Build a Responses API user message with text + image."""
+def _user_message_with_images(text: str, images: list[tuple[str, str]]) -> dict:
+    """Build a Responses API user message with text + one or more images.
+
+    Args:
+        text: The text content.
+        images: List of (base64_data, media_type) tuples.
+    """
+    content: list[dict] = [{"type": "input_text", "text": text}]
+    for img_b64, media_type in images:
+        content.append({
+            "type": "input_image",
+            "image_url": f"data:{media_type};base64,{img_b64}",
+        })
     return {
         "type": "message",
         "role": "user",
-        "content": [
-            {"type": "input_text", "text": text},
-            {
-                "type": "input_image",
-                "image_url": f"data:{media_type};base64,{image_b64}",
-            },
-        ],
+        "content": content,
     }
 
 
@@ -322,34 +335,76 @@ class PlanAndBuildExecutor(Executor):
 
     # ── Planning handlers ────────────────────────────────────────────────
 
-    def _inject_datalake_xml(self, scenario: str, rel_path: str, abs_path: Path, ctx: WorkflowContext) -> Message:
-        """Read datalake XML and inject it into the scenario as a text message."""
-        xml_content = abs_path.read_text()
-        ctx.set_state("base_xml", str(abs_path))
-        logger.info("PlanAndBuildExecutor: injected datalake XML %s", abs_path)
-        text = (
-            f"{scenario}\n\n"
-            f"### Existing Case XML ({rel_path})\n"
-            f"```xml\n{xml_content}\n```\n\n"
-            "Modify this existing case according to the user's instructions. "
-            "You may reuse or adjust the geometry, parameters, and probe points."
-        )
-        return Message("user", text=text)
+    _DRAW_COMMANDS = {
+        ".stl": "drawfilestl",
+        ".vtk": "drawfilevtk",
+        ".ply": "drawfileply",
+        ".csv": "drawfilecsv",
+    }
 
-    def _inject_datalake_image(self, scenario: str, rel_path: str, abs_path: Path) -> Message:
-        """Read a datalake image and create a multimodal message."""
-        image_bytes = abs_path.read_bytes()
-        suffix = abs_path.suffix.lower()
-        media_type = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}[suffix]
-        logger.info("PlanAndBuildExecutor: injected datalake image %s", abs_path)
-        text = (
-            f"{scenario}\n\n"
-            f"### Reference Geometry Image ({rel_path})\n"
-            "The image above shows the target geometry. Study it carefully and "
-            "create DualSPHysics XML geometry that reproduces this configuration. "
-            "Pay attention to dimensions, shapes, positions, and boundaries."
-        )
-        return Message("user", [text, Content.from_data(image_bytes, media_type)])
+    def _build_datalake_message(
+        self, scenario: str, matched_files: list[str], ctx: WorkflowContext,
+    ) -> Message:
+        """Build a single multimodal Message from all matched datalake files.
+
+        Combines scenario text, XML content, mesh file references, and images
+        into one planner message.
+        """
+        text_parts: list[str] = [scenario]
+        image_contents: list[Content] = []
+        mesh_paths: list[str] = []
+        image_rel_paths: list[str] = []
+
+        for rel_path in matched_files:
+            abs_path = Path(self.base_dir) / rel_path
+
+            if _is_mesh_file(abs_path):
+                filename = abs_path.name
+                draw_cmd = self._DRAW_COMMANDS[abs_path.suffix.lower()]
+                mesh_paths.append(str(abs_path))
+                text_parts.append(
+                    f"### Available Mesh File ({rel_path})\n"
+                    f"A mesh file `{filename}` will be copied to the run directory. "
+                    f"Use `<{draw_cmd} file=\"{filename}\">` in your geometry XML to import it. "
+                    "You can apply transforms (drawmove, drawrotate, drawscale) inside the element."
+                )
+                logger.info("PlanAndBuildExecutor: injected datalake mesh %s", abs_path)
+
+            elif _is_image_file(abs_path):
+                suffix = abs_path.suffix.lower()
+                media_type = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}[suffix]
+                image_contents.append(Content.from_data(abs_path.read_bytes(), media_type))
+                image_rel_paths.append(rel_path)
+                text_parts.append(
+                    f"### Reference Image ({rel_path})\n"
+                    "The attached image shows the target geometry. Study it carefully and "
+                    "create DualSPHysics XML geometry that reproduces this configuration. "
+                    "Pay attention to dimensions, shapes, positions, and boundaries."
+                )
+                logger.info("PlanAndBuildExecutor: injected datalake image %s", abs_path)
+
+            else:  # XML
+                xml_content = abs_path.read_text()
+                ctx.set_state("base_xml", str(abs_path))
+                text_parts.append(
+                    f"### Existing Case XML ({rel_path})\n"
+                    f"```xml\n{xml_content}\n```\n\n"
+                    "Modify this existing case according to the user's instructions. "
+                    "You may reuse or adjust the geometry, parameters, and probe points."
+                )
+                logger.info("PlanAndBuildExecutor: injected datalake XML %s", abs_path)
+
+        # Store paths for later use
+        if mesh_paths:
+            ctx.set_state("datalake_mesh_paths", mesh_paths)
+        if image_rel_paths:
+            ctx.set_state("datalake_image_paths", image_rel_paths)
+
+        # Build message: text + images as multimodal content
+        combined_text = "\n\n".join(text_parts)
+        if image_contents:
+            return Message("user", [combined_text, *image_contents])
+        return Message("user", text=combined_text)
 
     @handler
     async def start(self, scenario: str, ctx: WorkflowContext[AgentExecutorRequest | ReviewResult]) -> None:
@@ -358,20 +413,13 @@ class PlanAndBuildExecutor(Executor):
         ctx.set_state("scenario", scenario)
 
         available = _list_datalake_files(self.base_dir)
-        matched = await resolve_datalake_file(scenario, available) if available else None
+        matched = await resolve_datalake_files(scenario, available) if available else []
 
         if matched:
-            abs_path = Path(self.base_dir) / matched
-            if _is_image_file(abs_path):
-                msg = self._inject_datalake_image(scenario, matched, abs_path)
-                # Store path so setup review can load the image lazily
-                ctx.set_state("datalake_image_path", matched)
-            else:
-                msg = self._inject_datalake_xml(scenario, matched, abs_path, ctx)
-            await ctx.send_message(AgentExecutorRequest(messages=[msg], should_respond=True))
-            return
+            msg = self._build_datalake_message(scenario, matched, ctx)
+        else:
+            msg = Message("user", text=scenario)
 
-        msg = Message("user", text=scenario)
         await ctx.send_message(AgentExecutorRequest(messages=[msg], should_respond=True))
 
     @handler
@@ -392,7 +440,7 @@ class PlanAndBuildExecutor(Executor):
         ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         return f"{self.base_dir}/runs/run_{ts}"
 
-    async def _build(self, plan_data: dict, base_xml: str, run_dir: str) -> str:
+    async def _build(self, plan_data: dict, base_xml: str, run_dir: str, ctx: WorkflowContext) -> str:
         """set_geometry -> modify_xml -> generate_points -> run_gencase -> visualize."""
         geometry_xml: str = plan_data["geometry_xml"]
         params = PhysicsParams(**plan_data["params"])
@@ -400,6 +448,13 @@ class PlanAndBuildExecutor(Executor):
 
         Path(run_dir).mkdir(parents=True, exist_ok=True)
         case_xml = f"{run_dir}/Case_Def.xml"
+
+        # 0. Copy mesh files to run directory (if provided via datalake)
+        for mesh_src in ctx.get_state("datalake_mesh_paths") or []:
+            if Path(mesh_src).exists():
+                dest = Path(run_dir) / Path(mesh_src).name
+                shutil.copy2(mesh_src, dest)
+                logger.info("Copied mesh file %s -> %s", mesh_src, dest)
 
         # 1. Set geometry
         logger.info(">>> set_geometry")
@@ -473,7 +528,7 @@ class PlanAndBuildExecutor(Executor):
         # Run build pipeline
         build_error: str | None = None
         try:
-            await self._build(plan_data, base_xml, run_dir)
+            await self._build(plan_data, base_xml, run_dir, ctx)
         except Exception as exc:
             logger.exception("Build pipeline failed")
             build_error = str(exc)
@@ -499,25 +554,29 @@ class PlanAndBuildExecutor(Executor):
         # Initialize conversation history (Responses API format — no system message)
         history: list[dict] = []
 
-        # Inject datalake reference image into setup review history so the
-        # review LLM can see it when the user asks about "the image".
-        datalake_image_rel = ctx.get_state("datalake_image_path")
-        if datalake_image_rel:
-            abs_path = Path(self.base_dir) / datalake_image_rel
+        # Inject datalake reference images into setup review history so the
+        # review LLM can see them when the user asks about "the image".
+        datalake_image_rels = ctx.get_state("datalake_image_paths") or []
+        images: list[tuple[str, str]] = []
+        image_names: list[str] = []
+        for rel_path in datalake_image_rels:
+            abs_path = Path(self.base_dir) / rel_path
             if abs_path.exists():
                 suffix = abs_path.suffix.lower()
                 media_type = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}[suffix]
-                img_b64 = base64.b64encode(abs_path.read_bytes()).decode()
-                history.append(_user_message_with_image(
-                    f"Here is the reference image from the datalake ({datalake_image_rel}). "
-                    "Use it to verify the geometry setup matches the target.",
-                    img_b64,
-                    media_type,
-                ))
-                history.append(_assistant_message(
-                    "I can see the reference image. I'll use it to help review "
-                    "whether the simulation geometry matches the target."
-                ))
+                images.append((base64.b64encode(abs_path.read_bytes()).decode(), media_type))
+                image_names.append(rel_path)
+        if images:
+            label = ", ".join(image_names)
+            history.append(_user_message_with_images(
+                f"Reference image(s) from the datalake ({label}). "
+                "Use to verify the geometry setup matches the target.",
+                images,
+            ))
+            history.append(_assistant_message(
+                "I can see the reference image(s). I'll use them to help review "
+                "whether the simulation geometry matches the target."
+            ))
 
         ctx.set_state("setup_review_history", history)
 
