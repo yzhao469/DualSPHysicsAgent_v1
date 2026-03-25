@@ -7,6 +7,7 @@ into a single executor. Handles:
   3. LLM tool-use review loop for plan + viz
 """
 
+import base64
 import json
 import logging
 import os
@@ -44,114 +45,102 @@ logger = logging.getLogger(__name__)
 MAX_BUILD_RECOVERY_ATTEMPTS = 3
 
 # ─────────────────────────────────────────────────────────────────────────────
-# OpenAI function definitions for the setup review LLM
+# OpenAI function definitions for the setup review LLM (Responses API format)
 # ─────────────────────────────────────────────────────────────────────────────
 
 _TOOLS = [
     {
         "type": "function",
-        "function": {
-            "name": "patch_and_rebuild",
-            "description": (
-                "Apply changes to the simulation case XML based on the user's "
-                "description. Re-runs GenCase and regenerates the visualization."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "changes": {
-                        "type": "string",
-                        "description": "Description of what to change in the simulation setup.",
-                    },
+        "name": "patch_and_rebuild",
+        "description": (
+            "Apply changes to the simulation case XML based on the user's "
+            "description. Re-runs GenCase and regenerates the visualization."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "changes": {
+                    "type": "string",
+                    "description": "Description of what to change in the simulation setup.",
                 },
-                "required": ["changes"],
             },
+            "required": ["changes"],
         },
     },
     {
         "type": "function",
-        "function": {
-            "name": "answer_question",
-            "description": (
-                "Answer a question about the simulation plan, physics, "
-                "DualSPHysics, or the current setup."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "question": {
-                        "type": "string",
-                        "description": "The question to answer.",
-                    },
+        "name": "answer_question",
+        "description": (
+            "Answer a question about the simulation plan, physics, "
+            "DualSPHysics, or the current setup."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "question": {
+                    "type": "string",
+                    "description": "The question to answer.",
                 },
-                "required": ["question"],
             },
+            "required": ["question"],
         },
     },
     {
         "type": "function",
-        "function": {
-            "name": "approve",
-            "description": "User is satisfied with the setup. Proceed to simulation.",
-            "parameters": {"type": "object", "properties": {}},
-        },
+        "name": "approve",
+        "description": "User is satisfied with the setup. Proceed to simulation.",
+        "parameters": {"type": "object", "properties": {}},
     },
     {
         "type": "function",
-        "function": {
-            "name": "manual_edit",
-            "description": (
-                "Let the user manually edit the Case_Def.xml file directly. "
-                "Use this when the user says they want to edit the file themselves."
-            ),
-            "parameters": {"type": "object", "properties": {}},
-        },
+        "name": "manual_edit",
+        "description": (
+            "Let the user manually edit the Case_Def.xml file directly. "
+            "Use this when the user says they want to edit the file themselves."
+        ),
+        "parameters": {"type": "object", "properties": {}},
     },
     {
         "type": "function",
-        "function": {
-            "name": "get_reference",
-            "description": (
-                "Fetch detailed reference for a specific XML/geometry topic. "
-                "Use this when you need exact syntax, drawing primitives, "
-                "transform rules, or composition examples."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "topic": {
-                        "type": "string",
-                        "enum": [
-                            "xml-overview",
-                            "drawing-shapes",
-                            "fill-and-modification",
-                            "transforms-and-variables",
-                            "composition-patterns",
-                        ],
-                        "description": "Which reference to fetch.",
-                    },
+        "name": "get_reference",
+        "description": (
+            "Fetch detailed reference for a specific XML/geometry topic. "
+            "Use this when you need exact syntax, drawing primitives, "
+            "transform rules, or composition examples."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "topic": {
+                    "type": "string",
+                    "enum": [
+                        "xml-overview",
+                        "drawing-shapes",
+                        "fill-and-modification",
+                        "transforms-and-variables",
+                        "composition-patterns",
+                    ],
+                    "description": "Which reference to fetch.",
                 },
-                "required": ["topic"],
             },
+            "required": ["topic"],
         },
     },
     {
         "type": "function",
-        "function": {
-            "name": "replan",
-            "description": (
-                "Scrap the current plan and start over with a different scenario."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "new_scenario": {
-                        "type": "string",
-                        "description": "The new scenario description.",
-                    },
+        "name": "replan",
+        "description": (
+            "Scrap the current plan and start over with a different scenario."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "new_scenario": {
+                    "type": "string",
+                    "description": "The new scenario description.",
                 },
-                "required": ["new_scenario"],
             },
+            "required": ["new_scenario"],
         },
     },
 ]
@@ -181,14 +170,14 @@ def _is_image_file(path: Path) -> bool:
     return path.suffix.lower() in {".png", ".jpg", ".jpeg"}
 
 
-def _build_system_prompt(
+def _build_instructions(
     plan_data: dict,
     run_dir: str,
     build_error: str | None = None,
     retry_count: int = 0,
     max_retry_count: int = MAX_BUILD_RECOVERY_ATTEMPTS,
 ) -> str:
-    """Build the system prompt for the setup review LLM."""
+    """Build the instructions for the setup review LLM."""
     plan_summary = json.dumps(plan_data, indent=2)
     build_status = (
         "Build failed before review started."
@@ -261,6 +250,64 @@ def _format_plan_summary(plan: SimulationPlan) -> str:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Responses API history helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _user_message(text: str) -> dict:
+    """Build a Responses API user message item."""
+    return {
+        "type": "message",
+        "role": "user",
+        "content": [{"type": "input_text", "text": text}],
+    }
+
+
+def _user_message_with_image(text: str, image_b64: str, media_type: str) -> dict:
+    """Build a Responses API user message with text + image."""
+    return {
+        "type": "message",
+        "role": "user",
+        "content": [
+            {"type": "input_text", "text": text},
+            {
+                "type": "input_image",
+                "image_url": f"data:{media_type};base64,{image_b64}",
+            },
+        ],
+    }
+
+
+def _assistant_message(text: str) -> dict:
+    """Build a Responses API assistant message item."""
+    return {
+        "type": "message",
+        "role": "assistant",
+        "content": [{"type": "output_text", "text": text}],
+    }
+
+
+def _function_call_item(fc) -> dict:
+    """Serialize a function_call output item for history."""
+    return {
+        "type": "function_call",
+        "id": fc.id,
+        "call_id": fc.call_id,
+        "name": fc.name,
+        "arguments": fc.arguments,
+    }
+
+
+def _function_call_output(call_id: str, output: str) -> dict:
+    """Build a function_call_output item for history."""
+    return {
+        "type": "function_call_output",
+        "call_id": call_id,
+        "output": output,
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Executor
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -317,6 +364,8 @@ class PlanAndBuildExecutor(Executor):
             abs_path = Path(self.base_dir) / matched
             if _is_image_file(abs_path):
                 msg = self._inject_datalake_image(scenario, matched, abs_path)
+                # Store path so setup review can load the image lazily
+                ctx.set_state("datalake_image_path", matched)
             else:
                 msg = self._inject_datalake_xml(scenario, matched, abs_path, ctx)
             await ctx.send_message(AgentExecutorRequest(messages=[msg], should_respond=True))
@@ -440,12 +489,37 @@ class PlanAndBuildExecutor(Executor):
                 "You can request a fix, manually edit the XML, ask a question, or replan."
             )
 
-        # Initialize conversation history
+        # Initialize review state
         if build_error:
             self._set_recovery_state(ctx, build_error, retry_count=0)
         else:
             self._set_recovery_state(ctx)
-        self._refresh_system_prompt(ctx, plan_data, run_dir)
+        self._refresh_instructions(ctx, plan_data, run_dir)
+
+        # Initialize conversation history (Responses API format — no system message)
+        history: list[dict] = []
+
+        # Inject datalake reference image into setup review history so the
+        # review LLM can see it when the user asks about "the image".
+        datalake_image_rel = ctx.get_state("datalake_image_path")
+        if datalake_image_rel:
+            abs_path = Path(self.base_dir) / datalake_image_rel
+            if abs_path.exists():
+                suffix = abs_path.suffix.lower()
+                media_type = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}[suffix]
+                img_b64 = base64.b64encode(abs_path.read_bytes()).decode()
+                history.append(_user_message_with_image(
+                    f"Here is the reference image from the datalake ({datalake_image_rel}). "
+                    "Use it to verify the geometry setup matches the target.",
+                    img_b64,
+                    media_type,
+                ))
+                history.append(_assistant_message(
+                    "I can see the reference image. I'll use it to help review "
+                    "whether the simulation geometry matches the target."
+                ))
+
+        ctx.set_state("setup_review_history", history)
 
         log_message(run_dir, "assistant", summary, phase="setup_review")
         await ctx.request_info(
@@ -471,25 +545,20 @@ class PlanAndBuildExecutor(Executor):
         return retry_count
 
     @staticmethod
-    def _refresh_system_prompt(
+    def _refresh_instructions(
         ctx: WorkflowContext,
         plan_data: dict,
         run_dir: str,
-    ) -> list[dict]:
-        history = ctx.get_state("setup_review_history") or []
-        system_prompt = _build_system_prompt(
+    ) -> str:
+        """Rebuild and store the review LLM instructions (used as Responses API `instructions`)."""
+        instructions = _build_instructions(
             plan_data,
             run_dir,
             build_error=ctx.get_state("setup_review_last_error"),
             retry_count=ctx.get_state("setup_review_retry_count") or 0,
         )
-        system_message = {"role": "system", "content": system_prompt}
-        if history and history[0].get("role") == "system":
-            history[0] = system_message
-        else:
-            history.insert(0, system_message)
-        ctx.set_state("setup_review_history", history)
-        return history
+        ctx.set_state("setup_review_instructions", instructions)
+        return instructions
 
     # ── Setup review HITL loop ───────────────────────────────────────────
 
@@ -500,8 +569,9 @@ class PlanAndBuildExecutor(Executor):
         feedback: str,
         ctx: WorkflowContext[AgentExecutorRequest | ReviewResult],
     ) -> None:
-        """Process user reply through the LLM tool-use loop."""
+        """Process user reply through the LLM tool-use loop (Responses API)."""
         history = ctx.get_state("setup_review_history") or []
+        instructions = ctx.get_state("setup_review_instructions") or ""
         plan_data = ctx.get_state("plan")
         run_dir = ctx.get_state("run_dir")
 
@@ -516,7 +586,7 @@ class PlanAndBuildExecutor(Executor):
                     ReviewResult(route="sim", feedback="approved")
                 )
                 return
-            history.append({"role": "user", "content": feedback or "no"})
+            history.append(_user_message(feedback or "no"))
             log_message(run_dir, "user", feedback or "no", phase="setup_review")
 
         # Check if we're resuming after a manual edit pause
@@ -526,21 +596,19 @@ class PlanAndBuildExecutor(Executor):
             try:
                 await rebuild_gencase_viz(self.mcp, run_dir)
                 self._set_recovery_state(ctx)
-                history = self._refresh_system_prompt(ctx, plan_data, run_dir)
-                history.append({
-                    "role": "tool",
-                    "tool_call_id": pending_manual_edit,
-                    "content": "Manual edit complete. GenCase rebuilt and visualization regenerated.",
-                })
+                instructions = self._refresh_instructions(ctx, plan_data, run_dir)
+                history.append(_function_call_output(
+                    pending_manual_edit,
+                    "Manual edit complete. GenCase rebuilt and visualization regenerated.",
+                ))
             except Exception as exc:
                 logger.exception("Manual edit rebuild failed")
                 retry_count = self._record_recovery_failure(ctx, str(exc))
-                history = self._refresh_system_prompt(ctx, plan_data, run_dir)
-                history.append({
-                    "role": "tool",
-                    "tool_call_id": pending_manual_edit,
-                    "content": f"Rebuild failed: {exc}",
-                })
+                instructions = self._refresh_instructions(ctx, plan_data, run_dir)
+                history.append(_function_call_output(
+                    pending_manual_edit,
+                    f"Rebuild failed: {exc}",
+                ))
                 if retry_count >= MAX_BUILD_RECOVERY_ATTEMPTS:
                     ctx.set_state("setup_review_history", history)
                     await ctx.send_message(
@@ -554,56 +622,62 @@ class PlanAndBuildExecutor(Executor):
                     )
                     return
         else:
-            history.append({"role": "user", "content": feedback or "approve"})
+            history.append(_user_message(feedback or "approve"))
             log_message(run_dir, "user", feedback or "approve", phase="setup_review")
 
         client = AsyncOpenAI()
 
         while True:
-            response = await client.chat.completions.create(
+            response = await client.responses.create(
                 model=os.getenv("INTENT_MODEL", "gpt-4o-mini"),
                 temperature=0,
-                messages=history,
+                input=history,
+                instructions=instructions,
                 tools=_TOOLS,
             )
 
-            choice = response.choices[0]
-            msg = choice.message
+            # Separate output into text and function calls
+            function_calls = []
+            assistant_text = ""
 
-            history.append(msg.model_dump(exclude_none=True))
+            for item in response.output:
+                if item.type == "message":
+                    for content_block in item.content:
+                        if content_block.type == "output_text":
+                            assistant_text += content_block.text
+                    history.append(_assistant_message(assistant_text))
+                elif item.type == "function_call":
+                    function_calls.append(item)
+                    history.append(_function_call_item(item))
 
-            if not msg.tool_calls:
-                text = msg.content or ""
+            if not function_calls:
+                # Pure text response — send to user
                 ctx.set_state("setup_review_history", history)
-                log_message(run_dir, "assistant", text, phase="setup_review")
+                log_message(run_dir, "assistant", assistant_text, phase="setup_review")
                 await ctx.request_info(
-                    request_data=SetupReviewRequest(summary=text),
+                    request_data=SetupReviewRequest(summary=assistant_text),
                     response_type=str,
                 )
                 return
 
-            for tc in msg.tool_calls:
-                fn_name = tc.function.name
-                fn_args = json.loads(tc.function.arguments)
+            for fc in function_calls:
+                fn_name = fc.name
+                fn_args = json.loads(fc.arguments)
 
                 if fn_name == "approve":
                     last_error = ctx.get_state("setup_review_last_error")
                     if last_error:
-                        history.append({
-                            "role": "tool",
-                            "tool_call_id": tc.id,
-                            "content": (
-                                "Cannot approve yet because the current setup still has an "
-                                f"unresolved build error: {last_error}. "
-                                "Fix it first with `patch_and_rebuild`, `manual_edit`, or `replan`."
-                            ),
-                        })
+                        history.append(_function_call_output(
+                            fc.call_id,
+                            "Cannot approve yet because the current setup still has an "
+                            f"unresolved build error: {last_error}. "
+                            "Fix it first with `patch_and_rebuild`, `manual_edit`, or `replan`.",
+                        ))
                         continue
-                    history.append({
-                        "role": "tool",
-                        "tool_call_id": tc.id,
-                        "content": "Waiting for user confirmation to proceed.",
-                    })
+                    history.append(_function_call_output(
+                        fc.call_id,
+                        "Waiting for user confirmation to proceed.",
+                    ))
                     ctx.set_state("setup_review_history", history)
                     ctx.set_state("pending_sim_confirm", True)
                     await ctx.request_info(
@@ -632,21 +706,13 @@ class PlanAndBuildExecutor(Executor):
                             changes, plan_data, run_dir, ctx
                         )
                         self._set_recovery_state(ctx)
-                        history = self._refresh_system_prompt(ctx, plan_data, run_dir)
-                        history.append({
-                            "role": "tool",
-                            "tool_call_id": tc.id,
-                            "content": result_text,
-                        })
+                        instructions = self._refresh_instructions(ctx, plan_data, run_dir)
+                        history.append(_function_call_output(fc.call_id, result_text))
                     except Exception as exc:
                         logger.exception("patch_and_rebuild failed")
                         retry_count = self._record_recovery_failure(ctx, str(exc))
-                        history = self._refresh_system_prompt(ctx, plan_data, run_dir)
-                        history.append({
-                            "role": "tool",
-                            "tool_call_id": tc.id,
-                            "content": f"Error: {exc}",
-                        })
+                        instructions = self._refresh_instructions(ctx, plan_data, run_dir)
+                        history.append(_function_call_output(fc.call_id, f"Error: {exc}"))
                         if retry_count >= MAX_BUILD_RECOVERY_ATTEMPTS:
                             ctx.set_state("setup_review_history", history)
                             await ctx.send_message(
@@ -663,7 +729,7 @@ class PlanAndBuildExecutor(Executor):
                 elif fn_name == "manual_edit":
                     case_xml = f"{run_dir}/Case_Def.xml"
                     ctx.set_state("setup_review_history", history)
-                    ctx.set_state("pending_manual_edit", tc.id)
+                    ctx.set_state("pending_manual_edit", fc.call_id)
                     await ctx.request_info(
                         request_data=SetupReviewRequest(
                             summary=(
@@ -678,21 +744,13 @@ class PlanAndBuildExecutor(Executor):
                 elif fn_name == "get_reference":
                     topic = fn_args["topic"]
                     ref_content = get_skill_topic(topic)
-                    history.append({
-                        "role": "tool",
-                        "tool_call_id": tc.id,
-                        "content": ref_content,
-                    })
+                    history.append(_function_call_output(fc.call_id, ref_content))
 
                 elif fn_name == "answer_question":
                     question = fn_args["question"]
                     plan_context = json.dumps(plan_data, indent=2)
                     answer = await answer_question(question, plan_context)
-                    history.append({
-                        "role": "tool",
-                        "tool_call_id": tc.id,
-                        "content": answer,
-                    })
+                    history.append(_function_call_output(fc.call_id, answer))
 
             ctx.set_state("setup_review_history", history)
 
