@@ -78,6 +78,7 @@ def _check_mcp_tool_result(tool_name: str, response: str | dict) -> None:
         try:
             result = json.loads(response)
         except (json.JSONDecodeError, TypeError):
+            logger.debug("%s response is not JSON, treating as plain text", tool_name)
             result = None
     else:
         result = response
