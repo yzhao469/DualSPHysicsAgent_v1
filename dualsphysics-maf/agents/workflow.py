@@ -6,7 +6,11 @@ Workflow graph:
        │ ReviewResult(sim)     →  SimExecutor
        │ ReviewResult(replan)  →  self         (on_revision)
        │
-  SimExecutor → AnalyzeExecutor (default post-proc + results loop)
+  SimExecutor
+       │ ReviewResult(sim)     →  AnalyzeExecutor  (success → post-proc)
+       │ ReviewResult(replan)  →  PlanAndBuildExecutor (failure → revise)
+       │
+  AnalyzeExecutor
        │ ReviewResult(replan)  →  PlanAndBuildExecutor  (revise_setup)
        │ yield_output          →  terminal              (done)
 """
@@ -59,7 +63,16 @@ def build_workflow(mcp: MCPStdioTool, agent_executor: AgentExecutor, base_dir: s
             ],
         )
         .add_edge(agent_executor, plan_and_build)  # AgentExecutorResponse → on_plan
-        .add_edge(sim, analyze)
+        .add_switch_case_edge_group(
+            sim,
+            [
+                Case(
+                    condition=lambda r: isinstance(r, ReviewResult) and r.route == "sim",
+                    target=analyze,
+                ),
+                Default(target=plan_and_build),  # sim failure → revise setup
+            ],
+        )
         .add_edge(analyze, plan_and_build)  # revise_setup → on_revision
         .build()
     )

@@ -23,6 +23,7 @@ from agent_framework import (
 from agents.schemas import ResultsLoopRequest, ReviewResult
 from agents.tools.visualize_geometry import visualize_geometry
 from agents.utils.chat_logger import log_message
+from agents.utils.context_trimmer import trim_chat_completions_history
 from agents.utils.script_utils import generate_script, generate_script_patch, parse_script
 from agents.utils.skill_loader import get_skill_topic
 
@@ -444,6 +445,9 @@ class AnalyzeExecutor(Executor):
         os.makedirs(analysis_dir, exist_ok=True)
 
         while True:
+            # Trim older entries to prevent unbounded context growth
+            trim_chat_completions_history(history)
+
             response = await client.chat.completions.create(
                 model=os.getenv("ANALYSIS_MODEL", "gpt-4o"),
                 temperature=0,

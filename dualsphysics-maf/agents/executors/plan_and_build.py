@@ -38,6 +38,7 @@ from agents.schemas import (
 from agents.tools.visualize_geometry import visualize_geometry
 from agents.utils.build_utils import rebuild_gencase_viz
 from agents.utils.chat_logger import log_message
+from agents.utils.context_trimmer import trim_responses_api_history
 from agents.utils.intent import answer_question, resolve_datalake_files
 from agents.utils.patch_utils import generate_patch, merge_patch
 from agents.utils.skill_loader import get_skill_content, get_skill_topic
@@ -687,6 +688,9 @@ class PlanAndBuildExecutor(Executor):
         client = AsyncOpenAI()
 
         while True:
+            # Trim older entries to prevent unbounded context growth
+            trim_responses_api_history(history)
+
             response = await client.responses.create(
                 model=os.getenv("INTENT_MODEL", "gpt-4o-mini"),
                 temperature=0,
