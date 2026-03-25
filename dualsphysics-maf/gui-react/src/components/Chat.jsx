@@ -1,7 +1,56 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+
+// Stable reference for ReactMarkdown components — defined once, never recreated.
+const markdownComponents = {
+  code({ inline, className, children, ...props }) {
+    const match = /language-(\w+)/.exec(className || '');
+    if (!inline && match) {
+      return (
+        <SyntaxHighlighter
+          style={oneDark}
+          language={match[1]}
+          PreTag="div"
+          {...props}
+        >
+          {String(children).replace(/\n$/, '')}
+        </SyntaxHighlighter>
+      );
+    }
+    return (
+      <code className={className} {...props}>
+        {children}
+      </code>
+    );
+  },
+};
+
+/**
+ * Memoized single-message renderer.
+ * Only re-renders when `role` or `content` actually change,
+ * preventing expensive ReactMarkdown re-parsing on sibling updates.
+ */
+const MessageItem = memo(function MessageItem({ role, content }) {
+  return (
+    <div className={`message ${role}`}>
+      <div className="message-avatar">
+        {role === 'user' ? 'U' : 'A'}
+      </div>
+      <div className="message-body">
+        <div className="message-role">
+          {role === 'user' ? 'You' : 'Agent'}
+        </div>
+        <div className="message-content">
+          <ReactMarkdown skipHtml components={markdownComponents}>
+            {content}
+          </ReactMarkdown>
+        </div>
+      </div>
+    </div>
+  );
+});
 
 export default function Chat({
   messages,
@@ -16,10 +65,11 @@ export default function Chat({
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll only when the number of messages changes (not on every state update)
+  const messageCount = messages.length;
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messageCount]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -53,45 +103,7 @@ export default function Chat({
           </div>
         ) : (
           messages.map((msg, i) => (
-            <div key={i} className={`message ${msg.role}`}>
-              <div className="message-avatar">
-                {msg.role === 'user' ? 'U' : 'A'}
-              </div>
-              <div className="message-body">
-                <div className="message-role">
-                  {msg.role === 'user' ? 'You' : 'Agent'}
-                </div>
-                <div className="message-content">
-                  <ReactMarkdown
-                    skipHtml
-                    components={{
-                      code({ inline, className, children, ...props }) {
-                        const match = /language-(\w+)/.exec(className || '');
-                        if (!inline && match) {
-                          return (
-                            <SyntaxHighlighter
-                              style={oneDark}
-                              language={match[1]}
-                              PreTag="div"
-                              {...props}
-                            >
-                              {String(children).replace(/\n$/, '')}
-                            </SyntaxHighlighter>
-                          );
-                        }
-                        return (
-                          <code className={className} {...props}>
-                            {children}
-                          </code>
-                        );
-                      },
-                    }}
-                  >
-                    {msg.content}
-                  </ReactMarkdown>
-                </div>
-              </div>
-            </div>
+            <MessageItem key={i} role={msg.role} content={msg.content} />
           ))
         )}
         <div ref={messagesEndRef} />

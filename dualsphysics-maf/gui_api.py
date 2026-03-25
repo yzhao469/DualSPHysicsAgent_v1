@@ -13,6 +13,7 @@ import logging
 import os
 import re
 import threading
+import time
 import uuid
 from pathlib import Path
 from typing import Any
@@ -196,6 +197,31 @@ def _discover_files(run_dir: str | None) -> dict:
         "output_files": output_files,
         "python_scripts": python_scripts,
     }
+
+
+# TTL-based cache for _discover_files to avoid expensive filesystem traversal
+# on every WebSocket event.
+_files_cache: dict | None = None
+_files_cache_dir: str | None = None
+_files_cache_time: float = 0.0
+_FILES_CACHE_TTL: float = 5.0  # seconds
+
+
+def _discover_files_cached(run_dir: str | None) -> dict:
+    """Return _discover_files result, cached for up to _FILES_CACHE_TTL seconds."""
+    global _files_cache, _files_cache_dir, _files_cache_time
+    now = time.monotonic()
+    if (
+        _files_cache is not None
+        and _files_cache_dir == run_dir
+        and (now - _files_cache_time) < _FILES_CACHE_TTL
+    ):
+        return _files_cache
+    result = _discover_files(run_dir)
+    _files_cache = result
+    _files_cache_dir = run_dir
+    _files_cache_time = now
+    return result
 
 
 def _file_icon(path: str) -> str:
@@ -557,7 +583,7 @@ async def websocket_endpoint(ws: WebSocket):
                         "confirm_revise": (session.pending_request or {}).get("confirm_revise", False),
                         "run_dir": session.run_dir,
                         "messages": session.messages,
-                        "files": _discover_files(session.run_dir),
+                        "files": _discover_files_cached(session.run_dir),
                     },
                 })
             except asyncio.TimeoutError:

@@ -15,6 +15,13 @@ import {
   createEventSocket,
 } from './api';
 
+/** Ref-backed latest-value hook — lets callbacks read state without re-creating. */
+function useLatest(value) {
+  const ref = useRef(value);
+  ref.current = value;
+  return ref;
+}
+
 const PHASE_TABS = {
   idle: [{ id: 'chat', label: 'Chat' }],
   running: [{ id: 'chat', label: 'Chat' }],
@@ -57,6 +64,9 @@ export default function App() {
   const wsRef = useRef(null);
   const wsConnectedRef = useRef(false);
   const pollRef = useRef(null);
+
+  // Keep a ref to the latest state so callbacks can read it without re-creating.
+  const stateRef = useLatest(state);
 
   // Show toast notification
   const showToast = useCallback((message, type = 'success') => {
@@ -121,12 +131,13 @@ export default function App() {
     };
   }, []);
 
-  // Handle sending a message
+  // Handle sending a message — stable callback that reads state from a ref.
   const handleSend = useCallback(
     async (text) => {
       if (!text.trim()) return;
+      const s = stateRef.current;
 
-      if (!state.workflow_running && !state.workflow_done) {
+      if (!s.workflow_running && !s.workflow_done) {
         // Start new workflow
         setState((prev) => ({
           ...prev,
@@ -139,7 +150,7 @@ export default function App() {
         } catch (err) {
           showToast(err.message, 'error');
         }
-      } else if (state.pending_request) {
+      } else if (s.pending_request) {
         // Respond to HITL request
         setState((prev) => ({
           ...prev,
@@ -156,7 +167,7 @@ export default function App() {
       }
 
     },
-    [state.workflow_running, state.workflow_done, state.pending_request, showToast]
+    [showToast]
   );
 
   // Handle new session
