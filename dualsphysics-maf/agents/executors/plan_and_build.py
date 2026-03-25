@@ -46,6 +46,52 @@ from agents.utils.skill_loader import get_skill_content, get_skill_topic
 logger = logging.getLogger(__name__)
 MAX_BUILD_RECOVERY_ATTEMPTS = 3
 
+# Common GenCase / geometry build failure patterns and diagnostic hints
+_BUILD_FAILURE_DIAGNOSTICS: list[tuple[str, str]] = [
+    ("xml", "Malformed XML — check for unclosed tags, invalid attributes, or encoding issues."),
+    ("unknown element", "Unknown XML element — verify geometry element names against the DualSPHysics reference."),
+    ("not found", "File not found — a referenced mesh or input file may be missing from the run directory."),
+    ("boundary", "Boundary definition error — check that all boundaries are properly enclosed and non-overlapping."),
+    ("particle", "Particle generation error — verify dp spacing and that geometry volumes are valid."),
+    ("memory", "Out of memory during GenCase — reduce particle count by increasing dp or shrinking the domain."),
+    ("permission", "Permission denied — check file/directory write permissions in the run directory."),
+]
+
+
+def _build_error_diagnostics(error_text: str) -> str:
+    """Return diagnostic hints based on common build failure patterns."""
+    error_lower = error_text.lower()
+    hints = [hint for pattern, hint in _BUILD_FAILURE_DIAGNOSTICS if pattern in error_lower]
+    if hints:
+        return "\n".join(f"  - {h}" for h in hints)
+    return "  - No specific diagnostic match. Review the error output for details."
+
+
+def _check_mcp_tool_result(tool_name: str, response: str | dict) -> None:
+    """Validate MCP tool response; raise RuntimeError with details on failure.
+
+    Handles both structured JSON responses (with returncode/stderr) and
+    plain-text error responses (starting with 'ERROR').
+    """
+    # Try to parse as structured JSON
+    if isinstance(response, str):
+        try:
+            result = json.loads(response)
+        except (json.JSONDecodeError, TypeError):
+            result = None
+    else:
+        result = response
+
+    if isinstance(result, dict):
+        if result.get("returncode", 0) != 0:
+            error_detail = result.get("stderr") or result.get("stdout") or str(response)
+            raise RuntimeError(f"{tool_name} failed: {error_detail}")
+        return
+
+    # Fall back to plain-text error detection
+    if isinstance(response, str) and response.startswith("ERROR"):
+        raise RuntimeError(f"{tool_name} failed: {response}")
+
 # ─────────────────────────────────────────────────────────────────────────────
 # OpenAI function definitions for the setup review LLM (Responses API format)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -465,8 +511,7 @@ class PlanAndBuildExecutor(Executor):
             output_xml=case_xml,
             geometry_xml=geometry_xml,
         )
-        if r.startswith("ERROR"):
-            raise RuntimeError(f"set_geometry failed: {r}")
+        _check_mcp_tool_result("set_geometry", r)
         logger.info("set_geometry OK")
 
         # 2. Modify physics parameters
@@ -477,6 +522,7 @@ class PlanAndBuildExecutor(Executor):
             output_xml=case_xml,
             **params.model_dump(),
         )
+        _check_mcp_tool_result("modify_xml", r)
         logger.info("modify_xml OK: %s", r)
 
         # 3. Generate probe points file
@@ -486,6 +532,7 @@ class PlanAndBuildExecutor(Executor):
             output_path=f"{run_dir}/PointsMeasure_Points.txt",
             probe_points=probe_points,
         )
+        _check_mcp_tool_result("generate_points_file", r)
         logger.info("generate_points_file OK: %s", r)
 
         # 4. Run GenCase
@@ -495,9 +542,7 @@ class PlanAndBuildExecutor(Executor):
             xml_path=f"{run_dir}/Case_Def",  # no .xml extension
             output_dir=f"{run_dir}/out",
         )
-        result = json.loads(r) if isinstance(r, str) else r
-        if result.get("returncode", -1) != 0:
-            raise RuntimeError(f"run_gencase failed: {result.get('stderr', r)}")
+        _check_mcp_tool_result("run_gencase", r)
         logger.info("run_gencase OK")
 
         # 5. Visualize (direct Python call, not MCP)
@@ -537,11 +582,13 @@ class PlanAndBuildExecutor(Executor):
         # Build plan summary
         summary = _format_plan_summary(plan)
         if build_error:
+            diagnostics = _build_error_diagnostics(build_error)
             logger.warning("Build failed: %s — entering setup review recovery loop", build_error)
             summary = (
                 f"{summary}\n\n"
                 "Build failed before the setup could be reviewed.\n"
                 f"Error:\n{build_error}\n\n"
+                f"Possible causes:\n{diagnostics}\n\n"
                 "You can request a fix, manually edit the XML, ask a question, or replan."
             )
 
@@ -844,26 +891,27 @@ class PlanAndBuildExecutor(Executor):
                 output_xml=case_xml,
                 geometry_xml=patch["geometry_xml"],
             )
-            if r.startswith("ERROR"):
-                raise RuntimeError(f"set_geometry failed: {r}")
+            _check_mcp_tool_result("set_geometry", r)
 
         if "params" in patch:
             logger.info(">>> modify_xml (patch)")
             merged_params = {**plan_data["params"], **patch["params"]}
-            await self.mcp.call_tool(
+            r = await self.mcp.call_tool(
                 "modify_xml",
                 base_xml=case_xml,
                 output_xml=case_xml,
                 **merged_params,
             )
+            _check_mcp_tool_result("modify_xml", r)
 
         if "probe_points" in patch:
             logger.info(">>> generate_points_file (patch)")
-            await self.mcp.call_tool(
+            r = await self.mcp.call_tool(
                 "generate_points_file",
                 output_path=f"{run_dir}/PointsMeasure_Points.txt",
                 probe_points=patch["probe_points"],
             )
+            _check_mcp_tool_result("generate_points_file", r)
 
         merge_patch(plan_data, patch)
         ctx.set_state("plan", plan_data)
