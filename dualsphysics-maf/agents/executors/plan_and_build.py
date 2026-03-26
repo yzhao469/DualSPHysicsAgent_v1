@@ -40,329 +40,30 @@ from agents.utils.build_utils import rebuild_gencase_viz
 from agents.utils.chat_logger import log_message
 from agents.utils.context_trimmer import trim_chat_completions_history
 from agents.utils.intent import answer_question, resolve_datalake_files
+from agents.utils.mcp_tools import (
+    BUILD_DIAGNOSTICS,
+    check_mcp_tool_result,
+    diagnose_error,
+)
 from agents.utils.patch_utils import generate_patch, merge_patch
-from agents.utils.skill_loader import get_skill_content, get_skill_topic
+from agents.utils.skill_loader import get_skill_topic
+
+from agents.executors._setup_review import (
+    MAX_BUILD_RECOVERY_ATTEMPTS,
+    TOOLS,
+    assistant_message,
+    build_instructions,
+    format_plan_summary,
+    is_image_file,
+    is_mesh_file,
+    list_datalake_files,
+    system_message,
+    tool_result,
+    user_message,
+    user_message_with_images,
+)
 
 logger = logging.getLogger(__name__)
-MAX_BUILD_RECOVERY_ATTEMPTS = 3
-
-# Common GenCase / geometry build failure patterns and diagnostic hints.
-# Patterns are checked with `in` against lowercased error text, so use
-# multi-word phrases to avoid false positives.
-_BUILD_FAILURE_DIAGNOSTICS: list[tuple[str, str]] = [
-    ("xml syntax", "Malformed XML — check for unclosed tags, invalid attributes, or encoding issues."),
-    ("unknown element", "Unknown XML element — verify geometry element names against the DualSPHysics reference."),
-    ("file not found", "File not found — a referenced mesh or input file may be missing from the run directory."),
-    ("no such file", "File not found — a referenced mesh or input file may be missing from the run directory."),
-    ("boundary error", "Boundary definition error — check that all boundaries are properly enclosed and non-overlapping."),
-    ("particle generation", "Particle generation error — verify dp spacing and that geometry volumes are valid."),
-    ("out of memory", "Out of memory during GenCase — reduce particle count by increasing dp or shrinking the domain."),
-    ("permission denied", "Permission denied — check file/directory write permissions in the run directory."),
-]
-
-
-def _build_error_diagnostics(error_text: str) -> str:
-    """Return diagnostic hints based on common build failure patterns."""
-    error_lower = error_text.lower()
-    hints = [hint for pattern, hint in _BUILD_FAILURE_DIAGNOSTICS if pattern in error_lower]
-    if hints:
-        return "\n".join(f"  - {h}" for h in hints)
-    return "  - No specific diagnostic match. Review the error output for details."
-
-
-def _check_mcp_tool_result(tool_name: str, response: str | dict) -> None:
-    """Validate MCP tool response; raise RuntimeError with details on failure.
-
-    Handles both structured JSON responses (with returncode/stderr) and
-    plain-text error responses (starting with 'ERROR').
-    """
-    # Try to parse as structured JSON
-    if isinstance(response, str):
-        try:
-            result = json.loads(response)
-        except (json.JSONDecodeError, TypeError):
-            logger.debug("%s response is not JSON, treating as plain text", tool_name)
-            result = None
-    else:
-        result = response
-
-    if isinstance(result, dict):
-        if result.get("returncode", 0) != 0:
-            error_detail = result.get("stderr") or result.get("stdout") or str(response)
-            raise RuntimeError(f"{tool_name} failed: {error_detail}")
-        return
-
-    # Fall back to plain-text error detection
-    if isinstance(response, str) and response.startswith("ERROR"):
-        raise RuntimeError(f"{tool_name} failed: {response}")
-
-# ─────────────────────────────────────────────────────────────────────────────
-# OpenAI function definitions for the setup review LLM (Chat Completions API)
-# ─────────────────────────────────────────────────────────────────────────────
-
-_TOOLS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "patch_and_rebuild",
-            "description": (
-                "Apply changes to the simulation case XML based on the user's "
-                "description. Re-runs GenCase and regenerates the visualization."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "changes": {
-                        "type": "string",
-                        "description": "Description of what to change in the simulation setup.",
-                    },
-                },
-                "required": ["changes"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "answer_question",
-            "description": (
-                "Answer a question about the simulation plan, physics, "
-                "DualSPHysics, or the current setup."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "question": {
-                        "type": "string",
-                        "description": "The question to answer.",
-                    },
-                },
-                "required": ["question"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "approve",
-            "description": "User is satisfied with the setup. Proceed to simulation.",
-            "parameters": {"type": "object", "properties": {}},
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "manual_edit",
-            "description": (
-                "Let the user manually edit the Case_Def.xml file directly. "
-                "Use this when the user says they want to edit the file themselves."
-            ),
-            "parameters": {"type": "object", "properties": {}},
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_reference",
-            "description": (
-                "Fetch detailed reference for a specific XML/geometry topic. "
-                "Use this when you need exact syntax, drawing primitives, "
-                "transform rules, or composition examples."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "topic": {
-                        "type": "string",
-                        "enum": [
-                            "xml-overview",
-                            "drawing-shapes",
-                            "fill-and-modification",
-                            "transforms-and-variables",
-                            "composition-patterns",
-                        ],
-                        "description": "Which reference to fetch.",
-                    },
-                },
-                "required": ["topic"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "replan",
-            "description": (
-                "Scrap the current plan and start over with a different scenario."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "new_scenario": {
-                        "type": "string",
-                        "description": "The new scenario description.",
-                    },
-                },
-                "required": ["new_scenario"],
-            },
-        },
-    },
-]
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Helpers
-# ─────────────────────────────────────────────────────────────────────────────
-
-
-_DATALAKE_EXTENSIONS = {".xml", ".png", ".jpg", ".jpeg", ".stl", ".vtk", ".ply", ".csv"}
-
-
-def _list_datalake_files(base_dir: str) -> list[str]:
-    """Return relative paths of all XML and image files in the datalake directory."""
-    datalake = Path(base_dir) / "datalake"
-    if not datalake.is_dir():
-        return []
-    return sorted(
-        str(p.relative_to(base_dir))
-        for p in datalake.rglob("*")
-        if p.suffix.lower() in _DATALAKE_EXTENSIONS
-    )
-
-
-def _is_image_file(path: Path) -> bool:
-    return path.suffix.lower() in {".png", ".jpg", ".jpeg"}
-
-
-_MESH_EXTENSIONS = {".stl", ".vtk", ".ply", ".csv"}
-
-
-def _is_mesh_file(path: Path) -> bool:
-    return path.suffix.lower() in _MESH_EXTENSIONS
-
-
-def _build_instructions(
-    plan_data: dict,
-    run_dir: str,
-    build_error: str | None = None,
-    retry_count: int = 0,
-    max_retry_count: int = MAX_BUILD_RECOVERY_ATTEMPTS,
-) -> str:
-    """Build the instructions for the setup review LLM."""
-    plan_summary = json.dumps(plan_data, indent=2)
-    build_status = (
-        "Build failed before review started."
-        if build_error
-        else "Build completed successfully."
-    )
-    failure_guidance = ""
-    if build_error:
-        failure_guidance = (
-            f"### Current Build Error\n{build_error}\n\n"
-            f"### Recovery Attempts\n{retry_count} of {max_retry_count}\n\n"
-        )
-    return (
-        "You are a helpful assistant reviewing a DualSPHysics simulation setup. "
-        "The user has been shown the simulation plan and a visualization "
-        "of the particle geometry.\n\n"
-        f"### Build Status\n{build_status}\n\n"
-        f"{failure_guidance}"
-        f"### Current Simulation Plan\n```json\n{plan_summary}\n```\n\n"
-        f"### Run Directory\n{run_dir}\n\n"
-        "### Your Role\n"
-        "- If the build status is failed, do not call `approve` until the setup has been rebuilt successfully.\n"
-        "- If the user is happy with the setup, call `approve` to proceed to simulation.\n"
-        "- If the user wants changes (geometry, parameters, probes), call `patch_and_rebuild`.\n"
-        "- If the user wants to edit the XML file themselves, call `manual_edit`.\n"
-        "- If the user asks a question, call `answer_question`.\n"
-        "- If the user wants to start over entirely, call `replan`.\n"
-        f"- If recovery keeps failing and you have already used {max_retry_count} rebuild attempts, call `replan`.\n"
-        "- Always be concise and helpful.\n"
-        "- When the user gives short affirmative responses like 'yes', 'ok', 'looks good', "
-        "'go ahead', 'proceed', or just presses Enter, call `approve`.\n"
-    )
-
-
-def _format_plan_summary(plan: SimulationPlan) -> str:
-    """Build a human-readable summary of the simulation plan."""
-    lines = [
-        "=" * 64,
-        "  SIMULATION PLAN",
-        "=" * 64,
-        "",
-        "### Reasoning",
-        plan.reasoning,
-        "",
-    ]
-    if plan.geometry_xml:
-        lines += [
-            "### Geometry XML",
-            "```xml",
-            plan.geometry_xml,
-            "```",
-            "",
-        ]
-    lines.append("### Physics Parameters")
-    for field, value in plan.params.model_dump().items():
-        lines.append(f"  {field:20s} = {value}")
-    lines += [
-        "",
-        "### Probe Points",
-    ]
-    for i, pt in enumerate(plan.probe_points):
-        lines.append(f"  [{i}] x={pt[0]:.4f}  y={pt[1]:.4f}  z={pt[2]:.4f}")
-    lines += [
-        "",
-        "=" * 64,
-        "A visualization of the particle configuration has been generated.",
-        "Approve, request changes, or ask a question:",
-    ]
-    return "\n".join(lines)
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Chat Completions API history helpers
-# ─────────────────────────────────────────────────────────────────────────────
-
-
-def _system_message(text: str) -> dict:
-    """Build a Chat Completions system message."""
-    return {"role": "system", "content": text}
-
-
-def _user_message(text: str) -> dict:
-    """Build a Chat Completions user message."""
-    return {"role": "user", "content": text}
-
-
-def _user_message_with_images(text: str, images: list[tuple[str, str]]) -> dict:
-    """Build a Chat Completions user message with text + one or more images.
-
-    Args:
-        text: The text content.
-        images: List of (base64_data, media_type) tuples.
-    """
-    content: list[dict] = [{"type": "text", "text": text}]
-    for img_b64, media_type in images:
-        content.append({
-            "type": "image_url",
-            "image_url": {"url": f"data:{media_type};base64,{img_b64}"},
-        })
-    return {"role": "user", "content": content}
-
-
-def _assistant_message(text: str) -> dict:
-    """Build a Chat Completions assistant message."""
-    return {"role": "assistant", "content": text}
-
-
-def _tool_result(tool_call_id: str, output: str) -> dict:
-    """Build a Chat Completions tool result message."""
-    return {
-        "role": "tool",
-        "tool_call_id": tool_call_id,
-        "content": output,
-    }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -403,7 +104,7 @@ class PlanAndBuildExecutor(Executor):
         for rel_path in matched_files:
             abs_path = Path(self.base_dir) / rel_path
 
-            if _is_mesh_file(abs_path):
+            if is_mesh_file(abs_path):
                 filename = abs_path.name
                 draw_cmd = self._DRAW_COMMANDS[abs_path.suffix.lower()]
                 mesh_paths.append(str(abs_path))
@@ -415,7 +116,7 @@ class PlanAndBuildExecutor(Executor):
                 )
                 logger.info("PlanAndBuildExecutor: injected datalake mesh %s", abs_path)
 
-            elif _is_image_file(abs_path):
+            elif is_image_file(abs_path):
                 suffix = abs_path.suffix.lower()
                 media_type = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}[suffix]
                 image_contents.append(Content.from_data(abs_path.read_bytes(), media_type))
@@ -457,7 +158,7 @@ class PlanAndBuildExecutor(Executor):
         logger.info("PlanAndBuildExecutor: new scenario (%d chars)", len(scenario))
         ctx.set_state("scenario", scenario)
 
-        available = _list_datalake_files(self.base_dir)
+        available = list_datalake_files(self.base_dir)
         matched = await resolve_datalake_files(scenario, available) if available else []
 
         if matched:
@@ -509,7 +210,7 @@ class PlanAndBuildExecutor(Executor):
             output_xml=case_xml,
             geometry_xml=geometry_xml,
         )
-        _check_mcp_tool_result("set_geometry", r)
+        check_mcp_tool_result("set_geometry", r)
         logger.info("set_geometry OK")
 
         # 2. Modify physics parameters
@@ -520,7 +221,7 @@ class PlanAndBuildExecutor(Executor):
             output_xml=case_xml,
             **params.model_dump(),
         )
-        _check_mcp_tool_result("modify_xml", r)
+        check_mcp_tool_result("modify_xml", r)
         logger.info("modify_xml OK: %s", r)
 
         # 3. Generate probe points file
@@ -530,7 +231,7 @@ class PlanAndBuildExecutor(Executor):
             output_path=f"{run_dir}/PointsMeasure_Points.txt",
             probe_points=probe_points,
         )
-        _check_mcp_tool_result("generate_points_file", r)
+        check_mcp_tool_result("generate_points_file", r)
         logger.info("generate_points_file OK: %s", r)
 
         # 4. Run GenCase
@@ -540,7 +241,7 @@ class PlanAndBuildExecutor(Executor):
             xml_path=f"{run_dir}/Case_Def",  # no .xml extension
             output_dir=f"{run_dir}/out",
         )
-        _check_mcp_tool_result("run_gencase", r)
+        check_mcp_tool_result("run_gencase", r)
         logger.info("run_gencase OK")
 
         # 5. Visualize (direct Python call, not MCP)
@@ -578,9 +279,9 @@ class PlanAndBuildExecutor(Executor):
             build_error = str(exc)
 
         # Build plan summary
-        summary = _format_plan_summary(plan)
+        summary = format_plan_summary(plan)
         if build_error:
-            diagnostics = _build_error_diagnostics(build_error)
+            diagnostics = diagnose_error(build_error, BUILD_DIAGNOSTICS)
             logger.warning("Build failed: %s — entering setup review recovery loop", build_error)
             summary = (
                 f"{summary}\n\n"
@@ -614,12 +315,12 @@ class PlanAndBuildExecutor(Executor):
                 image_names.append(rel_path)
         if images:
             label = ", ".join(image_names)
-            history.append(_user_message_with_images(
+            history.append(user_message_with_images(
                 f"Reference image(s) from the datalake ({label}). "
                 "Use to verify the geometry setup matches the target.",
                 images,
             ))
-            history.append(_assistant_message(
+            history.append(assistant_message(
                 "I can see the reference image(s). I'll use them to help review "
                 "whether the simulation geometry matches the target."
             ))
@@ -656,7 +357,7 @@ class PlanAndBuildExecutor(Executor):
         run_dir: str,
     ) -> str:
         """Rebuild and store the review LLM instructions (used as system message)."""
-        instructions = _build_instructions(
+        instructions = build_instructions(
             plan_data,
             run_dir,
             build_error=ctx.get_state("setup_review_last_error"),
@@ -691,7 +392,7 @@ class PlanAndBuildExecutor(Executor):
                     ReviewResult(route="sim", feedback="approved")
                 )
                 return
-            history.append(_user_message(feedback or "no"))
+            history.append(user_message(feedback or "no"))
             log_message(run_dir, "user", feedback or "no", phase="setup_review")
 
         # Check if we're resuming after a manual edit pause
@@ -702,7 +403,7 @@ class PlanAndBuildExecutor(Executor):
                 await rebuild_gencase_viz(self.mcp, run_dir)
                 self._set_recovery_state(ctx)
                 instructions = self._refresh_instructions(ctx, plan_data, run_dir)
-                history.append(_tool_result(
+                history.append(tool_result(
                     pending_manual_edit,
                     "Manual edit complete. GenCase rebuilt and visualization regenerated.",
                 ))
@@ -710,7 +411,7 @@ class PlanAndBuildExecutor(Executor):
                 logger.exception("Manual edit rebuild failed")
                 retry_count = self._record_recovery_failure(ctx, str(exc))
                 instructions = self._refresh_instructions(ctx, plan_data, run_dir)
-                history.append(_tool_result(
+                history.append(tool_result(
                     pending_manual_edit,
                     f"Rebuild failed: {exc}",
                 ))
@@ -727,7 +428,7 @@ class PlanAndBuildExecutor(Executor):
                     )
                     return
         else:
-            history.append(_user_message(feedback or "approve"))
+            history.append(user_message(feedback or "approve"))
             log_message(run_dir, "user", feedback or "approve", phase="setup_review")
 
         client = AsyncOpenAI()
@@ -737,13 +438,13 @@ class PlanAndBuildExecutor(Executor):
             trim_chat_completions_history(history)
 
             # Build messages list: system message + conversation history
-            messages = [_system_message(instructions)] + history
+            messages = [system_message(instructions)] + history
 
             response = await client.chat.completions.create(
                 model=os.getenv("INTENT_MODEL", "gpt-4o-mini"),
                 temperature=0,
                 messages=messages,
-                tools=_TOOLS,
+                tools=TOOLS,
             )
 
             choice = response.choices[0]
@@ -771,14 +472,14 @@ class PlanAndBuildExecutor(Executor):
                 if fn_name == "approve":
                     last_error = ctx.get_state("setup_review_last_error")
                     if last_error:
-                        history.append(_tool_result(
+                        history.append(tool_result(
                             tc.id,
                             "Cannot approve yet because the current setup still has an "
                             f"unresolved build error: {last_error}. "
                             "Fix it first with `patch_and_rebuild`, `manual_edit`, or `replan`.",
                         ))
                         continue
-                    history.append(_tool_result(
+                    history.append(tool_result(
                         tc.id,
                         "Waiting for user confirmation to proceed.",
                     ))
@@ -811,12 +512,12 @@ class PlanAndBuildExecutor(Executor):
                         )
                         self._set_recovery_state(ctx)
                         instructions = self._refresh_instructions(ctx, plan_data, run_dir)
-                        history.append(_tool_result(tc.id, result_text))
+                        history.append(tool_result(tc.id, result_text))
                     except Exception as exc:
                         logger.exception("patch_and_rebuild failed")
                         retry_count = self._record_recovery_failure(ctx, str(exc))
                         instructions = self._refresh_instructions(ctx, plan_data, run_dir)
-                        history.append(_tool_result(tc.id, f"Error: {exc}"))
+                        history.append(tool_result(tc.id, f"Error: {exc}"))
                         if retry_count >= MAX_BUILD_RECOVERY_ATTEMPTS:
                             ctx.set_state("setup_review_history", history)
                             await ctx.send_message(
@@ -848,13 +549,13 @@ class PlanAndBuildExecutor(Executor):
                 elif fn_name == "get_reference":
                     topic = fn_args["topic"]
                     ref_content = get_skill_topic(topic)
-                    history.append(_tool_result(tc.id, ref_content))
+                    history.append(tool_result(tc.id, ref_content))
 
                 elif fn_name == "answer_question":
                     question = fn_args["question"]
                     plan_context = json.dumps(plan_data, indent=2)
                     answer = await answer_question(question, plan_context)
-                    history.append(_tool_result(tc.id, answer))
+                    history.append(tool_result(tc.id, answer))
 
             ctx.set_state("setup_review_history", history)
 
@@ -885,7 +586,7 @@ class PlanAndBuildExecutor(Executor):
                 output_xml=case_xml,
                 geometry_xml=patch["geometry_xml"],
             )
-            _check_mcp_tool_result("set_geometry", r)
+            check_mcp_tool_result("set_geometry", r)
 
         if "params" in patch:
             logger.info(">>> modify_xml (patch)")
@@ -896,7 +597,7 @@ class PlanAndBuildExecutor(Executor):
                 output_xml=case_xml,
                 **merged_params,
             )
-            _check_mcp_tool_result("modify_xml", r)
+            check_mcp_tool_result("modify_xml", r)
 
         if "probe_points" in patch:
             logger.info(">>> generate_points_file (patch)")
@@ -905,7 +606,7 @@ class PlanAndBuildExecutor(Executor):
                 output_path=f"{run_dir}/PointsMeasure_Points.txt",
                 probe_points=patch["probe_points"],
             )
-            _check_mcp_tool_result("generate_points_file", r)
+            check_mcp_tool_result("generate_points_file", r)
 
         merge_patch(plan_data, patch)
         ctx.set_state("plan", plan_data)

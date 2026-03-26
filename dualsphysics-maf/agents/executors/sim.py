@@ -17,33 +17,14 @@ from agent_framework import (
 )
 
 from agents.schemas import ReviewResult
+from agents.utils.mcp_tools import SIM_DIAGNOSTICS, diagnose_error
 
 logger = logging.getLogger(__name__)
-
-# Common DualSPHysics failure patterns and diagnostic hints.
-# Patterns are checked with `in` against lowercased error text, so use
-# multi-word phrases to avoid false positives (e.g. "out of memory" not "memory").
-_FAILURE_DIAGNOSTICS: list[tuple[str, str]] = [
-    ("cfl condition", "CFL violation — try reducing CflNumber (e.g. 0.05) or decreasing TimeOut."),
-    ("particle out", "Particle explosion — check initial density (rhop0) and geometry containment."),
-    ("nan detected", "NaN detected — parameters may be out of range; check viscosity, yield stress, or density."),
-    ("out of memory", "Out of memory — reduce particle count by increasing dp or shrinking the domain."),
-    ("diverge", "Solver divergence — try lowering TimeMax for a shorter test run first."),
-]
 
 
 def _has_gpu() -> bool:
     """Check whether an NVIDIA GPU is available via nvidia-smi."""
     return shutil.which("nvidia-smi") is not None
-
-
-def _diagnose_failure(error_text: str) -> str:
-    """Return diagnostic hints based on common failure patterns in error text."""
-    error_lower = error_text.lower()
-    hints = [hint for pattern, hint in _FAILURE_DIAGNOSTICS if pattern in error_lower]
-    if hints:
-        return "\n".join(f"  - {h}" for h in hints)
-    return "  - No specific diagnostic match. Review the error output for details."
 
 
 class SimExecutor(Executor):
@@ -81,7 +62,7 @@ class SimExecutor(Executor):
         except RuntimeError as exc:
             logger.error("Simulation failed: %s", exc)
             error_msg = str(exc)
-            diagnostics = _diagnose_failure(error_msg)
+            diagnostics = diagnose_error(error_msg, SIM_DIAGNOSTICS)
 
             # Route back to setup review with error context so the user can
             # adjust parameters (CFL, density, TimeMax, etc.) and retry.
