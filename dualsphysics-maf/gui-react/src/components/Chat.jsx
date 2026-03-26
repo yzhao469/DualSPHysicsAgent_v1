@@ -65,11 +65,11 @@ export default function Chat({
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
 
-  // Auto-scroll only when the number of messages changes (not on every state update)
-  const messageCount = messages.length;
+  // Auto-scroll when messages change (new message or content update e.g. streaming)
+  const lastMsg = messages[messages.length - 1];
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messageCount]);
+  }, [messages.length, lastMsg?.content]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -103,7 +103,7 @@ export default function Chat({
           </div>
         ) : (
           messages.map((msg, i) => (
-            <MessageItem key={i} role={msg.role} content={msg.content} />
+            <MessageItem key={`${i}-${msg.role}`} role={msg.role} content={msg.content} />
           ))
         )}
         <div ref={messagesEndRef} />

@@ -200,31 +200,23 @@ def _discover_files(run_dir: str | None) -> dict:
 
 
 # TTL-based cache for _discover_files to avoid expensive filesystem traversal
-# on every WebSocket event.
-_files_cache: dict | None = None
-_files_cache_dir: str | None = None
-_files_cache_time: float = 0.0
+# on every WebSocket event.  Keyed by run_dir so multiple sessions don't thrash.
+_files_cache: dict[str | None, tuple[float, dict]] = {}
 _FILES_CACHE_TTL: float = 5.0  # seconds
 _files_cache_lock = threading.Lock()
 
 
 def _discover_files_cached(run_dir: str | None) -> dict:
     """Return _discover_files result, cached for up to _FILES_CACHE_TTL seconds."""
-    global _files_cache, _files_cache_dir, _files_cache_time
     now = time.monotonic()
     with _files_cache_lock:
-        if (
-            _files_cache is not None
-            and _files_cache_dir == run_dir
-            and (now - _files_cache_time) < _FILES_CACHE_TTL
-        ):
-            return _files_cache
-    result = _discover_files(run_dir)
-    with _files_cache_lock:
-        _files_cache = result
-        _files_cache_dir = run_dir
-        _files_cache_time = time.monotonic()
-    return result
+        entry = _files_cache.get(run_dir)
+        if entry is not None and (now - entry[0]) < _FILES_CACHE_TTL:
+            return entry[1]
+        # Compute inside the lock — it's a fast glob, not worth double-executing.
+        result = _discover_files(run_dir)
+        _files_cache[run_dir] = (time.monotonic(), result)
+        return result
 
 
 def _file_icon(path: str) -> str:
