@@ -20,12 +20,14 @@ from agents.schemas import ReviewResult
 
 logger = logging.getLogger(__name__)
 
-# Common DualSPHysics failure patterns and diagnostic hints
+# Common DualSPHysics failure patterns and diagnostic hints.
+# Patterns are checked with `in` against lowercased error text, so use
+# multi-word phrases to avoid false positives (e.g. "out of memory" not "memory").
 _FAILURE_DIAGNOSTICS: list[tuple[str, str]] = [
-    ("cfl", "CFL violation — try reducing CflNumber (e.g. 0.05) or decreasing TimeOut."),
-    ("particle", "Particle explosion — check initial density (rhop0) and geometry containment."),
-    ("nan", "NaN detected — parameters may be out of range; check viscosity, yield stress, or density."),
-    ("memory", "Out of memory — reduce particle count by increasing dp or shrinking the domain."),
+    ("cfl condition", "CFL violation — try reducing CflNumber (e.g. 0.05) or decreasing TimeOut."),
+    ("particle out", "Particle explosion — check initial density (rhop0) and geometry containment."),
+    ("nan detected", "NaN detected — parameters may be out of range; check viscosity, yield stress, or density."),
+    ("out of memory", "Out of memory — reduce particle count by increasing dp or shrinking the domain."),
     ("diverge", "Solver divergence — try lowering TimeMax for a shorter test run first."),
 ]
 
@@ -76,7 +78,7 @@ class SimExecutor(Executor):
             if sim_result.get("returncode", -1) != 0:
                 error_text = sim_result.get("stderr") or sim_result.get("stdout") or str(r)
                 raise RuntimeError(f"run_simulation failed:\n{error_text}")
-        except Exception as exc:
+        except RuntimeError as exc:
             logger.error("Simulation failed: %s", exc)
             error_msg = str(exc)
             diagnostics = _diagnose_failure(error_msg)

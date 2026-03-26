@@ -46,15 +46,18 @@ from agents.utils.skill_loader import get_skill_content, get_skill_topic
 logger = logging.getLogger(__name__)
 MAX_BUILD_RECOVERY_ATTEMPTS = 3
 
-# Common GenCase / geometry build failure patterns and diagnostic hints
+# Common GenCase / geometry build failure patterns and diagnostic hints.
+# Patterns are checked with `in` against lowercased error text, so use
+# multi-word phrases to avoid false positives.
 _BUILD_FAILURE_DIAGNOSTICS: list[tuple[str, str]] = [
-    ("xml", "Malformed XML — check for unclosed tags, invalid attributes, or encoding issues."),
+    ("xml syntax", "Malformed XML — check for unclosed tags, invalid attributes, or encoding issues."),
     ("unknown element", "Unknown XML element — verify geometry element names against the DualSPHysics reference."),
-    ("not found", "File not found — a referenced mesh or input file may be missing from the run directory."),
-    ("boundary", "Boundary definition error — check that all boundaries are properly enclosed and non-overlapping."),
-    ("particle", "Particle generation error — verify dp spacing and that geometry volumes are valid."),
-    ("memory", "Out of memory during GenCase — reduce particle count by increasing dp or shrinking the domain."),
-    ("permission", "Permission denied — check file/directory write permissions in the run directory."),
+    ("file not found", "File not found — a referenced mesh or input file may be missing from the run directory."),
+    ("no such file", "File not found — a referenced mesh or input file may be missing from the run directory."),
+    ("boundary error", "Boundary definition error — check that all boundaries are properly enclosed and non-overlapping."),
+    ("particle generation", "Particle generation error — verify dp spacing and that geometry volumes are valid."),
+    ("out of memory", "Out of memory during GenCase — reduce particle count by increasing dp or shrinking the domain."),
+    ("permission denied", "Permission denied — check file/directory write permissions in the run directory."),
 ]
 
 

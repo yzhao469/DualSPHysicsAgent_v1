@@ -32,7 +32,7 @@ _MAX_TOOL_RESULT_CHARS = 300
 def trim_chat_completions_history(
     history: list[dict],
     max_recent: int = DEFAULT_MAX_RECENT_ITEMS,
-) -> list[dict]:
+) -> None:
     """Trim a Chat Completions history list, keeping the system message and
     the most recent *max_recent* non-system items intact.
 
@@ -51,10 +51,10 @@ def trim_chat_completions_history(
         max_recent: Number of recent non-system items to keep in full.
 
     Returns:
-        The trimmed history list (same object, mutated).
+        None.  The list is mutated in-place.
     """
     if not history:
-        return history
+        return
 
     # Identify system message (always at index 0 if present)
     has_system = history[0].get("role") == "system"
@@ -62,7 +62,7 @@ def trim_chat_completions_history(
     non_system = history[start:]
 
     if len(non_system) <= max_recent:
-        return history  # nothing to trim
+        return  # nothing to trim
 
     cutoff = len(non_system) - max_recent
     trimmed_count = 0
@@ -91,7 +91,6 @@ def trim_chat_completions_history(
             "Trimmed %d old items in Chat Completions history (window=%d, total=%d)",
             trimmed_count, max_recent, len(history),
         )
-    return history
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -102,7 +101,7 @@ def trim_chat_completions_history(
 def trim_responses_api_history(
     history: list[dict],
     max_recent: int = DEFAULT_MAX_RECENT_ITEMS,
-) -> list[dict]:
+) -> None:
     """Trim a Responses API history list, keeping the most recent
     *max_recent* items intact and summarizing older ones.
 
@@ -121,10 +120,10 @@ def trim_responses_api_history(
         max_recent: Number of recent items to keep in full.
 
     Returns:
-        The trimmed history list (same object, mutated).
+        None.  The list is mutated in-place.
     """
     if len(history) <= max_recent:
-        return history
+        return
 
     cutoff = len(history) - max_recent
     trimmed_count = 0
@@ -154,4 +153,3 @@ def trim_responses_api_history(
             "Trimmed %d old items in Responses API history (window=%d, total=%d)",
             trimmed_count, max_recent, len(history),
         )
-    return history

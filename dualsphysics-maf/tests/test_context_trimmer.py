@@ -47,10 +47,9 @@ class TestTrimChatCompletionsHistory:
             {"role": "user", "content": "hello"},
             {"role": "assistant", "content": "hi"},
         ]
-        result = trim_chat_completions_history(history, max_recent=10)
-        assert result is history
-        assert result[1]["content"] == "hello"
-        assert result[2]["content"] == "hi"
+        trim_chat_completions_history(history, max_recent=10)
+        assert history[1]["content"] == "hello"
+        assert history[2]["content"] == "hi"
 
     def test_trims_old_tool_results(self):
         history = [
@@ -118,13 +117,13 @@ class TestTrimChatCompletionsHistory:
 
     def test_empty_history(self):
         history = []
-        result = trim_chat_completions_history(history)
-        assert result == []
+        trim_chat_completions_history(history)
+        assert history == []
 
     def test_system_only(self):
         history = [{"role": "system", "content": "sys"}]
-        result = trim_chat_completions_history(history, max_recent=5)
-        assert len(result) == 1
+        trim_chat_completions_history(history, max_recent=5)
+        assert len(history) == 1
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -137,9 +136,8 @@ class TestTrimResponsesApiHistory:
         history = [
             {"type": "message", "role": "user", "content": [{"type": "input_text", "text": "hi"}]},
         ]
-        result = trim_responses_api_history(history, max_recent=5)
-        assert result is history
-        assert len(result) == 1
+        trim_responses_api_history(history, max_recent=5)
+        assert len(history) == 1
 
     def test_trims_old_function_call_output(self):
         history = []
@@ -184,5 +182,6 @@ class TestTrimResponsesApiHistory:
         assert "trimmed" in old_assistant["content"][0]["text"]
 
     def test_empty_history(self):
-        result = trim_responses_api_history([])
-        assert result == []
+        history = []
+        trim_responses_api_history(history)
+        assert history == []
