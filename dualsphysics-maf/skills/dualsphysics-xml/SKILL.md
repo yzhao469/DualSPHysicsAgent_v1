@@ -283,6 +283,7 @@ When interpreting a natural language scenario:
 7. **Set `Visco` = `visco_nn`** (wall viscosity should match phase viscosity)
 8. **Geometry**: design from scratch using primitives. Think about:
    - What boundaries are needed (walls, floor, obstacles, slopes)?
+   - **Boundary thickness must be at least 3 particles (3×dp)**. DualSPHysics uses Dynamic Boundary Conditions where boundary particles are fixed SPH particles. The smoothing kernel support spans ~2–3 dp, so boundaries thinner than 3 layers produce incomplete kernel sums, underestimated pressure, and fluid penetration through walls. Use `drawmode="full"` (default) for boundary shapes — this fills the interior and naturally creates multi-layer walls when the shape thickness ≥ 3×dp.
    - Where is the fluid initially?
    - Is the floor flat or inclined?
    - What are the domain bounds (pointmin/pointmax with margin)?
