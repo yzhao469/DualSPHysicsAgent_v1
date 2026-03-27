@@ -158,18 +158,94 @@ Combine tokens with `|`: `actual`, `dp`, `bound`, `fluid`, `void`, `null`
 
 ---
 
-## F. Physics Parameters
+## F. Physics Parameters & Parameterization
 
-### constantsdef
+All parameters scale from `dp` (defined in Section B). The following subsections define
+how to set each parameter and how they interact.
+
+### F1. Smoothing Length (`coefh`) — CRITICAL PARAMETER
+
+**Definition:** `h = coefh × √3 × dp`
+
+Physical meaning:
+- Defines kernel support radius
+- Controls: neighbor count, numerical stability, boundary interaction quality
+
+| Case | coefh |
+|------|-------|
+| Standard SPH | 1.0 |
+| High accuracy | 1.2–1.5 |
+| Coarse/fast | 0.8–1.0 (risky) |
+
+**Key Rule — Boundary Thickness MUST Match `h`:**
+SPH requires full kernel support near walls. Required wall thickness ≥ 2h (minimum), 3h (recommended).
+Convert to particle layers: `N_layers ≈ 2h / dp = 2 × coefh × √3`.
+Once `coefh` is selected: compute `h = coefh * sqrt(3) * dp`, then enforce `boundary_layers >= ceil(2h / dp)`.
+For `coefh = 1`, **3 boundary layers** is generally accepted.
+
+### F2. CFL Number (`cflnumber`)
+
+Controls time step: `Δt ∝ CFL × h / (c + u_max)`
+
+| Case | CFL |
+|------|-----|
+| Stable | 0.1–0.2 |
+| Aggressive | 0.2–0.3 |
+
+Default: **0.15–0.2**. Reduce if high viscosity, strong yield stress, or high velocity gradients.
+
+### F3. Speed of Sound (`coefsound`)
+
+**Definition:** `c = coefsound × U_max`
+
+Controls compressibility error. Must ensure `U_max / c < 0.1`.
+
+| Flow type | coefsound |
+|-----------|-----------|
+| Weakly compressible SPH | 10–20 |
+| Highly dynamic | 20–30 |
+
+### F4. Artificial Viscosity (`Visco`)
+
+From `<parameter key="Visco" value="..." />`. This is **NOT** physical viscosity (which comes from `<visco value="..." />`).
+
+Role: numerical stabilization, shock damping, prevents particle interpenetration.
+
+| Case | Visco |
+|------|-------|
+| General debris flow | 0.05–0.2 |
+| Violent flow | 0.2–0.4 |
+| Water/Newtonian | 1e-6 |
+| High-resolution | ↓ with dp |
+
+Default: `Visco ≈ 0.1` for debris flow. Scale with resolution: `Visco ∝ dp`.
+
+### F5. Coupled Parameter Logic (VERY IMPORTANT)
+
+Agent must ensure consistency across parameters:
+
+**If `coefh` increases:**
+- → `h` will increase
+- → Need more boundary layers
+
+**If `coefsound` increases:**
+- → `dt` should decrease
+- → More stable pressure
+- → More expensive
+
+**If `Visco` increases:**
+- → More damping
+- → Slower flow
+- → May suppress physics
+
+### F6. constantsdef — Other Parameters
 
 | Parameter | Default | Notes |
 |-----------|---------|-------|
 | `rhop0` | 1000 kg/m³ | Reference fluid density. **Must match phase_rhop.** |
 | `gravity_z` | −9.81 m/s² | Change for tilted flume, reduced gravity, etc. |
-| `coefh` | 0.91924 | Smoothing length coefficient. Rarely changed. |
-| `cflnumber` | 0.1 | CFL multiplier. Lower = more stable, slower. |
 
-### nnphases (non-Newtonian phase parameters)
+### F7. nnphases (non-Newtonian phase parameters)
 
 | Parameter | Meaning | Newtonian | Power-law | Bingham | Dense debris |
 |-----------|---------|-----------|-----------|---------|--------------|
@@ -201,7 +277,7 @@ Combine tokens with `|`: `actual`, `dp`, `bound`, `fluid`, `void`, `null`
 - `tau_yield = 0.005–0.02`: moderate yield — flows like thick mud
 - `tau_yield > 0.05`: strong yield — resists flow like wet concrete
 
-### Execution parameters
+### F8. Execution parameters
 
 | Parameter | Default | Notes |
 |-----------|---------|-------|
@@ -209,7 +285,7 @@ Combine tokens with `|`: `actual`, `dp`, `bound`, `fluid`, `void`, `null`
 | `TimeOut` | 0.1 s | Output interval. 0.05–0.2 s typical. |
 | `DensityDT` | 3 | Density diffusion: 3=Fourtakas full (best for free surface) |
 | `DensityDTvalue` | 0.1 | DDT coefficient. Rarely changed. |
-| `Visco` | 1e-6 | Wall viscosity. **Should match visco_nn.** |
+| `Visco` | — | See F4 for details and recommended values. |
 
 ---
 
@@ -263,32 +339,44 @@ probe_points = [
 
 ## H. Reasoning Guidelines
 
-When interpreting a natural language scenario:
+### Agent Workflow (Recommended Steps)
 
-1. **Decide 2D or 3D first** — this affects every dimension in your geometry
-2. **Identify material type** → pick the closest archetype row as a starting point
-3. **Adjust density** based on sediment concentration:
+1. **Decide 2D or 3D** — this affects every dimension in your geometry.
+2. **Define resolution** — choose `dp` to avoid too many or too limited particles.
+3. **Set smoothing** — `coefh` → 1.0 (default). Compute `h = coefh * sqrt(3) * dp`.
+4. **Build boundaries** — enforce boundary thickness per F1 (≥ `ceil(2h/dp)` layers, typically 3).
+5. **Set physics** — `coefsound = 10–20`, `cflnumber = 0.15–0.2`, `Visco = 0.1` (see F2–F4).
+6. **Set rheology (if HBP)** — `visco` (K), `tau_yield`, `HBP_n`.
+
+### Interpreting Natural Language Scenarios
+
+1. **Identify material type** → pick the closest archetype row (F7) as a starting point.
+2. **Adjust density** based on sediment concentration:
    - "dilute" / "watery" → 1000–1200 kg/m³
    - "moderate" / "muddy" → 1300–1600 kg/m³
    - "dense" / "debris-laden" → 1600–2000 kg/m³
-4. **Yield stress cues**:
+3. **Yield stress cues**:
    - "flows freely", "watery" → tau_yield = 0
    - "thick", "sluggish" → tau_yield = 0.01–0.05
    - "barely flows", "like wet concrete" → tau_yield > 0.05
-5. **Shear behaviour cues**:
+4. **Shear behaviour cues**:
    - "shear-thinning", "thins under flow" → HBP_n = 0.6–0.9
    - "Newtonian" → HBP_n = 1.0
    - "shear-thickening", "dilatant" → HBP_n = 1.1–1.3
-6. **Set `rhop0` = `phase_rhop`** (constantsdef reference density must match the phase)
-7. **Set `Visco` = `visco_nn`** (wall viscosity should match phase viscosity)
-8. **Geometry**: design from scratch using primitives. Think about:
+5. **Set `rhop0` = `phase_rhop`** (constantsdef reference density must match the phase).
+6. **Set `Visco` = `visco_nn`** — match phase viscosity. Default 0.1 for debris flow, 1e-6 for water.
+
+### Geometry Design
+
+1. **Build geometry** from primitives. Think about:
    - What boundaries are needed (walls, floor, obstacles, slopes)?
-   - **Boundary thickness must be at least 3 particles (3×dp)**. DualSPHysics uses Dynamic Boundary Conditions where boundary particles are fixed SPH particles. The smoothing kernel support spans ~2–3 dp, so boundaries thinner than 3 layers produce incomplete kernel sums, underestimated pressure, and fluid penetration through walls. Use `drawmode="full"` (default) for boundary shapes — this fills the interior and naturally creates multi-layer walls when the shape thickness ≥ 3×dp.
+   - Boundary thickness per F1: use `drawmode="full"` (default) with shape thickness ≥ `ceil(2h/dp) × dp`.
    - Where is the fluid initially?
    - Is the floor flat or inclined?
    - What are the domain bounds (pointmin/pointmax with margin)?
-9. **Inclined surfaces**: use `drawprism` with matched base/top polygons, or `drawbeach` with profile points. Place fluid via `fillbox` with seed above the slope.
-10. **Complex shapes**: if the geometry involves organic/CAD shapes (ship hulls, turbines, terrain), ask the user for an STL file and use `drawfilestl`.
+2. **MK ordering matters**: later defined geometry overwrites earlier particles at the same position. Choose wisely to ensure the fluid is fully within the boundary domain.
+3. **Inclined surfaces**: use `drawprism` with matched base/top polygons, or `drawbeach` with profile points. Place fluid via `fillbox` with seed above the slope.
+4. **Complex shapes**: if the geometry involves organic/CAD shapes (ship hulls, turbines, terrain), ask the user for an STL file and use `drawfilestl`.
 
 ---
 

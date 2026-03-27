@@ -12,8 +12,8 @@ class PhysicsParams(BaseModel):
     # constantsdef
     gravity_z: float = -9.81
     rhop0: float
-    coefh: float = 0.91924
-    cflnumber: float = 0.1
+    coefh: float = 1.0
+    cflnumber: float = 0.2
     # non-Newtonian phase (mkfluid=0)
     phase_rhop: float
     visco_nn: float
