@@ -60,6 +60,16 @@ RUNS_DIR = os.path.join(BASE, "runs")
 
 app = FastAPI(title="DualSPHysics Simulation API", version="1.0.0")
 
+# Main event loop — captured at startup so the workflow thread can safely
+# enqueue events via call_soon_threadsafe.
+_main_loop: asyncio.AbstractEventLoop | None = None
+
+
+@app.on_event("startup")
+async def _capture_main_loop():
+    global _main_loop
+    _main_loop = asyncio.get_running_loop()
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://localhost:3000"],
@@ -95,7 +105,7 @@ class Session:
         self.run_dir: str | None = None
         self.selected_file: str | None = None
         self.event_queue: asyncio.Queue = asyncio.Queue()
-        self.response_event: asyncio.Event = asyncio.Event()
+        self.response_event: threading.Event = threading.Event()
         self.response_value: str | None = None
         self.shutdown_event: threading.Event = threading.Event()
 
@@ -233,6 +243,20 @@ def _file_icon(path: str) -> str:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
+def _enqueue_event(session: Session, event: dict) -> None:
+    """Thread-safe: put *event* into the session queue on the main event loop.
+
+    Called from the workflow daemon thread.  ``call_soon_threadsafe`` schedules
+    the ``put_nowait`` on the FastAPI event loop so the WebSocket handler's
+    ``await queue.get()`` is properly woken up.
+    """
+    if _main_loop is not None and _main_loop.is_running():
+        _main_loop.call_soon_threadsafe(session.event_queue.put_nowait, event)
+    else:
+        # Fallback (e.g. during shutdown) — best-effort direct put.
+        session.event_queue.put_nowait(event)
+
+
 async def _api_process_events(
     stream: Any,
     session: Session,
@@ -254,7 +278,7 @@ async def _api_process_events(
             confirm_revise = (
                 isinstance(data, ResultsLoopRequest) and data.confirm_revise
             )
-            await session.event_queue.put({
+            _enqueue_event(session, {
                 "type": "request_info",
                 "summary": summary,
                 "source": event.source_executor_id or "",
@@ -262,26 +286,23 @@ async def _api_process_events(
                 "confirm_sim": confirm_sim,
                 "confirm_revise": confirm_revise,
             })
-            # Wait for user response
+            # Wait for user response (threading.Event — safe across threads)
             while True:
                 if session.shutdown_event.is_set():
                     raise RuntimeError("Session ended while waiting for user reply")
-                session.response_event.clear()
-                try:
-                    await asyncio.wait_for(session.response_event.wait(), timeout=5)
-                except asyncio.TimeoutError:
-                    continue
-                break
+                if session.response_event.wait(timeout=5):
+                    session.response_event.clear()
+                    break
             pending[event.request_id] = session.response_value
 
         elif event.type == "executor_failed":
-            await session.event_queue.put({
+            _enqueue_event(session, {
                 "type": "status",
                 "message": f"Executor '{event.executor_id}' failed: {event.details}",
             })
 
         elif event.type == "failed":
-            await session.event_queue.put({
+            _enqueue_event(session, {
                 "type": "status",
                 "message": f"Workflow failed: {event.details}",
             })
@@ -294,7 +315,7 @@ async def _api_process_events(
 
     outputs = result.get_outputs()
     if outputs:
-        await session.event_queue.put({"type": "complete", "outputs": outputs})
+        _enqueue_event(session, {"type": "complete", "outputs": outputs})
     return None
 
 
@@ -304,7 +325,7 @@ async def _run_workflow(scenario: str, session: Session) -> None:
     agent_exec = AgentExecutor(agent)
     wf = build_workflow(mcp=mcp, agent_executor=agent_exec, base_dir=BASE)
 
-    await session.event_queue.put({
+    _enqueue_event(session, {
         "type": "status",
         "message": "Starting simulation workflow…",
     })
@@ -316,7 +337,7 @@ async def _run_workflow(scenario: str, session: Session) -> None:
             stream = wf.run(responses=responses, stream=True)
             responses = await _api_process_events(stream, session)
 
-    await session.event_queue.put({"type": "done"})
+    _enqueue_event(session, {"type": "done"})
 
 
 def _workflow_thread(scenario: str, session: Session) -> None:
@@ -325,12 +346,8 @@ def _workflow_thread(scenario: str, session: Session) -> None:
         asyncio.run(_run_workflow(scenario, session))
     except Exception as exc:
         logger.exception("Workflow thread error")
-        loop = asyncio.new_event_loop()
-        loop.run_until_complete(
-            session.event_queue.put({"type": "status", "message": f"Workflow error: {exc}"})
-        )
-        loop.run_until_complete(session.event_queue.put({"type": "done"}))
-        loop.close()
+        _enqueue_event(session, {"type": "status", "message": f"Workflow error: {exc}"})
+        _enqueue_event(session, {"type": "done"})
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
