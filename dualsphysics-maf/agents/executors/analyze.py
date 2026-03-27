@@ -199,12 +199,10 @@ def _build_results_system_prompt(
         "### Directory Layout\n"
         "  out/data/           — raw simulation .bi4 files\n"
         "  out/particles/      — VTK exports (from default post-processing)\n"
-        "  out/measuretool/    — MeasureTool CSV outputs\n"
         "  out/analysis/       — analysis output directory\n\n"
         f"### Simulation Parameters\n"
         f"  TimeOut (output interval): {params.get('TimeOut', 0.1)} s\n"
         f"  TimeMax: {params.get('TimeMax', 5.0)} s\n"
-        f"  Probe points: {plan_data.get('probe_points', [])}\n"
         f"  Full params: {json.dumps(params, indent=2)}\n"
         f"{files_section}\n\n"
         f"### Current postprocess.sh\n"
@@ -232,7 +230,7 @@ def _build_results_system_prompt(
 def _list_output_files(run_dir: str) -> list[str]:
     """List existing output files in the run directory."""
     existing = []
-    for subdir in ["out/particles", "out/measuretool", "out/analysis"]:
+    for subdir in ["out/particles", "out/analysis"]:
         full_dir = os.path.join(run_dir, subdir)
         if os.path.isdir(full_dir):
             for f in sorted(os.listdir(full_dir)):
@@ -283,47 +281,24 @@ class AnalyzeExecutor(Executor):
         for cmd in commands:
             logger.info(">>> %s %s", cmd.tool_name, " ".join(cmd.args))
             try:
-                if cmd.tool_name == "measuretool":
-                    r = await self.mcp.call_tool(
-                        "run_measuretool",
-                        data_dir=f"{run_dir}/out/data",
-                        points_file=f"{run_dir}/PointsMeasure_Points.txt",
-                        output_csv_stem=f"{run_dir}/out/measuretool/PointsMeasure",
-                    )
-                    result = json.loads(r) if isinstance(r, str) else r
-                    all_output_files.extend(result.get("csv_files", []))
+                r = await self.mcp.call_tool(
+                    "run_postprocess",
+                    postprocess_tool=cmd.tool_name,
+                    cwd=run_dir,
+                    args=cmd.args,
+                )
+                result = json.loads(r) if isinstance(r, str) else r
+                if result.get("returncode", -1) != 0:
+                    err = result.get("stderr") or result.get("stdout") or "unknown"
+                    logger.warning("%s failed: %s", cmd.tool_name, err)
+                    failed_steps.append(f"{cmd.tool_name}: {err[:200]}")
                 else:
-                    r = await self.mcp.call_tool(
-                        "run_postprocess",
-                        postprocess_tool=cmd.tool_name,
-                        cwd=run_dir,
-                        args=cmd.args,
-                    )
-                    result = json.loads(r) if isinstance(r, str) else r
-                    if result.get("returncode", -1) != 0:
-                        err = result.get("stderr") or result.get("stdout") or "unknown"
-                        logger.warning("%s failed: %s", cmd.tool_name, err)
-                        failed_steps.append(f"{cmd.tool_name}: {err[:200]}")
-                    else:
-                        all_output_files.extend(result.get("output_files", []))
+                    all_output_files.extend(result.get("output_files", []))
             except Exception as exc:
                 logger.exception("%s raised an exception", cmd.tool_name)
                 failed_steps.append(f"{cmd.tool_name}: {exc}")
 
-        # 3. Compute metrics (if ground truth exists)
-        gt_csv = os.path.join(self.base_dir, "cases", "ground_truth", "PointsMeasure.csv")
-        csv_files = [f for f in all_output_files if f.endswith(".csv")]
-        metrics: dict = {}
-        if csv_files and os.path.exists(gt_csv):
-            logger.info(">>> compute_metrics")
-            r = await self.mcp.call_tool(
-                "compute_metrics",
-                result_csv=csv_files[0],
-                ground_truth_csv=gt_csv,
-            )
-            metrics = json.loads(r) if isinstance(r, str) else r
-
-        # 4. Visualize results
+        # 3. Visualize results
         particles_dir = f"{run_dir}/out/particles"
         try:
             logger.info(">>> visualize results")
@@ -339,14 +314,6 @@ class AnalyzeExecutor(Executor):
             f"  - Fluid VTK files: out/particles/PartFluid_*.vtk",
             f"  - Boundary VTK files: out/particles/PartBound_*.vtk",
         ]
-        if csv_files:
-            rel_csvs = [os.path.relpath(f, run_dir) for f in csv_files]
-            summary_parts.append(f"  - Probe CSVs: {', '.join(rel_csvs)}")
-        if metrics.get("rmse") is not None:
-            summary_parts.append(
-                f"  - Metrics: RMSE={metrics['rmse']:.6f}, "
-                f"correlation={metrics.get('correlation', 'N/A')}"
-            )
         if failed_steps:
             summary_parts.append(f"  - Failed steps: {'; '.join(failed_steps)}")
 
@@ -502,7 +469,6 @@ class AnalyzeExecutor(Executor):
                         "run_dir": run_dir,
                         "script_path": script_path,
                         "params": plan_data.get("params"),
-                        "probe_points": plan_data.get("probe_points"),
                     })
                     return
 

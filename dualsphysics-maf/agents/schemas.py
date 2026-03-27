@@ -33,7 +33,6 @@ class SimulationPlan(BaseModel):
 
     geometry_xml: str | None = None  # Full <geometry>...</geometry> XML
     params: PhysicsParams
-    probe_points: list[list[float]]  # [[x, y, z], ...]
     reasoning: str  # Brief explanation of choices
 
 

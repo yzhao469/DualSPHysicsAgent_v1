@@ -27,7 +27,6 @@ _BINARY_TO_TOOL = {
     "flowtool": "flowtool",
     "boundaryvtk": "boundaryvtk",
     "floatinginfo": "floatinginfo",
-    "measuretool": "measuretool",
 }
 
 # Lines that are shell boilerplate, not post-processing commands
@@ -51,9 +50,6 @@ def generate_script(plan_data: dict, run_dir: str, bin_dir: str) -> str:
     The script uses $SCRIPT_DIR for relocatability and is immediately
     executable as a standalone shell script.
     """
-    probe_points = plan_data.get("probe_points", [])
-    has_probes = bool(probe_points)
-
     lines = [
         "#!/bin/bash",
         "# Post-processing script for DualSPHysics simulation",
@@ -78,19 +74,6 @@ def generate_script(plan_data: dict, run_dir: str, bin_dir: str) -> str:
         "-onlytype:-all,+bound "
         "-vars:+mk,+rhop",
     ]
-
-    if has_probes:
-        lines += [
-            "",
-            "# --- MeasureTool: extract probe data ---",
-            '"$BIN_DIR"/MeasureTool_linux64 '
-            "-dirin \"$SCRIPT_DIR\"/out/data "
-            "-points \"$SCRIPT_DIR\"/PointsMeasure_Points.txt "
-            "-onlytype:-all,+fluid "
-            "-vars:-all,+vel,+press "
-            "-savevtk \"$SCRIPT_DIR\"/out/measuretool/PointsMeasure "
-            "-savecsv \"$SCRIPT_DIR\"/out/measuretool/PointsMeasure",
-        ]
 
     lines.append("")  # trailing newline
     return "\n".join(lines)
@@ -167,7 +150,7 @@ def _extract_args(line: str) -> list[str]:
 PATCH_SCRIPT_SYSTEM_PROMPT = """\
 You are an expert DualSPHysics post-processing engineer. You will be given:
 1. The current postprocess.sh script.
-2. The simulation plan (params, probe_points).
+2. The simulation plan (params).
 3. A user instruction describing what to change.
 
 Return the COMPLETE updated shell script. Keep the same structure:

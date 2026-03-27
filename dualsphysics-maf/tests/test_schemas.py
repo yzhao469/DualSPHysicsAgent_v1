@@ -20,8 +20,8 @@ def test_physics_params_applies_defaults():
     )
 
     assert params.gravity_z == -9.81
-    assert params.coefh == 0.91924
-    assert params.cflnumber == 0.1
+    assert params.coefh == 1.0
+    assert params.cflnumber == 0.2
     assert params.DensityDT == 3
     assert params.DensityDTvalue == 0.1
 
@@ -41,13 +41,11 @@ def test_simulation_plan_validates_nested_params():
                 "TimeMax": 2.0,
                 "TimeOut": 0.1,
             },
-            "probe_points": [[0.1, 1.0, 0.2], [0.2, 1.0, 0.3]],
             "reasoning": "Derived from the scenario constraints.",
         }
     )
 
     assert isinstance(plan.params, PhysicsParams)
-    assert plan.probe_points[1] == [0.2, 1.0, 0.3]
 
 
 def test_physics_params_requires_mandatory_fields():

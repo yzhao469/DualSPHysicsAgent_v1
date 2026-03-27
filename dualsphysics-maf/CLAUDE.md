@@ -55,20 +55,17 @@ Python code orchestrates all MCP tool calls deterministically.
 
 ## File Inventory
 
-### MCP Server (9 tools)
+### MCP Server (6 tools)
 | File | Description |
 |------|-------------|
 | `mcp_server/config.py` | Path configuration (all binaries) |
-| `mcp_server/server.py` | FastMCP server, 9 tools |
+| `mcp_server/server.py` | FastMCP server, 6 tools |
 | `mcp_server/tools/_subprocess.py` | Shared async subprocess helper |
 | `mcp_server/tools/_xml_utils.py` | `preprocess_xml()` — fixes XML quirks |
 | `mcp_server/tools/xml_modifier.py` | Physics/execution parameter modification |
 | `mcp_server/tools/set_geometry.py` | Geometry replacement tool |
-| `mcp_server/tools/generate_points.py` | Probe points file generation |
 | `mcp_server/tools/run_gencase.py` | Particle generation |
 | `mcp_server/tools/run_simulation.py` | DualSPHysics solver |
-| `mcp_server/tools/run_measuretool.py` | Probe data extraction |
-| `mcp_server/tools/metrics.py` | RMSE/correlation |
 | `mcp_server/tools/postprocess.py` | Generic wrapper: partvtk, isosurface, computeforces, etc. |
 | `mcp_server/tools/run_analysis.py` | Python analysis script executor |
 
@@ -86,7 +83,7 @@ Python code orchestrates all MCP tool calls deterministically.
 | File | Description |
 |------|-------------|
 | `agents/utils/build_utils.py` | `rebuild_gencase_viz()` — shared by PlanAndBuildExecutor |
-| `agents/utils/intent.py` | `resolve_datalake_file()` + `answer_question()` |
+| `agents/utils/intent.py` | `resolve_datalake_files()` + `answer_question()` |
 | `agents/utils/patch_utils.py` | `generate_patch()` + `merge_patch()` for LLM XML patching |
 | `agents/utils/skill_loader.py` | `get_skill_content()` (xml) + `get_postprocess_skill_content()` |
 | `agents/tools/visualize_geometry.py` | Pyvista VTK → PNG + system viewer (WSL2 compatible) |
@@ -95,7 +92,7 @@ Python code orchestrates all MCP tool calls deterministically.
 ### Skill Files
 | File | Description |
 |------|-------------|
-| `skills/dualsphysics-xml/SKILL.md` | XML structure, domain limits, 2D/3D rules, physics params, material archetypes, probes |
+| `skills/dualsphysics-xml/SKILL.md` | XML structure, domain limits, 2D/3D rules, physics params & parameterization, material archetypes, reasoning guidelines |
 | `skills/dualsphysics-xml/drawing-shapes.md` | All shape-creation commands (boxes, spheres, cylinders, prisms, lines, triangles, external geometry) |
 | `skills/dualsphysics-xml/fill-and-modification.md` | Fill operations, redraw commands, freedraw mode, multi-layer shells |
 | `skills/dualsphysics-xml/transforms-and-variables.md` | Transform stack, variables, expressions, reusable lists, clipping, debugging |
@@ -109,7 +106,6 @@ Python code orchestrates all MCP tool calls deterministically.
 | File | Description |
 |------|-------------|
 | `cases/BaseCase_Def.xml` | Base XML template |
-| `cases/ground_truth/` | Ground truth CSVs (not yet generated) |
 | `datalake/` | User-provided XML cases |
 | `main.py` | Terminal workflow event loop + HITL |
 | `gui.py` | Streamlit web GUI — chat + XML/script editors + file browser. Same workflow, thread+queue bridge. |
@@ -119,16 +115,13 @@ Python code orchestrates all MCP tool calls deterministically.
 
 ## Tools
 
-### Pre-processing (7 MCP tools)
+### Pre-processing (4 MCP tools)
 | Tool | Purpose |
 |------|---------|
 | `set_geometry` | Replace `<geometry>` block |
-| `modify_xml` | Modify physics/execution parameters (15 params) |
-| `generate_points_file` | Generate probe points file |
+| `modify_xml` | Modify physics/execution parameters (14 params) |
 | `run_gencase` | Generate particle configuration |
 | `run_simulation` | Run DualSPHysics solver |
-| `run_measuretool` | Probe data extraction |
-| `compute_metrics` | RMSE/correlation calculation |
 
 ### Post-processing (2 MCP tools wrapping 8 CLI binaries)
 | Tool | Purpose |
@@ -162,7 +155,5 @@ Python code orchestrates all MCP tool calls deterministically.
 
 ## Next Steps
 
-1. Generate ground truth CSV (full sim with default params, TimeMax=5.0)
-2. Have domain expert expand material archetypes in skill file
-3. Push to GitHub (hardcoded paths need attention)
-4. Agent 2 + optimization loop
+1. Push to GitHub (hardcoded paths need attention)
+2. Agent 2 + optimization loop

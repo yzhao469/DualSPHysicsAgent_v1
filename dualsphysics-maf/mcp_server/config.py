@@ -23,12 +23,9 @@ RUNS_DIR         = f"{PROJECT_DIR}/runs"
 CASES_DIR        = f"{PROJECT_DIR}/cases"
 BASE_XML         = f"{CASES_DIR}/BaseCase_Def.xml"
 LEGACY_XML       = f"{CASES_DIR}/CaseDebrisFlow2D_Def.xml"
-POINTS_FILE      = f"{CASES_DIR}/CaseDebrisFlow2D_Points.txt"
-GROUND_TRUTH_CSV = f"{CASES_DIR}/ground_truth/PointsMeasure.csv"
 
 # Subprocess timeouts (seconds)
 TIMEOUT_GENCASE      = 300     # 5 min
 TIMEOUT_SIMULATION   = 7200    # 2 hours (SPH can be slow)
-TIMEOUT_MEASURETOOL  = 300     # 5 min
 TIMEOUT_POSTPROCESS  = 600     # 10 min
 TIMEOUT_ANALYSIS     = 120     # 2 min for Python analysis scripts

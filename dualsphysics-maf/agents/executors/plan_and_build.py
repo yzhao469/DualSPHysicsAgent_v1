@@ -187,10 +187,9 @@ class PlanAndBuildExecutor(Executor):
         return f"{self.base_dir}/runs/run_{ts}"
 
     async def _build(self, plan_data: dict, base_xml: str, run_dir: str, ctx: WorkflowContext) -> str:
-        """set_geometry -> modify_xml -> generate_points -> run_gencase -> visualize."""
+        """set_geometry -> modify_xml -> run_gencase -> visualize."""
         geometry_xml: str = plan_data["geometry_xml"]
         params = PhysicsParams(**plan_data["params"])
-        probe_points: list[list[float]] = plan_data["probe_points"]
 
         Path(run_dir).mkdir(parents=True, exist_ok=True)
         case_xml = f"{run_dir}/Case_Def.xml"
@@ -224,17 +223,7 @@ class PlanAndBuildExecutor(Executor):
         check_mcp_tool_result("modify_xml", r)
         logger.info("modify_xml OK: %s", r)
 
-        # 3. Generate probe points file
-        logger.info(">>> generate_points_file")
-        r = await self.mcp.call_tool(
-            "generate_points_file",
-            output_path=f"{run_dir}/PointsMeasure_Points.txt",
-            probe_points=probe_points,
-        )
-        check_mcp_tool_result("generate_points_file", r)
-        logger.info("generate_points_file OK: %s", r)
-
-        # 4. Run GenCase
+        # 3. Run GenCase
         logger.info(">>> run_gencase")
         r = await self.mcp.call_tool(
             "run_gencase",
@@ -598,15 +587,6 @@ class PlanAndBuildExecutor(Executor):
                 **merged_params,
             )
             check_mcp_tool_result("modify_xml", r)
-
-        if "probe_points" in patch:
-            logger.info(">>> generate_points_file (patch)")
-            r = await self.mcp.call_tool(
-                "generate_points_file",
-                output_path=f"{run_dir}/PointsMeasure_Points.txt",
-                probe_points=patch["probe_points"],
-            )
-            check_mcp_tool_result("generate_points_file", r)
 
         merge_patch(plan_data, patch)
         ctx.set_state("plan", plan_data)

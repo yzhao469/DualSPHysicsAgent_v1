@@ -16,13 +16,12 @@ logger = logging.getLogger(__name__)
 PATCH_SYSTEM_PROMPT = """\
 You are an expert DualSPHysics simulation engineer. You will be given:
 1. The current Case_Def.xml for a simulation case.
-2. The current simulation plan (geometry_xml, params, probe_points).
+2. The current simulation plan (geometry_xml, params).
 3. A user instruction describing what to change.
 
 Return a JSON object with ONLY the keys that need to change. Possible keys:
 - "geometry_xml": string — full <geometry>...</geometry> XML block (only if geometry changes)
 - "params": object — only the physics parameter fields that change (partial update)
-- "probe_points": array of [x, y, z] triples (only if probes change)
 
 Do NOT include keys that don't need to change. If only density changes, return {"params": {"rhop0": 2000, "phase_rhop": 2000}}.
 Return valid JSON only, no markdown fences.
@@ -65,6 +64,4 @@ def merge_patch(plan_data: dict, patch: dict) -> dict:
         plan_data["geometry_xml"] = patch["geometry_xml"]
     if "params" in patch:
         plan_data["params"] = {**plan_data["params"], **patch["params"]}
-    if "probe_points" in patch:
-        plan_data["probe_points"] = patch["probe_points"]
     return plan_data

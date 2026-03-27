@@ -10,8 +10,8 @@ def sample_case_xml() -> str:
         <constantsdef>
             <gravity x="0" y="0" z="-9.81" />
             <rhop0 value="1000" />
-            <coefh value="0.91924" />
-            <cflnumber value="0.1" />
+            <coefh value="1.0" />
+            <cflnumber value="0.2" />
         </constantsdef>
     </casedef>
     <execution>
@@ -48,22 +48,3 @@ def write_case_xml(tmp_path: Path, sample_case_xml: str):
     return _write
 
 
-@pytest.fixture
-def write_measuretool_csv(tmp_path: Path):
-    def _write(
-        name: str,
-        header: list[str],
-        rows: list[list[float | int]],
-    ) -> Path:
-        path = tmp_path / name
-        lines = [
-            " ; probe x",
-            " ; probe y",
-            " ; probe z",
-            ";".join(header),
-            *[";".join(str(value) for value in row) for row in rows],
-        ]
-        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-        return path
-
-    return _write

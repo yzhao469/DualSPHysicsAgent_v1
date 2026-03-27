@@ -183,7 +183,7 @@ def _discover_files(run_dir: str | None) -> dict:
             python_scripts.append(str(p))
 
     seen: set[str] = set()
-    for subdir in ("out/particles", "out/measuretool", "out/analysis", "out"):
+    for subdir in ("out/particles", "out/analysis", "out"):
         full = rd / subdir
         if full.is_dir():
             for f in sorted(full.iterdir()):

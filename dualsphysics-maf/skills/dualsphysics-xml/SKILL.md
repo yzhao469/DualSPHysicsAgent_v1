@@ -289,55 +289,7 @@ Agent must ensure consistency across parameters:
 
 ---
 
-## G. Probe Placement
-
-### General strategy
-Place probes where you expect interesting flow behaviour. Output as `[x, y, z]` triples.
-
-### Heuristics by scenario type
-
-**Channel / dam break (2D):**
-- x: 3 points evenly spaced downstream of the initial fluid, clear of walls
-- z: 2 heights — near floor (0.05 m) and mid-fluid-height
-- y: fixed at 0 (the 2D domain y-value)
-- Total: 6 probes
-
-**Tank with obstacle (2D or 3D):**
-- Upstream of obstacle (1–2 points)
-- Downstream of obstacle (1–2 points)
-- Near the obstacle surface (1–2 points)
-- Near free surface (1 point)
-
-**Inclined channel / debris flow (2D):**
-- Along the slope at regular intervals
-- At heights above the slope surface (not below it!)
-- Account for the slope when calculating z-position of probes
-
-**Open channel flow:**
-- Along the channel at regular intervals
-- At multiple heights to capture velocity profile
-
-**General rules:**
-- Keep probes at least `3×dp` from any boundary to avoid kernel truncation artefacts
-- Keep probes inside the expected fluid domain (not in air or boundary)
-- For 2D cases, y = 0
-- Return probes as a list of `[x, y, z]` triples
-
-### Example (2D dam break, channel_length=4.0, fluid_width=1.0, fluid_height=1.5):
-```
-probe_points = [
-  [1.5, 0, 0.05],   # downstream, near floor
-  [1.5, 0, 0.75],   # downstream, mid-height
-  [2.5, 0, 0.05],   # mid-channel, near floor
-  [2.5, 0, 0.75],   # mid-channel, mid-height
-  [3.5, 0, 0.05],   # far downstream, near floor
-  [3.5, 0, 0.75],   # far downstream, mid-height
-]
-```
-
----
-
-## H. Reasoning Guidelines
+## G. Reasoning Guidelines
 
 ### Agent Workflow (Recommended Steps)
 
@@ -380,7 +332,7 @@ probe_points = [
 
 ---
 
-## I. Available Resources
+## H. Available Resources
 
 Use `read_skill_resource` to load these when needed:
 

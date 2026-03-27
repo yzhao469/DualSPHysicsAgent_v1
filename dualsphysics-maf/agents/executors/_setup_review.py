@@ -225,12 +225,6 @@ def format_plan_summary(plan: SimulationPlan) -> str:
         lines.append(f"  {field:20s} = {value}")
     lines += [
         "",
-        "### Probe Points",
-    ]
-    for i, pt in enumerate(plan.probe_points):
-        lines.append(f"  [{i}] x={pt[0]:.4f}  y={pt[1]:.4f}  z={pt[2]:.4f}")
-    lines += [
-        "",
         "=" * 64,
         "A visualization of the particle configuration has been generated.",
         "Approve, request changes, or ask a question:",

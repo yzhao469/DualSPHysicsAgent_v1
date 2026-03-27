@@ -8,7 +8,7 @@ pytestmark = pytest.mark.unit
 # ── generate_script ──────────────────────────────────────────────────
 
 def test_generate_script_includes_default_commands():
-    plan = {"params": {"TimeMax": 5.0, "TimeOut": 0.1}, "probe_points": []}
+    plan = {"params": {"TimeMax": 5.0, "TimeOut": 0.1}}
     script = generate_script(plan, "/tmp/run", "/opt/bin")
 
     assert "#!/bin/bash" in script
@@ -18,23 +18,8 @@ def test_generate_script_includes_default_commands():
     assert "+bound" in script
 
 
-def test_generate_script_includes_measuretool_when_probes_exist():
-    plan = {"params": {}, "probe_points": [[0.1, 1.0, 0.2]]}
-    script = generate_script(plan, "/tmp/run", "/opt/bin")
-
-    assert "MeasureTool_linux64" in script
-    assert "PointsMeasure" in script
-
-
-def test_generate_script_skips_measuretool_when_no_probes():
-    plan = {"params": {}, "probe_points": []}
-    script = generate_script(plan, "/tmp/run", "/opt/bin")
-
-    assert "MeasureTool" not in script
-
-
 def test_generate_script_uses_bin_dir_variable():
-    plan = {"params": {}, "probe_points": []}
+    plan = {"params": {}}
     script = generate_script(plan, "/tmp/run", "/my/custom/bin")
 
     assert 'BIN_DIR="/my/custom/bin"' in script
@@ -43,18 +28,8 @@ def test_generate_script_uses_bin_dir_variable():
 
 # ── parse_script ─────────────────────────────────────────────────────
 
-def test_parse_script_extracts_commands():
-    plan = {"params": {}, "probe_points": [[0.1, 1.0, 0.2]]}
-    script = generate_script(plan, "/tmp/run", "/opt/bin")
-    commands = parse_script(script)
-
-    tool_names = [c.tool_name for c in commands]
-    assert "partvtk" in tool_names
-    assert "measuretool" in tool_names
-
-
-def test_parse_script_round_trip_no_probes():
-    plan = {"params": {}, "probe_points": []}
+def test_parse_script_round_trip():
+    plan = {"params": {}}
     script = generate_script(plan, "/tmp/run", "/opt/bin")
     commands = parse_script(script)
 
@@ -63,15 +38,6 @@ def test_parse_script_round_trip_no_probes():
     assert commands[1].tool_name == "partvtk"
     assert "-onlytype:-all,+fluid" in commands[0].args
     assert "-onlytype:-all,+bound" in commands[1].args
-
-
-def test_parse_script_round_trip_with_probes():
-    plan = {"params": {}, "probe_points": [[0.1, 1.0, 0.2]]}
-    script = generate_script(plan, "/tmp/run", "/opt/bin")
-    commands = parse_script(script)
-
-    assert len(commands) == 3
-    assert commands[2].tool_name == "measuretool"
 
 
 def test_parse_script_ignores_boilerplate():

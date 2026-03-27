@@ -1,4 +1,4 @@
-"""DualSPHysics MCP Server — 7 tools for SPH simulation control."""
+"""DualSPHysics MCP Server — 6 tools for SPH simulation control."""
 import logging
 import os
 import sys
@@ -10,11 +10,8 @@ from mcp.server.fastmcp import FastMCP
 
 from tools.xml_modifier import modify_xml as _modify_xml
 from tools.set_geometry import set_geometry as _set_geometry
-from tools.generate_points import generate_points_file as _generate_points_file
 from tools.run_gencase import run_gencase as _run_gencase
 from tools.run_simulation import run_simulation as _run_simulation
-from tools.run_measuretool import run_measuretool as _run_measuretool
-from tools.metrics import compute_metrics as _compute_metrics
 from tools.postprocess import run_postprocess as _run_postprocess
 from tools.run_analysis import run_analysis as _run_analysis
 
@@ -140,45 +137,6 @@ def modify_xml(
 
 
 @mcp.tool()
-def generate_points_file(
-    output_path: str,
-    probe_xs: list | None = None,
-    probe_zs: list | None = None,
-    y: float = 1.0,
-    probe_points: list | None = None,
-) -> str:
-    """Write a MeasureTool POINTSLIST file for the given probe coordinates.
-
-    Two modes:
-    1. Explicit triples (preferred for general geometry):
-       Pass probe_points as a list of [x, y, z] triples.
-    2. Cross-product (legacy, for 2D channel cases):
-       Pass probe_xs and probe_zs; one block per (x, z) at fixed y.
-
-    If both are provided, probe_points takes precedence.
-
-    Args:
-        output_path:  Path to write the points file.
-        probe_xs:     List of x coordinates (m) — cross-product mode.
-        probe_zs:     List of z coordinates (m) — cross-product mode.
-        y:            Fixed y coordinate (m); default 1.0.
-        probe_points: List of [x, y, z] triples — explicit mode.
-
-    Returns:
-        The path to the written file.
-    """
-    n = len(probe_points) if probe_points else (
-        len(probe_xs or []) * len(probe_zs or []))
-    logger.info("generate_points_file: output=%s n_probes=%d", output_path, n)
-    result = _generate_points_file(
-        output_path, probe_xs=probe_xs, probe_zs=probe_zs, y=y,
-        probe_points=probe_points,
-    )
-    logger.info("generate_points_file: wrote %d probes to %s", n, result)
-    return result
-
-
-@mcp.tool()
 async def run_gencase(xml_path: str, output_dir: str) -> dict:
     """Run GenCase to generate particle configuration from XML.
 
@@ -211,42 +169,6 @@ async def run_simulation(case_path: str, output_dir: str, gpu: bool = False) -> 
     result = await _run_simulation(case_path, output_dir, gpu=gpu)
     logger.info("run_simulation: returncode=%d data_dir=%s",
                 result["returncode"], result.get("data_dir"))
-    return result
-
-
-@mcp.tool()
-async def run_measuretool(data_dir: str, points_file: str, output_csv_stem: str) -> dict:
-    """Run MeasureTool to extract velocity and density at probe points.
-
-    Args:
-        data_dir:         Directory containing the simulation .bi4 part files.
-        points_file:      Path to the POINTSLIST file defining probe locations.
-        output_csv_stem:  Stem path for -savecsv (MeasureTool appends suffixes).
-
-    Returns dict with returncode, stdout, stderr, csv_files (list of found CSVs).
-    """
-    logger.info("run_measuretool: data_dir=%s points_file=%s stem=%s",
-                data_dir, points_file, output_csv_stem)
-    result = await _run_measuretool(data_dir, points_file, output_csv_stem)
-    logger.info("run_measuretool: returncode=%d csv_files=%s",
-                result["returncode"], result.get("csv_files"))
-    return result
-
-
-@mcp.tool()
-def compute_metrics(result_csv: str, ground_truth_csv: str) -> dict:
-    """Compute RMSE and correlation between simulation output and ground truth.
-
-    Args:
-        result_csv:       Path to the MeasureTool output CSV.
-        ground_truth_csv: Path to the reference/ground-truth CSV.
-
-    Returns dict with status, rmse, correlation, max_error, num_timesteps, num_probes.
-    If ground_truth_csv does not exist, returns {"status": "no_ground_truth"}.
-    """
-    logger.info("compute_metrics: result=%s gt=%s", result_csv, ground_truth_csv)
-    result = _compute_metrics(result_csv, ground_truth_csv)
-    logger.info("compute_metrics: %s", result)
     return result
 
 
