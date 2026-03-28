@@ -123,6 +123,27 @@ TOOLS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "view_datalake_file",
+            "description": (
+                "Retrieve a file from the datalake (images, meshes, XML, CSV). "
+                "Only call this when the user asks about a reference file or "
+                "you need to inspect its contents. Do NOT call this proactively."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "filename": {
+                        "type": "string",
+                        "description": "The filename to retrieve (e.g. '1.png', 'geometry.stl', 'Case_Def.xml').",
+                    },
+                },
+                "required": ["filename"],
+            },
+        },
+    },
 ]
 
 
@@ -176,6 +197,7 @@ def build_instructions(
     build_error: str | None = None,
     retry_count: int = 0,
     max_retry_count: int = MAX_BUILD_RECOVERY_ATTEMPTS,
+    datalake_files: list[str] | None = None,
 ) -> str:
     """Build the instructions for the setup review LLM."""
     plan_summary = json.dumps(plan_data, indent=2)
@@ -204,7 +226,14 @@ def build_instructions(
         f"{gencase_section}"
         f"### Current Simulation Plan\n```json\n{plan_summary}\n```\n\n"
         f"### Run Directory\n{run_dir}\n\n"
-        "### Your Role\n"
+        + (
+            f"### Available Datalake Files\n"
+            f"{', '.join(datalake_files)}\n"
+            "Use `view_datalake_file` to inspect these ONLY when the user asks about them.\n\n"
+            if datalake_files
+            else ""
+        )
+        + "### Your Role\n"
         "- If the build status is failed, do not call `approve` until the setup has been rebuilt successfully.\n"
         "- If the user is happy with the setup, call `approve` to proceed to simulation.\n"
         "- If the user wants changes (geometry, parameters, probes), call `patch_and_rebuild`.\n"

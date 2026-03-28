@@ -51,7 +51,6 @@ from agents.utils.skill_loader import get_skill_topic
 from agents.executors._setup_review import (
     MAX_BUILD_RECOVERY_ATTEMPTS,
     TOOLS,
-    assistant_message,
     build_instructions,
     format_plan_summary,
     is_image_file,
@@ -145,6 +144,8 @@ class PlanAndBuildExecutor(Executor):
             ctx.set_state("datalake_mesh_paths", mesh_paths)
         if image_rel_paths:
             ctx.set_state("datalake_image_paths", image_rel_paths)
+        # Store all matched files for the review datalake retrieval tool
+        ctx.set_state("datalake_matched_files", matched_files)
 
         # Build message: text + images as multimodal content
         combined_text = "\n\n".join(text_parts)
@@ -289,27 +290,6 @@ class PlanAndBuildExecutor(Executor):
 
         # Initialize conversation history (Chat Completions API format)
         history: list[dict] = []
-
-        # Inject datalake reference images into setup review history so the
-        # review LLM can see them when the user asks about "the image".
-        datalake_image_rels = ctx.get_state("datalake_image_paths") or []
-        images: list[tuple[str, str]] = []
-        image_names: list[str] = []
-        for rel_path in datalake_image_rels:
-            abs_path = Path(self.base_dir) / rel_path
-            if abs_path.exists():
-                suffix = abs_path.suffix.lower()
-                media_type = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}[suffix]
-                images.append((base64.b64encode(abs_path.read_bytes()).decode(), media_type))
-                image_names.append(rel_path)
-        if images:
-            label = ", ".join(image_names)
-            history.append(user_message_with_images(
-                f"Reference image(s) from the datalake ({label}). "
-                "Use to verify the geometry setup matches the target.",
-                images,
-            ))
-
         ctx.set_state("setup_review_history", history)
 
         log_message(run_dir, "assistant", summary, phase="setup_review")
@@ -342,11 +322,14 @@ class PlanAndBuildExecutor(Executor):
         run_dir: str,
     ) -> str:
         """Rebuild and store the review LLM instructions (used as system message)."""
+        matched_files = ctx.get_state("datalake_matched_files") or []
+        datalake_names = [Path(p).name for p in matched_files]
         instructions = build_instructions(
             plan_data,
             run_dir,
             build_error=ctx.get_state("setup_review_last_error"),
             retry_count=ctx.get_state("setup_review_retry_count") or 0,
+            datalake_files=datalake_names or None,
         )
         ctx.set_state("setup_review_instructions", instructions)
         return instructions
@@ -541,6 +524,39 @@ class PlanAndBuildExecutor(Executor):
                     plan_context = json.dumps(plan_data, indent=2)
                     answer = await answer_question(question, plan_context)
                     history.append(tool_result(tc.id, answer))
+
+                elif fn_name == "view_datalake_file":
+                    filename = fn_args["filename"]
+                    matched_files_list = ctx.get_state("datalake_matched_files") or []
+                    # Find matching file
+                    matched_path = None
+                    for rel_path in matched_files_list:
+                        if Path(rel_path).name == filename:
+                            matched_path = Path(self.base_dir) / rel_path
+                            break
+                    if matched_path and matched_path.exists():
+                        if is_image_file(matched_path):
+                            suffix = matched_path.suffix.lower()
+                            media_type = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}[suffix]
+                            img_b64 = base64.b64encode(matched_path.read_bytes()).decode()
+                            history.append(user_message_with_images(
+                                f"Reference image: {filename}",
+                                [(img_b64, media_type)],
+                            ))
+                            history.append(tool_result(tc.id, f"Image '{filename}' is now visible above."))
+                        else:
+                            content = matched_path.read_text(errors="replace")
+                            ext = matched_path.suffix.lower().lstrip(".")
+                            history.append(tool_result(
+                                tc.id,
+                                f"Contents of {filename}:\n```{ext}\n{content}\n```",
+                            ))
+                    else:
+                        available = [Path(p).name for p in matched_files_list]
+                        history.append(tool_result(
+                            tc.id,
+                            f"File '{filename}' not found. Available: {', '.join(available) or 'none'}",
+                        ))
 
             ctx.set_state("setup_review_history", history)
 
