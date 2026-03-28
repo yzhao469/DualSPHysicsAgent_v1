@@ -309,10 +309,6 @@ class PlanAndBuildExecutor(Executor):
                 "Use to verify the geometry setup matches the target.",
                 images,
             ))
-            history.append(assistant_message(
-                "I can see the reference image(s). I'll use them to help review "
-                "whether the simulation geometry matches the target."
-            ))
 
         ctx.set_state("setup_review_history", history)
 

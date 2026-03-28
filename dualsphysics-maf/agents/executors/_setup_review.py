@@ -159,6 +159,17 @@ def is_mesh_file(path: Path) -> bool:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+def _read_gencase_output(run_dir: str) -> str:
+    """Read and trim the GenCase output file, stripping the copyright header."""
+    gencase_out = Path(run_dir) / "out" / "Case_Def.out"
+    if not gencase_out.exists():
+        return ""
+    raw = gencase_out.read_text()
+    marker = "GenCase v"
+    idx = raw.find(marker)
+    return (raw[idx:] if idx >= 0 else raw).strip()
+
+
 def build_instructions(
     plan_data: dict,
     run_dir: str,
@@ -179,12 +190,18 @@ def build_instructions(
             f"### Current Build Error\n{build_error}\n\n"
             f"### Recovery Attempts\n{retry_count} of {max_retry_count}\n\n"
         )
+    gencase_section = ""
+    if not build_error:
+        gencase_text = _read_gencase_output(run_dir)
+        if gencase_text:
+            gencase_section = f"### GenCase Output\n```\n{gencase_text}\n```\n\n"
     return (
         "You are a helpful assistant reviewing a DualSPHysics simulation setup. "
         "The user has been shown the simulation plan and a visualization "
         "of the particle geometry.\n\n"
         f"### Build Status\n{build_status}\n\n"
         f"{failure_guidance}"
+        f"{gencase_section}"
         f"### Current Simulation Plan\n```json\n{plan_summary}\n```\n\n"
         f"### Run Directory\n{run_dir}\n\n"
         "### Your Role\n"
