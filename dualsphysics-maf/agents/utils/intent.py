@@ -33,11 +33,12 @@ async def resolve_datalake_files(scenario: str, available_files: list[str]) -> l
         "You are a file-reference resolver. The user is describing a simulation scenario. "
         "Determine which files from the list below are relevant to their scenario.\n\n"
         f"Available files:\n{file_list}\n\n"
-        "Return JSON: {\"files\": [\"<path1>\", \"<path2>\", ...]} with all relevant files. "
-        "Use fuzzy matching — e.g. 'debris flow' could match 'datalake/3d_debrisflow.jpg'. "
-        "Include reference images, mesh files (STL/VTK/PLY), CSV data, and XML case files "
-        "that are relevant to the scenario. "
-        "Return {\"files\": []} if no files are relevant."
+        "Return JSON: {\"files\": [\"<path1>\", \"<path2>\", ...]}.\n\n"
+        "Rules:\n"
+        "1. If the user explicitly names a file (e.g. '1.png', 'Case_Def.xml'), return ONLY that file. "
+        "Do NOT add other files based on topic similarity.\n"
+        "2. Only use fuzzy/topic matching when the user does NOT name a specific file.\n"
+        "3. Return {\"files\": []} if no files are relevant."
     )
 
     client = AsyncOpenAI()
