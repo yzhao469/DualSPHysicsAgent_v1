@@ -599,6 +599,8 @@ class PlanAndBuildExecutor(Executor):
         else:
             base_xml = ctx.get_state("base_xml") or f"{self.base_dir}/cases/BaseCase_Def.xml"
             current_xml = Path(base_xml).read_text()
+            # Write base XML to run dir so MCP tools can find it on disk
+            Path(case_xml).write_text(current_xml)
 
         patch = await generate_patch(current_xml, plan_data, changes)
         logger.info("LLM patch keys: %s", list(patch.keys()))
