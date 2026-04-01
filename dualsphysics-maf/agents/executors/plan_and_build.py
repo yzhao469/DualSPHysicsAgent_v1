@@ -11,6 +11,7 @@ import base64
 import json
 import logging
 import os
+import re
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
@@ -161,6 +162,7 @@ class PlanAndBuildExecutor(Executor):
 
         available = list_datalake_files(self.base_dir)
         matched = await resolve_datalake_files(scenario, available) if available else []
+        ctx.set_state("datalake_files", matched)
 
         if matched:
             msg = self._build_datalake_message(scenario, matched, ctx)
@@ -178,10 +180,16 @@ class PlanAndBuildExecutor(Executor):
             text += f"\n\n### Previous Plan\n```json\n{json.dumps(plan_data, indent=2)}\n```"
         logger.info("PlanAndBuildExecutor: revision request — %s", review.feedback)
 
-        # Re-resolve datalake files from the revision feedback (may reference
-        # images/meshes/XML the user wants the planner to see).
-        available = list_datalake_files(self.base_dir)
-        matched = await resolve_datalake_files(review.feedback, available) if available else []
+        # Reuse the datalake files from the initial scenario.  Only re-resolve
+        # if the revision feedback explicitly mentions a filename (contains a
+        # dot-extension pattern like ".png", ".jpg", ".xml", ".stl").
+        original_matched: list[str] = ctx.get_state("datalake_files") or []
+        has_explicit_file = bool(re.search(r'\.\w{2,4}\b', review.feedback))
+        if has_explicit_file:
+            available = list_datalake_files(self.base_dir)
+            matched = await resolve_datalake_files(review.feedback, available) if available else original_matched
+        else:
+            matched = original_matched
 
         if matched:
             msg = self._build_datalake_message(text, matched, ctx)

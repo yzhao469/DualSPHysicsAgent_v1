@@ -44,12 +44,15 @@ def set_geometry(base_xml: str, output_xml: str, geometry_xml: str) -> str:
     dp_str = defn.get("dp")
     if dp_str is None:
         return "ERROR: <definition> must have a dp attribute"
-    try:
-        dp_val = float(dp_str)
-    except ValueError:
-        return f"ERROR: dp must be numeric, got '{dp_str}'"
-    if dp_val <= 0:
-        return f"ERROR: dp must be positive, got {dp_val}"
+    if dp_str.startswith("#"):
+        pass  # variable reference (e.g. "#Dp") — resolved by GenCase at runtime
+    else:
+        try:
+            dp_val = float(dp_str)
+        except ValueError:
+            return f"ERROR: dp must be numeric, got '{dp_str}'"
+        if dp_val <= 0:
+            return f"ERROR: dp must be positive, got {dp_val}"
 
     if defn.find("pointmin") is None:
         return "ERROR: <definition> must contain <pointmin>"
