@@ -48,16 +48,23 @@ def set_geometry(
     <commands><mainlist>, drawing commands, etc.) and this tool validates
     and splices it into the case file.
 
+    geometry_xml can be:
+    - Just <geometry>...</geometry>
+    - Both <geometry> and <floatings> together (for floating bodies)
+
+    If <floatings> is included alongside <geometry>, it will be automatically
+    detected and placed correctly inside <casedef>.
+
     Validation checks:
-    - Root tag is <geometry>
-    - Contains <definition dp="..."> with positive numeric dp
+    - Contains <geometry> with <definition dp="..."> (positive numeric dp)
     - Contains <commands><mainlist> with at least one child
     - Contains <pointmin> and <pointmax>
 
     Args:
         base_xml:     Path to the source case XML file.
         output_xml:   Path to write the modified XML.
-        geometry_xml: The full <geometry>...</geometry> XML string.
+        geometry_xml: The full <geometry>...</geometry> XML string,
+                      optionally followed by <floatings>...</floatings>.
 
     Returns a descriptive success or error string.
     """

@@ -512,10 +512,19 @@ From `CaseFloating_Def.xml`. Mix of `face` and `full` draw modes.
     </mainlist>
   </commands>
 </geometry>
+<!-- REQUIRED: declare floating bodies with mass inside <casedef> -->
+<floatings>
+    <floating mkbound="50">
+        <massbody value="500" />
+    </floating>
+</floatings>
 ```
 
 **Techniques:** Mode switching — `face` for large tank walls (fewer particles, more efficient),
 `full` for piston and floating object (need solid mass). Floating body gets its own mk (mk=50).
+**Critical:** The `<floatings>` section is required after `</geometry>` — without it, mkbound=50
+particles are treated as fixed boundaries even though they are in the floating mk range.
+`massbody` sets the total mass in kg.
 
 ---
 

@@ -34,6 +34,7 @@ A DualSPHysics case XML has this skeleton:
         </mainlist>
       </commands>
     </geometry>
+    <!-- Optional: floating bodies go here (see Section D2) -->
   </casedef>
   <execution>
     <special>
@@ -126,7 +127,66 @@ Every particle gets an MK label that identifies its role. Set the current MK bef
 **Conventions:**
 - `mkfluid=0` is the primary fluid phase
 - `mkbound=0` is the primary fixed boundary
+- `mkbound=0–49` → fixed or moving boundaries
+- `mkbound=50–239` → floating bodies (see Section D2)
 - Use distinct mk values for parts you want to track separately (e.g., different walls, floating objects)
+
+### D2. Floating Bodies — IMPORTANT
+
+Floating bodies are boundary particles that move freely under fluid forces and gravity.
+Creating a floating body requires **two things**:
+
+1. **Use `mkbound >= 50`** in the geometry drawing commands. Each separate floating object
+   must have its own unique mkbound value (e.g., 50, 51, 52, ...).
+
+2. **Add a `<floatings>` section** inside `<casedef>`, after `</geometry>` and before `</casedef>`.
+   Each floating body must be declared with its mkbound and mass:
+
+```xml
+<geometry>
+  <!-- ... drawing commands ... -->
+</geometry>
+<floatings>
+    <floating mkbound="50">
+        <massbody value="500000" />
+    </floating>
+    <floating mkbound="51">
+        <massbody value="500000" />
+    </floating>
+</floatings>
+```
+
+**Both are required.** Using `mkbound >= 50` without the `<floatings>` declaration will make
+GenCase treat the particles as fixed boundaries. The `<floatings>` section tells DualSPHysics
+to treat those particles as rigid bodies that respond to fluid forces.
+
+**How to include in `geometry_xml`:**
+Include `<floatings>` right after `</geometry>` in your `geometry_xml` output. The
+`set_geometry` tool will automatically detect and place both elements correctly. Example:
+
+```xml
+<geometry>
+  <!-- ... drawing commands ... -->
+</geometry>
+<floatings>
+    <floating mkbound="50"><massbody value="500000" /></floating>
+    <floating mkbound="51"><massbody value="500000" /></floating>
+</floatings>
+```
+
+**`massbody`** is the total mass of the floating object in kg. Estimate from:
+`massbody = density × volume` (e.g., concrete block 1m³ at 2400 kg/m³ → massbody=2400).
+
+**Optional floating parameters:**
+```xml
+<floating mkbound="50">
+    <massbody value="500" />
+    <center x="10" y="3" z="4" />           <!-- Override center of mass -->
+    <inertia x="100" y="100" z="100" />     <!-- Moments of inertia (kg·m²) -->
+    <linearvelini x="0" y="0" z="0" />      <!-- Initial linear velocity -->
+    <angularvelini x="0" y="0" z="0" />     <!-- Initial angular velocity -->
+</floating>
+```
 
 ---
 
@@ -182,6 +242,7 @@ SPH requires full kernel support near walls. Required wall thickness ≥ 2h (min
 Convert to particle layers: `N_layers ≈ 2h / dp = 2 × coefh × √3`.
 Once `coefh` is selected: compute `h = coefh * sqrt(3) * dp`, then enforce `boundary_layers >= ceil(2h / dp)`.
 For `coefh = 1`, **3 boundary layers** is generally accepted.
+Use `<layers vdp="0,1,2" />` inside `<drawbox>` to create 3 layers when using `boxfill` face selection.
 
 ### F2. CFL Number (`cflnumber`)
 
@@ -326,9 +387,53 @@ Agent must ensure consistency across parameters:
    - Where is the fluid initially?
    - Is the floor flat or inclined?
    - What are the domain bounds (pointmin/pointmax with margin)?
-2. **MK ordering matters**: later defined geometry overwrites earlier particles at the same position. Choose wisely to ensure the fluid is fully within the boundary domain.
+2. **Draw order matters**: later draw commands overwrite earlier particles at the same position.
+   Draw fluid BEFORE boundaries so that wall particles overwrite fluid at shared positions,
+   not the other way around. Alternatively, use `boxfill` face selection for walls (see below).
 3. **Inclined surfaces**: use `drawprism` with matched base/top polygons, or `drawbeach` with profile points. Place fluid via `fillbox` with seed above the slope.
 4. **Complex shapes**: if the geometry involves organic/CAD shapes (ship hulls, turbines, terrain), ask the user for an STL file and use `drawfilestl`.
+
+### Wall Construction — CRITICAL
+
+**You MUST use `boxfill` with face selection** for tank/channel walls. **NEVER draw walls
+as separate solid boxes.** The correct pattern is:
+
+1. Draw **fluid first** (`setmkfluid`)
+2. Then draw **walls after** using `boxfill` face selection (`setmkbound`)
+
+This way wall particles overwrite fluid at shared positions (not the reverse).
+
+```xml
+<!-- CORRECT: fluid first, then walls with boxfill + layers -->
+<setmkfluid mk="0" />
+<drawbox>
+    <boxfill>solid</boxfill>
+    <point x="85" y="0" z="0" />
+    <size x="15" y="20" z="30" />
+</drawbox>
+<setmkbound mk="0" />
+<drawbox>
+    <boxfill>bottom | left | right | front | back</boxfill>
+    <point x="0" y="0" z="0" />
+    <size x="100" y="20" z="40" />
+    <layers vdp="0,1,2" />
+</drawbox>
+```
+
+**`<layers vdp="0,1,2" />`** creates 3 boundary layers (at dp offsets 0, 1, 2 inward from
+each face). This is required for `coefh=1.0` (see Section F1). Without `<layers>`, `boxfill`
+creates only a single-particle-thick shell, which is too thin for SPH kernel support.
+
+**NEVER do this:**
+```xml
+<!-- WRONG: solid boxes for walls — causes fluid to overwrite wall particles -->
+<setmkbound mk="0" />
+<drawbox><boxfill>solid</boxfill><point x="0" y="0" z="0"/><size x="100" y="20" z="2"/></drawbox>
+<drawbox><boxfill>solid</boxfill><point x="0" y="0" z="0"/><size x="2" y="20" z="40"/></drawbox>
+<setmkfluid mk="0" />
+<drawbox><boxfill>solid</boxfill><point x="0" y="0" z="0"/><size x="15" y="20" z="30"/></drawbox>
+<!-- Fluid at z=0 overwrites floor's top layer → boundary gap -->
+```
 
 ---
 
