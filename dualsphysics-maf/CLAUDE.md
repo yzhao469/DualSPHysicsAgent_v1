@@ -7,6 +7,20 @@
 Python venv: `.venv/`
 Run with: `.venv/bin/python`
 
+## Install & Run
+- **Install**: `.venv/bin/pip install -e .` (pyproject) — or `pip install -r requirements.txt`.
+  Depend on `agent-framework-core==1.0.0rc3` directly, NOT the `agent-framework`
+  meta-package: the meta-package's `agent-framework-core[all]` extra pulls newer
+  `agent-framework-ag-ui` (requires `core>=1.13.0`) → pip ResolutionImpossible on a clean
+  install. Core alone provides everything the code uses (`agent_framework` + `.openai`).
+- **Terminal mode**: `.venv/bin/python main.py`
+- **GUI (dev)**: `.venv/bin/uvicorn gui_api:app --host 0.0.0.0 --port 8000`, then in another
+  terminal `cd gui-react && npm run dev` → http://localhost:5173 (proxies to :8000).
+- **GUI (single server)**: `cd gui-react && npm run build && cd ..` then run uvicorn as above
+  → http://localhost:8000 (FastAPI serves `gui-react/dist`).
+- **LLM provider**: OpenAI only (`OpenAIChatClient`). `anthropic` / `agent-framework-anthropic`
+  are NOT used by the workflow.
+
 ## Environment
 - **Platform**: WSL2 (Linux on Windows)
 - When opening files/images, use `cmd.exe /c start` via `wslpath -w` (see `visualize_geometry.py`)
@@ -56,6 +70,9 @@ Python code orchestrates all MCP tool calls deterministically.
 ## File Inventory
 
 ### MCP Server (6 tools)
+Registered in `mcp_server/server.py`: `set_geometry`, `modify_xml`, `run_gencase`,
+`run_simulation` (pre-processing) + `run_postprocess`, `run_analysis` (post-processing).
+
 | File | Description |
 |------|-------------|
 | `mcp_server/config.py` | Path configuration (all binaries) |
@@ -108,8 +125,8 @@ Python code orchestrates all MCP tool calls deterministically.
 | `cases/BaseCase_Def.xml` | Base XML template |
 | `datalake/` | User-provided XML cases |
 | `main.py` | Terminal workflow event loop + HITL |
-| `gui.py` | Streamlit web GUI — chat + XML/script editors + file browser. Same workflow, thread+queue bridge. |
-| `main_smoke.py` | Smoke test (bypasses workflow) |
+| `gui_api.py` | FastAPI backend (REST + WebSocket) for the React GUI. Same workflow run in a daemon thread; thread ↔ API bridge via `asyncio.Queue`. Serves the built `gui-react/dist` at `/`. |
+| `gui-react/` | React + Vite frontend (chat, XML/script editors, image viewer, file browser). Dev server on :5173 proxies `/api` + `/ws` → :8000. |
 
 ---
 
