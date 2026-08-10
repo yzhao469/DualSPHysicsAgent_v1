@@ -1,8 +1,46 @@
 import os
 from pathlib import Path
 
-BASE_DIR        = str(Path(__file__).resolve().parents[2])
-BIN_DIR         = f"{BASE_DIR}/bin/linux"
+_THIS_FILE = Path(__file__).resolve()
+_DEFAULT_WORKSPACE_ROOT = _THIS_FILE.parents[2]
+_DEFAULT_PROJECT_DIR = _THIS_FILE.parents[1]
+
+
+def _resolve_dualsphysics_root() -> Path:
+	"""Resolve DualSPHysics install root that contains bin/linux binaries.
+
+	Priority:
+	  1) DUALSPHYSICS_ROOT env var
+	  2) Legacy co-located workspace layout (parents[2])
+	  3) Known user-local install location under ~/DualSPHysics
+	  4) Fallback to parents[2]
+	"""
+	env_root = os.getenv("DUALSPHYSICS_ROOT")
+	if env_root:
+		return Path(env_root).expanduser().resolve()
+
+	legacy_root = _DEFAULT_WORKSPACE_ROOT
+	legacy_gencase = legacy_root / "bin" / "linux" / "GenCase_linux64"
+	if legacy_gencase.exists():
+		return legacy_root
+
+	user_local_root = (
+		Path.home()
+		/ "DualSPHysics"
+		/ "DualSPHysics_NN_v5.0.1-danrong-mcp-simulation-agent"
+	)
+	user_local_gencase = user_local_root / "bin" / "linux" / "GenCase_linux64"
+	if user_local_gencase.exists():
+		return user_local_root
+
+	return legacy_root
+
+
+DUALSPHYSICS_ROOT = _resolve_dualsphysics_root()
+PROJECT_DIR_PATH = Path(os.getenv("DUALSPHYSICS_MAF_DIR", str(_DEFAULT_PROJECT_DIR))).expanduser().resolve()
+
+BASE_DIR        = str(DUALSPHYSICS_ROOT)
+BIN_DIR         = f"{DUALSPHYSICS_ROOT}/bin/linux"
 
 GENCASE_BIN      = f"{BIN_DIR}/GenCase_linux64"
 SOLVER_BIN_CPU   = f"{BIN_DIR}/DualSPHysics5.0_NNewtonianCPU_linux64"
@@ -18,7 +56,7 @@ FLOWTOOL_BIN     = f"{BIN_DIR}/FlowTool_linux64"
 BOUNDARYVTK_BIN  = f"{BIN_DIR}/BoundaryVTK_linux64"
 FLOATINGINFO_BIN = f"{BIN_DIR}/FloatingInfo_linux64"
 
-PROJECT_DIR      = f"{BASE_DIR}/dualsphysics-maf"
+PROJECT_DIR      = str(PROJECT_DIR_PATH)
 RUNS_DIR         = f"{PROJECT_DIR}/runs"
 CASES_DIR        = f"{PROJECT_DIR}/cases"
 BASE_XML         = f"{CASES_DIR}/BaseCase_Def.xml"

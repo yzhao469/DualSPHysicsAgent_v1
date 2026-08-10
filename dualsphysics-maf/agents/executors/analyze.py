@@ -24,6 +24,7 @@ from agents.schemas import ResultsLoopRequest, ReviewResult
 from agents.tools.visualize_geometry import visualize_geometry
 from agents.utils.chat_logger import log_message
 from agents.utils.context_trimmer import trim_chat_completions_history
+from agents.utils.mcp_tools import mcp_tool_result_text, parse_mcp_tool_result
 from agents.utils.script_utils import generate_script, generate_script_patch, parse_script
 from agents.utils.skill_loader import get_skill_topic
 
@@ -287,7 +288,12 @@ class AnalyzeExecutor(Executor):
                     cwd=run_dir,
                     args=cmd.args,
                 )
-                result = json.loads(r) if isinstance(r, str) else r
+                result = parse_mcp_tool_result(r)
+                if not isinstance(result, dict):
+                    err = mcp_tool_result_text(r) or "unknown"
+                    logger.warning("%s returned unrecognized response: %s", cmd.tool_name, err)
+                    failed_steps.append(f"{cmd.tool_name}: {err[:200]}")
+                    continue
                 if result.get("returncode", -1) != 0:
                     err = result.get("stderr") or result.get("stdout") or "unknown"
                     logger.warning("%s failed: %s", cmd.tool_name, err)
@@ -502,8 +508,10 @@ class AnalyzeExecutor(Executor):
                             python_code=code,
                             work_dir=analysis_dir,
                         )
-                        result = json.loads(r) if isinstance(r, str) else r
-                        if result.get("returncode", -1) != 0:
+                        result = parse_mcp_tool_result(r)
+                        if not isinstance(result, dict):
+                            tool_result = f"FAILED: unrecognized response: {mcp_tool_result_text(r)[:500]}"
+                        elif result.get("returncode", -1) != 0:
                             err = result.get("stderr") or result.get("stdout") or "unknown error"
                             tool_result = f"FAILED: {err[:500]}"
                         else:
@@ -610,7 +618,10 @@ class AnalyzeExecutor(Executor):
                     cwd=run_dir,
                     args=cmd.args,
                 )
-                result = json.loads(r) if isinstance(r, str) else r
+                result = parse_mcp_tool_result(r)
+                if not isinstance(result, dict):
+                    results.append(f"FAIL {cmd.tool_name}: unrecognized response")
+                    continue
                 if result.get("returncode", -1) != 0:
                     err = result.get("stderr") or result.get("stdout") or "unknown"
                     results.append(f"FAIL {cmd.tool_name}: {err[:200]}")

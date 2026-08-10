@@ -1,31 +1,8 @@
-# Microsoft Agent Framework — install agent-framework-CORE directly, NOT the
-# `agent-framework` meta-package. The meta-package pulls `agent-framework-core[all]`,
-# whose `[all]` extra drags in every subpackage unpinned (ag-ui, a2a, azure, mem0…);
-# newer `agent-framework-ag-ui` releases now require `agent-framework-core>=1.13.0`,
-# which conflicts with `core==1.0.0rc3` → pip ResolutionImpossible on a clean install.
-# The code only uses core + `agent_framework.openai` (bundled in core), so core alone
-# is sufficient and avoids the conflict.
-agent-framework-core==1.0.0rc3
-
-# LLM + MCP. The workflow uses OpenAI only (OpenAIChatClient); anthropic /
-# agent-framework-anthropic are intentionally omitted — they are unused.
-openai>=2.0,<3
-mcp[fastmcp]>=1.0,<2
-
-# Config / templating / schemas
-python-dotenv>=1.0,<2
-jinja2>=3.1,<4
-pydantic>=2.0,<3
-
-# Data + analysis + visualization
-pandas>=2.0,<4
-numpy>=2.0,<3
-matplotlib>=3.9,<4
-pyvista>=0.44,<1
-
-# GUI backend (gui_api.py)
-fastapi>=0.115,<1
-uvicorn[standard]>=0.34,<1
-
-# Pinned transitive dependency (must be exactly 0.4.13 for agent-framework)
-opentelemetry-semantic-conventions-ai==0.4.13
+agent-framework-core==1.13.0
+agent-framework-openai==1.12.0
+mcp
+openai
+pandas
+numpy
+jinja2
+pydantic

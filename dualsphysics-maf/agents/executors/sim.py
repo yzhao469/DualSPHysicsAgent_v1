@@ -5,7 +5,6 @@ No longer terminal — passes control to AnalyzeExecutor for post-processing.
 On failure, routes back to PlanAndBuildExecutor for parameter adjustments.
 """
 
-import json
 import logging
 import shutil
 
@@ -17,7 +16,12 @@ from agent_framework import (
 )
 
 from agents.schemas import ReviewResult
-from agents.utils.mcp_tools import SIM_DIAGNOSTICS, diagnose_error
+from agents.utils.mcp_tools import (
+    SIM_DIAGNOSTICS,
+    diagnose_error,
+    mcp_tool_result_text,
+    parse_mcp_tool_result,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -55,9 +59,11 @@ class SimExecutor(Executor):
                 output_dir=f"{run_dir}/out",
                 gpu=use_gpu,
             )
-            sim_result = json.loads(r) if isinstance(r, str) else r
+            sim_result = parse_mcp_tool_result(r)
+            if not isinstance(sim_result, dict):
+                raise RuntimeError(f"run_simulation returned unrecognized response: {mcp_tool_result_text(r)}")
             if sim_result.get("returncode", -1) != 0:
-                error_text = sim_result.get("stderr") or sim_result.get("stdout") or str(r)
+                error_text = sim_result.get("stderr") or sim_result.get("stdout") or mcp_tool_result_text(r)
                 raise RuntimeError(f"run_simulation failed:\n{error_text}")
         except RuntimeError as exc:
             logger.error("Simulation failed: %s", exc)

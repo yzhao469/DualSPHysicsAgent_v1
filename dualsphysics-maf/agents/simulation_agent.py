@@ -49,9 +49,9 @@ def make_simulation_agent() -> Agent:
     template = _jinja_env.get_template("simulation_agent.j2")
     instructions = template.render(base=BASE)
 
-    client = OpenAIChatClient(model_id=os.getenv("PLANNER_MODEL", "gpt-4o"))
+    client = OpenAIChatClient(model=os.getenv("PLANNER_MODEL", "gpt-4o"))
 
-    skills_provider = SkillsProvider(skill_paths=str(_SKILLS_DIR))
+    skills_provider = SkillsProvider.from_paths(str(_SKILLS_DIR))
 
     return Agent(
         client=client,

@@ -11,7 +11,6 @@ import base64
 import json
 import logging
 import os
-import re
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
@@ -152,7 +151,7 @@ class PlanAndBuildExecutor(Executor):
         combined_text = "\n\n".join(text_parts)
         if image_contents:
             return Message("user", [combined_text, *image_contents])
-        return Message("user", text=combined_text)
+        return Message("user", [combined_text])
 
     @handler
     async def start(self, scenario: str, ctx: WorkflowContext[AgentExecutorRequest | ReviewResult]) -> None:
@@ -162,12 +161,11 @@ class PlanAndBuildExecutor(Executor):
 
         available = list_datalake_files(self.base_dir)
         matched = await resolve_datalake_files(scenario, available) if available else []
-        ctx.set_state("datalake_files", matched)
 
         if matched:
             msg = self._build_datalake_message(scenario, matched, ctx)
         else:
-            msg = Message("user", text=scenario)
+            msg = Message("user", [scenario])
 
         await ctx.send_message(AgentExecutorRequest(messages=[msg], should_respond=True))
 
@@ -179,23 +177,7 @@ class PlanAndBuildExecutor(Executor):
         if plan_data:
             text += f"\n\n### Previous Plan\n```json\n{json.dumps(plan_data, indent=2)}\n```"
         logger.info("PlanAndBuildExecutor: revision request — %s", review.feedback)
-
-        # Reuse the datalake files from the initial scenario.  Only re-resolve
-        # if the revision feedback explicitly mentions a filename (contains a
-        # dot-extension pattern like ".png", ".jpg", ".xml", ".stl").
-        original_matched: list[str] = ctx.get_state("datalake_files") or []
-        has_explicit_file = bool(re.search(r'\.\w{2,4}\b', review.feedback))
-        if has_explicit_file:
-            available = list_datalake_files(self.base_dir)
-            matched = await resolve_datalake_files(review.feedback, available) if available else original_matched
-        else:
-            matched = original_matched
-
-        if matched:
-            msg = self._build_datalake_message(text, matched, ctx)
-        else:
-            msg = Message("user", text=text)
-
+        msg = Message("user", [text])
         await ctx.send_message(AgentExecutorRequest(messages=[msg], should_respond=True))
 
     # ── Build + review init ──────────────────────────────────────────────
@@ -333,15 +315,15 @@ class PlanAndBuildExecutor(Executor):
         PlanAndBuildExecutor._set_recovery_state(ctx, error_message, retry_count)
         return retry_count
 
+    @staticmethod
     def _refresh_instructions(
-        self,
         ctx: WorkflowContext,
         plan_data: dict,
         run_dir: str,
     ) -> str:
         """Rebuild and store the review LLM instructions (used as system message)."""
-        all_files = list_datalake_files(self.base_dir)
-        datalake_names = [Path(p).name for p in all_files]
+        matched_files = ctx.get_state("datalake_matched_files") or []
+        datalake_names = [Path(p).name for p in matched_files]
         instructions = build_instructions(
             plan_data,
             run_dir,
@@ -451,10 +433,6 @@ class PlanAndBuildExecutor(Executor):
                 )
                 return
 
-            # Collect non-tool-result messages (e.g. images) to append
-            # after all tool results, satisfying OpenAI's ordering rules.
-            deferred_messages: list[dict] = []
-
             for tc in msg.tool_calls:
                 fn_name = tc.function.name
                 fn_args = json.loads(tc.function.arguments)
@@ -550,29 +528,22 @@ class PlanAndBuildExecutor(Executor):
                 elif fn_name == "view_datalake_file":
                     filename = fn_args["filename"]
                     matched_files_list = ctx.get_state("datalake_matched_files") or []
-                    # Find matching file in matched list first
+                    # Find matching file
                     matched_path = None
                     for rel_path in matched_files_list:
                         if Path(rel_path).name == filename:
                             matched_path = Path(self.base_dir) / rel_path
                             break
-                    # Fall back to full datalake scan if not in matched list
-                    if not matched_path or not matched_path.exists():
-                        all_files = list_datalake_files(self.base_dir)
-                        for rel_path in all_files:
-                            if Path(rel_path).name == filename:
-                                matched_path = Path(self.base_dir) / rel_path
-                                break
                     if matched_path and matched_path.exists():
                         if is_image_file(matched_path):
                             suffix = matched_path.suffix.lower()
                             media_type = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}[suffix]
                             img_b64 = base64.b64encode(matched_path.read_bytes()).decode()
-                            history.append(tool_result(tc.id, f"Image '{filename}' is shown below."))
-                            deferred_messages.append(user_message_with_images(
+                            history.append(user_message_with_images(
                                 f"Reference image: {filename}",
                                 [(img_b64, media_type)],
                             ))
+                            history.append(tool_result(tc.id, f"Image '{filename}' is now visible above."))
                         else:
                             content = matched_path.read_text(errors="replace")
                             ext = matched_path.suffix.lower().lstrip(".")
@@ -581,15 +552,12 @@ class PlanAndBuildExecutor(Executor):
                                 f"Contents of {filename}:\n```{ext}\n{content}\n```",
                             ))
                     else:
-                        all_files = list_datalake_files(self.base_dir)
-                        available = [Path(p).name for p in all_files]
+                        available = [Path(p).name for p in matched_files_list]
                         history.append(tool_result(
                             tc.id,
                             f"File '{filename}' not found. Available: {', '.join(available) or 'none'}",
                         ))
 
-            # Append deferred messages (e.g. images) after all tool results
-            history.extend(deferred_messages)
             ctx.set_state("setup_review_history", history)
 
     async def _patch_and_rebuild(
@@ -607,8 +575,6 @@ class PlanAndBuildExecutor(Executor):
         else:
             base_xml = ctx.get_state("base_xml") or f"{self.base_dir}/cases/BaseCase_Def.xml"
             current_xml = Path(base_xml).read_text()
-            # Write base XML to run dir so MCP tools can find it on disk
-            Path(case_xml).write_text(current_xml)
 
         patch = await generate_patch(current_xml, plan_data, changes)
         logger.info("LLM patch keys: %s", list(patch.keys()))

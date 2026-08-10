@@ -13,6 +13,7 @@ load_dotenv(Path(__file__).resolve().parent / ".env")
 
 from agent_framework import (
     AgentExecutor,
+    Content,
     WorkflowEvent,
     WorkflowRunResult,
     WorkflowRunState,
@@ -53,12 +54,21 @@ async def process_events(
     """
     pending_requests: dict[str, Any] = {}
 
+    def _is_function_approval_request(data: Any) -> bool:
+        data_type = getattr(data, "type", None)
+        type_value = getattr(data_type, "value", data_type)
+        return isinstance(data, Content) and type_value == "function_approval_request"
+
     async for event in stream:
         if event.type == "request_info":
             req_data = event.data
             request_id = event.request_id
 
-            if isinstance(req_data, (SetupReviewRequest, ResultsLoopRequest)):
+            if _is_function_approval_request(req_data):
+                fn = getattr(req_data, "function_call", None)
+                fn_name = getattr(fn, "name", "unknown_function")
+                print(f"\n[Tool approval requested]: {fn_name}", flush=True)
+            elif isinstance(req_data, (SetupReviewRequest, ResultsLoopRequest)):
                 print(req_data.summary, flush=True)
             else:
                 print(f"\n[Request from {event.source_executor_id}]: {req_data}", flush=True)
@@ -72,7 +82,15 @@ async def process_events(
             except EOFError:
                 response = "yes"
 
-            pending_requests[request_id] = response
+            if _is_function_approval_request(req_data):
+                approved = response.lower() in {"y", "yes", "approve", "approved", "ok", "true", "1", ""}
+                pending_requests[request_id] = Content.from_function_approval_response(
+                    approved=approved,
+                    id=req_data.id,
+                    function_call=req_data.function_call,
+                )
+            else:
+                pending_requests[request_id] = response
 
         elif event.type == "executor_failed":
             logger.error("Executor %s failed: %s", event.executor_id, event.details)

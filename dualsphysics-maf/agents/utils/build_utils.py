@@ -1,11 +1,11 @@
 """Shared build helpers for executors that re-run gencase + visualization."""
 
-import json
 import logging
 
 from agent_framework import MCPStdioTool
 
 from agents.tools.visualize_geometry import visualize_geometry
+from agents.utils.mcp_tools import mcp_tool_result_text, parse_mcp_tool_result
 
 logger = logging.getLogger(__name__)
 
@@ -22,9 +22,12 @@ async def rebuild_gencase_viz(mcp: MCPStdioTool, run_dir: str) -> None:
         xml_path=f"{run_dir}/Case_Def",
         output_dir=f"{run_dir}/out",
     )
-    result = json.loads(r) if isinstance(r, str) else r
+    result = parse_mcp_tool_result(r)
+    if not isinstance(result, dict):
+        raise RuntimeError(f"run_gencase returned unrecognized response: {mcp_tool_result_text(r)}")
     if result.get("returncode", -1) != 0:
-        raise RuntimeError(f"run_gencase failed: {result.get('stderr', r)}")
+        err = result.get("stderr") or result.get("stdout") or mcp_tool_result_text(r)
+        raise RuntimeError(f"run_gencase failed: {err}")
     logger.info("run_gencase OK")
 
     # Visualize

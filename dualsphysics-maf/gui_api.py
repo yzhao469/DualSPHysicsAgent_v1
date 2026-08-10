@@ -31,6 +31,7 @@ load_dotenv(Path(__file__).resolve().parent / ".env")
 
 from agent_framework import (          # noqa: E402
     AgentExecutor,
+    Content,
     WorkflowRunState,
 )
 from agents.schemas import (            # noqa: E402
@@ -264,14 +265,24 @@ async def _api_process_events(
     """Drain the workflow event stream, forwarding events to the session queue."""
     pending: dict[str, Any] = {}
 
+    def _is_function_approval_request(data: Any) -> bool:
+        data_type = getattr(data, "type", None)
+        type_value = getattr(data_type, "value", data_type)
+        return isinstance(data, Content) and type_value == "function_approval_request"
+
     async for event in stream:
         if event.type == "request_info":
             data = event.data
-            summary = (
-                data.summary
-                if isinstance(data, (SetupReviewRequest, ResultsLoopRequest))
-                else str(data)
-            )
+            if _is_function_approval_request(data):
+                fn = getattr(data, "function_call", None)
+                fn_name = getattr(fn, "name", "unknown_function")
+                summary = f"Tool approval requested: {fn_name}"
+            else:
+                summary = (
+                    data.summary
+                    if isinstance(data, (SetupReviewRequest, ResultsLoopRequest))
+                    else str(data)
+                )
             confirm_sim = (
                 isinstance(data, SetupReviewRequest) and data.confirm_sim
             )
@@ -293,7 +304,16 @@ async def _api_process_events(
                 if session.response_event.wait(timeout=5):
                     session.response_event.clear()
                     break
-            pending[event.request_id] = session.response_value
+            if _is_function_approval_request(data):
+                response = (session.response_value or "").strip().lower()
+                approved = response in {"", "y", "yes", "approve", "approved", "ok", "true", "1"}
+                pending[event.request_id] = Content.from_function_approval_response(
+                    approved=approved,
+                    id=data.id,
+                    function_call=data.function_call,
+                )
+            else:
+                pending[event.request_id] = session.response_value
 
         elif event.type == "executor_failed":
             _enqueue_event(session, {

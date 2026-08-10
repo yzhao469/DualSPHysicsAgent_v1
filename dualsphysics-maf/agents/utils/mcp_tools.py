@@ -6,25 +6,97 @@ and pattern-based diagnostic hints for build and simulation failures.
 
 import json
 import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-def check_mcp_tool_result(tool_name: str, response: str | dict) -> None:
+def _to_json_dict(value: Any) -> dict[str, Any] | None:
+    """Best-effort conversion of *value* into a JSON dict."""
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except (json.JSONDecodeError, TypeError):
+            return None
+        return parsed if isinstance(parsed, dict) else None
+    return None
+
+
+def parse_mcp_tool_result(response: Any) -> dict[str, Any] | None:
+    """Extract structured MCP tool result dict from mixed response formats.
+
+    Newer framework versions may return lists of Content objects rather than
+    raw JSON strings/dicts. This helper walks common wrappers and returns the
+    first dict-like payload it can decode.
+    """
+    queue: list[Any] = [response]
+
+    while queue:
+        current = queue.pop(0)
+
+        # Direct dict / JSON string
+        parsed = _to_json_dict(current)
+        if parsed is not None:
+            return parsed
+
+        # Sequence of content fragments
+        if isinstance(current, (list, tuple)):
+            queue.extend(current)
+            continue
+
+        # Content-like object fields that may carry payloads
+        for attr in ("result", "output", "text", "message"):
+            value = getattr(current, attr, None)
+            if value is not None:
+                parsed = _to_json_dict(value)
+                if parsed is not None:
+                    return parsed
+                if isinstance(value, (list, tuple, dict)):
+                    queue.append(value)
+
+        # Pydantic-like model dump as a fallback
+        model_dump = getattr(current, "model_dump", None)
+        if callable(model_dump):
+            try:
+                dumped = model_dump(exclude_none=True)
+            except TypeError:
+                dumped = model_dump()
+            if isinstance(dumped, dict):
+                if "returncode" in dumped:
+                    return dumped
+                queue.extend(v for v in dumped.values() if isinstance(v, (dict, list, tuple, str)))
+
+    return None
+
+
+def mcp_tool_result_text(response: Any) -> str:
+    """Return a readable text representation for logging/errors."""
+    if isinstance(response, str):
+        return response
+    if isinstance(response, dict):
+        return json.dumps(response)
+    if isinstance(response, (list, tuple)):
+        parts = [mcp_tool_result_text(item) for item in response]
+        return "\n".join(p for p in parts if p)
+
+    for attr in ("text", "message", "stderr", "stdout"):
+        value = getattr(response, attr, None)
+        if isinstance(value, str) and value:
+            return value
+
+    return str(response)
+
+
+def check_mcp_tool_result(tool_name: str, response: Any) -> None:
     """Validate MCP tool response; raise RuntimeError with details on failure.
 
     Handles both structured JSON responses (with returncode/stderr) and
     plain-text error responses (starting with 'ERROR').
     """
-    # Try to parse as structured JSON
-    if isinstance(response, str):
-        try:
-            result = json.loads(response)
-        except (json.JSONDecodeError, TypeError):
-            logger.debug("%s response is not JSON, treating as plain text", tool_name)
-            result = None
-    else:
-        result = response
+    # Try to parse as structured JSON/result dict
+    result = parse_mcp_tool_result(response)
 
     if isinstance(result, dict):
         if result.get("returncode", 0) != 0:
@@ -33,8 +105,9 @@ def check_mcp_tool_result(tool_name: str, response: str | dict) -> None:
         return
 
     # Fall back to plain-text error detection
-    if isinstance(response, str) and response.startswith("ERROR"):
-        raise RuntimeError(f"{tool_name} failed: {response}")
+    response_text = mcp_tool_result_text(response).strip()
+    if response_text.startswith("ERROR"):
+        raise RuntimeError(f"{tool_name} failed: {response_text}")
 
 
 def diagnose_error(

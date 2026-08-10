@@ -8,7 +8,21 @@ LLM-assisted workflow for DualSPHysics non-Newtonian simulations.
    ```bash
    cd dualsphysics-maf
    python3.12 -m venv .venv
-   .venv/bin/pip install -e .
+   .venv/bin/pip install -e .[dev-openai]
+   ```
+
+   If your DualSPHysics binaries are in a separate install tree, set:
+   ```bash
+   export DUALSPHYSICS_ROOT=/path/to/DualSPHysics_root
+   ```
+   Optional (only if the workflow project folder is non-standard):
+   ```bash
+   export DUALSPHYSICS_MAF_DIR=/path/to/dualsphysics-maf
+   ```
+
+   To reproduce the exact dependency set used in this repository state:
+   ```bash
+   .venv/bin/pip install -r requirements.lock.txt
    ```
 2. Add your OpenAI API key to `dualsphysics-maf/.env`:
    ```bash
@@ -50,7 +64,7 @@ LLM-assisted workflow for DualSPHysics non-Newtonian simulations.
 Install the project with test dependencies and run the unit suite:
 
 ```bash
-.venv/bin/pip install -e .[test]
+.venv/bin/pip install -e .[dev-openai]
 .venv/bin/pytest
 ```
 

@@ -4,12 +4,9 @@ version = "0.1.0"
 description = "LLM-assisted workflow for DualSPHysics non-Newtonian simulations"
 requires-python = ">=3.12"
 dependencies = [
-    # Install core directly (NOT the `agent-framework` meta-package): the meta-package's
-    # `agent-framework-core[all]` extra pulls newer `agent-framework-ag-ui` releases that
-    # require `agent-framework-core>=1.13.0`, conflicting with rc3 → ResolutionImpossible.
-    # The code only needs core + `agent_framework.openai` (bundled in core).
-    "agent-framework-core==1.0.0rc3",
-    "mcp[fastmcp]>=1.0,<2",
+    "agent-framework-core==1.13.0",
+    "agent-framework-openai==1.12.0",
+    "mcp>=1.0,<2",
     "openai>=2.0,<3",
     "pandas>=2.0,<4",
     "numpy>=2.0,<3",
@@ -24,6 +21,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+dev-openai = [
+    "pytest>=8.4,<9",
+]
 test = [
     "pytest>=8.4,<9",
 ]
