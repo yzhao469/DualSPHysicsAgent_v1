@@ -1,0 +1,12 @@
+Boundary file: PartBound_0050.vtk
+ROI points: 423
+Occupied x-bands in [75,85] m near y=10 m:
+{'x0': np.float64(79.0), 'x1': np.float64(79.025), 'xc': np.float64(79.0125), 'npts': 66, 'zmin': 0.5, 'zmax': 11.0, 'zspan': 10.5}
+{'x0': np.float64(79.5), 'x1': np.float64(79.525), 'xc': np.float64(79.5125), 'npts': 66, 'zmin': 0.5, 'zmax': 11.0, 'zspan': 10.5}
+{'x0': np.float64(80.0), 'x1': np.float64(80.025), 'xc': np.float64(80.0125), 'npts': 66, 'zmin': 0.5, 'zmax': 11.0, 'zspan': 10.5}
+{'x0': np.float64(80.5), 'x1': np.float64(80.525), 'xc': np.float64(80.5125), 'npts': 9, 'zmin': 10.0, 'zmax': 11.0, 'zspan': 1.0}
+{'x0': np.float64(81.0), 'x1': np.float64(81.025), 'xc': np.float64(81.0125), 'npts': 9, 'zmin': 10.0, 'zmax': 11.0, 'zspan': 1.0}
+{'x0': np.float64(81.5), 'x1': np.float64(81.525), 'xc': np.float64(81.5125), 'npts': 9, 'zmin': 10.0, 'zmax': 11.0, 'zspan': 1.0}
+{'x0': np.float64(82.0), 'x1': np.float64(82.025), 'xc': np.float64(82.0125), 'npts': 66, 'zmin': 0.5, 'zmax': 11.0, 'zspan': 10.5}
+{'x0': np.float64(82.5), 'x1': np.float64(82.525), 'xc': np.float64(82.5125), 'npts': 66, 'zmin': 0.5, 'zmax': 11.0, 'zspan': 10.5}
+{'x0': np.float64(83.0), 'x1': np.float64(83.025), 'xc': np.float64(83.0125), 'npts': 66, 'zmin': 0.5, 'zmax': 11.0, 'zspan': 10.5}

@@ -1,0 +1,7 @@
+Boundary arrays: ['Idp', 'Vel', 'Rhop', 'Type', 'Mk']
+
+Unique mk values for all boundary particles:
+mk=10, count=1095
+
+Unique mk values for particles with x >= 99.5:
+mk=10, count=252

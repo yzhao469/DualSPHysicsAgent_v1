@@ -1,0 +1,5 @@
+category,n_particles,mass_kg,percent_initial_mass
+upstream_of_barrier_final,66874,14210725.0,95.26210826210826
+downstream_via_overtopping_final,2428,515950.0,3.4586894586894585
+downstream_via_side_leakage_final,390,82875.0,0.5555555555555556
+within_barrier_x_range_final,504,107100.0,0.717948717948718

@@ -1,0 +1,7 @@
+Boundary file: PartBound_0050.vtk
+Bounds x,y,z: (np.float32(-1.0), np.float32(101.0), np.float32(-1.0), np.float32(21.0), np.float32(-1.0), np.float32(40.0))
+Points near y=10 ±0.6 m: 3708
+Top histogram peak x positions: -0.571, 0.286, 79.143, 80.000, 80.857, 81.714, 82.571, 83.429, 99.714, 100.571
+Top histogram peak heights: 498, 258, 150, 75, 36, 93, 75, 84, 258, 498
+Estimated barrier x: 83.42857360839844
+Estimated impact time: 7.509005815019309

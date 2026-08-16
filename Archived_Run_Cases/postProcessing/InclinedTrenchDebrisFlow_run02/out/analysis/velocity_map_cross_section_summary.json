@@ -1,0 +1,14 @@
+{
+  "t_2s": {
+    "file": "PartFluid_0010.vtk",
+    "selected_particles": 632
+  },
+  "t_3s": {
+    "file": "PartFluid_0015.vtk",
+    "selected_particles": 1106
+  },
+  "t_5s": {
+    "file": "PartFluid_0025.vtk",
+    "selected_particles": 1428
+  }
+}

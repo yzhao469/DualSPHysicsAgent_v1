@@ -1,0 +1,9 @@
+Identified bottom phase mk: 2
+Identified top phase mk: 1
+Initial top of bottom phase z: -0.00160000 m
+Meeting detected by deepest top z <= initial top of bottom phase.
+Meeting starts at absolute time: 1.400000 s (file index 7)
+Front x at meeting: 0.33283046 m
+Deepest-point x at meeting: 0.04658594 m
+Final runoff distance: 0.92288774 m
+Final deepest-point x progress: 0.10508151 m

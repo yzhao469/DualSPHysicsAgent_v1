@@ -1,0 +1,27 @@
+{
+  "transition_center": [
+    0.0,
+    0.0,
+    -0.01152000017464161
+  ],
+  "flat_plate_z_near_x0": -0.01152000017464161,
+  "section_normal_u": [
+    0.9209893965098476,
+    0.0,
+    -0.3895876429205974
+  ],
+  "section_axis_v": [
+    0.0,
+    1.0,
+    0.0
+  ],
+  "section_axis_w": [
+    0.3895876429205974,
+    -0.0,
+    0.9209893965098476
+  ],
+  "estimated_width_y": 2.8736000061035156,
+  "half_width_hv": 0.25,
+  "half_height_hw": 0.15,
+  "boundary_points_used": 16522
+}

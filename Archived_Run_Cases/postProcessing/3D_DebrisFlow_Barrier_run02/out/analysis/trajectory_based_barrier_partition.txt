@@ -1,0 +1,9 @@
+Final time = 10.0 s
+Barrier criteria: x > 83.0, overtop if 2.0 <= y <= 18.0 and z > 11.0; leak if y outside [2.0,18.0]
+dp = 0.5, particle_volume = 0.125
+total_mass = 14951095.165737376
+upstream_mass = 14351951.198524905, upstream_percent = 95.99264160537552
+overtopped_mass = 460321.89642500004, overtopped_percent = 3.0788506883421833
+leaked_mass = 138822.07078750007, leaked_percent = 0.9285077062824881
+ambiguous_mass = 0.0, ambiguous_percent = 0.0
+counts = {'upstream': 67382, 'overtopped': 2165, 'leaked': 653, 'ambiguous': 0}

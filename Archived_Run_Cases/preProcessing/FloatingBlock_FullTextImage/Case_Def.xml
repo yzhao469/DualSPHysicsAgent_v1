@@ -1,0 +1,147 @@
+<?xml version='1.0' encoding='utf-8'?>
+<case app="GenCase v5.0.164 (21-03-2020)" date="01-01-2025 00:00:00">
+    <casedef>
+        <constantsdef>
+            <gravity x="0" y="0" z="-9.81" comment="Gravitational acceleration" units_comment="m/s^2" />
+            <rhop0 value="1700.0" comment="Reference density of the fluid" units_comment="kg/m3" />
+            <hswl value="0" auto="true" comment="Maximum still water level to calculate speedofsound using coefsound" units_comment="metres (m)" />
+            <gamma value="7" comment="Polytropic constant for water used in the state equation" />
+            <speedsystem value="1" auto="false" comment="Maximum system speed (by default the dam-break propagation is used)" />
+            <coefsound value="20" comment="Coefficient to multiply speedsystem" />
+            <speedsound value="0" auto="true" comment="Speed of sound to use in the simulation (by default speedofsound=coefsound*speedsystem)" />
+            <coefh value="1.0" comment="Coefficient to calculate the smoothing length (h=coefh*sqrt(3*dp^2) in 3D)" />
+            <cflnumber value="0.2" comment="Coefficient to multiply dt" />
+        </constantsdef>
+        <mkconfig boundcount="240" fluidcount="9" />
+        <geometry>
+            <definition dp="0.5">
+                <pointmin x="-2" y="-2" z="-2" />
+                <pointmax x="102" y="22" z="50" />
+            </definition>
+            <commands>
+                <mainlist>
+                    <setshapemode>dp | bound</setshapemode>
+                    <setdrawmode mode="full" />
+                    <setmkfluid mk="0" />
+                    <drawbox>
+                        <boxfill>solid</boxfill>
+                        <point x="85" y="0" z="0" />
+                        <size x="15" y="20" z="30" />
+                    </drawbox>
+                    <setmkbound mk="0" />
+                    <drawbox>
+                        <boxfill>bottom | left | right | front | back</boxfill>
+                        <point x="0" y="0" z="0" />
+                        <size x="100" y="20" z="40" />
+                        <layers vdp="0,1,2" />
+                    </drawbox>
+                    <setmkbound mk="50" />
+                    <drawbox>
+                        <boxfill>solid</boxfill>
+                        <point x="58" y="2.0" z="0.5" />
+                        <size x="2" y="5" z="5" />
+                    </drawbox>
+                    <setmkbound mk="51" />
+                    <drawbox>
+                        <boxfill>solid</boxfill>
+                        <point x="58" y="7.5" z="0.5" />
+                        <size x="2" y="5" z="5" />
+                    </drawbox>
+                    <setmkbound mk="52" />
+                    <drawbox>
+                        <boxfill>solid</boxfill>
+                        <point x="58" y="13.0" z="0.5" />
+                        <size x="2" y="5" z="5" />
+                    </drawbox>
+                    <setmkbound mk="53" />
+                    <drawbox>
+                        <boxfill>solid</boxfill>
+                        <point x="58" y="2.0" z="6.0" />
+                        <size x="2" y="5" z="5" />
+                    </drawbox>
+                    <setmkbound mk="54" />
+                    <drawbox>
+                        <boxfill>solid</boxfill>
+                        <point x="58" y="7.5" z="6.0" />
+                        <size x="2" y="5" z="5" />
+                    </drawbox>
+                    <setmkbound mk="55" />
+                    <drawbox>
+                        <boxfill>solid</boxfill>
+                        <point x="58" y="13.0" z="6.0" />
+                        <size x="2" y="5" z="5" />
+                    </drawbox>
+                    <shapeout file="" />
+                </mainlist>
+            </commands>
+        </geometry>
+        <floatings>
+            <floating mkbound="50">
+                <massbody value="151250" />
+            </floating>
+            <floating mkbound="51">
+                <massbody value="151250" />
+            </floating>
+            <floating mkbound="52">
+                <massbody value="151250" />
+            </floating>
+            <floating mkbound="53">
+                <massbody value="151250" />
+            </floating>
+            <floating mkbound="54">
+                <massbody value="151250" />
+            </floating>
+            <floating mkbound="55">
+                <massbody value="151250" />
+            </floating>
+        </floatings>
+    </casedef>
+    <execution>
+        <special>
+            <nnphases>
+                <phase mkfluid="0">
+                    <rhop value="1700.0" comment="Density of the phase" />
+                    <visco value="0.15" comment="Kinematic viscosity (or consistency index) value for phase (m2/s)" />
+                    <tau_yield value="0.02" comment="Specific yield stress of phase (Pa m3/kg)" />
+                    <HBP_m value="20.0" comment="Use 0 to reduce Newtonian liquid, order of 10 for power law and order of 100 for Bingham (sec)" />
+                    <HBP_n value="0.75" comment="Use 1 to reduce to Newtonian, &lt;1 for shear thinning &gt;1 for shear thickening" />
+                    <phasetype value="0" comment="Non-Newtonian=0 only option in v5.0" />
+                </phase>
+            </nnphases>
+        </special>
+        <parameters>
+            <parameter key="SavePosDouble" value="0" comment="Saves particle position using double precision (default=0)" />
+            <parameter key="StepAlgorithm" value="2" comment="Step Algorithm 1:Verlet, 2:Symplectic (default=1)" />
+            <parameter key="VerletSteps" value="40" comment="Verlet only: Number of steps to apply Euler timestepping (default=40)" />
+            <parameter key="Kernel" value="2" comment="Interaction Kernel 1:Cubic Spline, 2:Wendland (default=2)" />
+            <parameter key="RheologyTreatment" value="2" comment="Reology formulation 1:Single-phase classic, 2: Single and multi-phase" />
+            <parameter key="VelocityGradientType" value="1" comment="Velocity gradient formulation 1:FDA, 2:SPH" />
+            <parameter key="ViscoTreatment" value="2" comment="Viscosity formulation 1:Artificial, 2:Laminar+SPS, 3:Constitutive eq." />
+            <parameter key="Visco" value="0.1" comment="Viscosity value" />
+            <parameter key="ViscoBoundFactor" value="1" comment="Multiply viscosity value with boundary (default=1)" />
+            <parameter key="DensityDT" value="3" comment="Density Diffusion Term 0:None, 1:Molteni, 2:Fourtakas, 3:Fourtakas(full) (default=0)" />
+            <parameter key="DensityDTvalue" value="0.1" comment="DDT value (default=0.1)" />
+            <parameter key="Shifting" value="3" comment="Shifting mode 0:None, 1:Ignore bound, 2:Ignore fixed, 3:Full (default=0)" />
+            <parameter key="ShiftCoef" value="-10" comment="Coefficient for shifting computation (default=-2)" />
+            <parameter key="ShiftTFS" value="1.5" comment="Threshold to detect free surface. Typically 1.5 for 2D and 2.75 for 3D (default=0)" />
+            <parameter key="RigidAlgorithm" value="1" comment="Rigid Algorithm 0:collision-free, 1:SPH, 2:DEM, 3:Chrono (default=1)" />
+            <parameter key="FtPause" value="0.0" comment="Time to freeze the floatings at simulation start (warmup) (default=0)" units_comment="seconds" />
+            <parameter key="CoefDtMin" value="0.05" comment="Coefficient to calculate minimum time step dtmin=coefdtmin*h/speedsound (default=0.05)" />
+            <parameter key="RelaxationDt" value="0.2" comment="Relaxation parameter for the viscous time step restriction (default=0.2)" />
+            <parameter key="DtIni" value="0" comment="Initial time step. Use 0 to default use (default=h/speedsound)" units_comment="seconds" />
+            <parameter key="DtMin" value="0" comment="Minimum time step. Use 0 to default use (default=coefdtmin*h/speedsound)" units_comment="seconds" />
+            <parameter key="DtFixed" value="0" comment="Fixed Dt value. Use 0 to disable (default=disabled)" units_comment="seconds" />
+            <parameter key="DtFixedFile" value="NONE" comment="Dt values are loaded from file. Use NONE to disable (default=disabled)" units_comment="milliseconds (ms)" />
+            <parameter key="DtAllParticles" value="0" comment="Velocity of particles used to calculate DT. 1:All, 0:Only fluid/floating (default=0)" />
+            <parameter key="TimeMax" value="10.0" comment="Time of simulation" units_comment="seconds" />
+            <parameter key="TimeOut" value="0.2" comment="Time out data" units_comment="seconds" />
+            <parameter key="PartsOutMax" value="1" comment="Fraction of fluid particles allowed to be excluded from domain (default=1)" units_comment="decimal" />
+            <parameter key="RhopOutMin" value="500" comment="Minimum rhop valid (default=700)" units_comment="kg/m3" />
+            <parameter key="RhopOutMax" value="3000" comment="Maximum rhop valid (default=1300)" units_comment="kg/m3" />
+            <simulationdomain comment="Defines domain of simulation (default=Uses minimum and maximum position of the generated particles)">
+                <posmin x="default" y="default" z="default" />
+                <posmax x="default" y="default" z="default" />
+            </simulationdomain>
+        </parameters>
+    </execution>
+</case>

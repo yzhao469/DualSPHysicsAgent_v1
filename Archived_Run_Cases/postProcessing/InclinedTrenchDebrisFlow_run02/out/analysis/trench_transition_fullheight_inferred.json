@@ -1,0 +1,30 @@
+{
+  "x0_slab_points": 16522,
+  "flat_plate_z": -0.012480000033974648,
+  "trench_top_z_quantile": 0.42719998955726624,
+  "estimated_full_trench_height": 0.4396799895912409,
+  "section_center": [
+    0.08564694539210216,
+    0.0,
+    0.18999030410157186
+  ],
+  "section_normal_u": [
+    0.9209893965098476,
+    0.0,
+    -0.3895876429205974
+  ],
+  "section_axis_v": [
+    0.0,
+    1.0,
+    0.0
+  ],
+  "section_axis_w": [
+    0.3895876429205974,
+    -0.0,
+    0.9209893965098476
+  ],
+  "half_width_hv": 1.482399959564209,
+  "half_height_hw": 0.24983999479562044,
+  "estimated_width_y": 2.924799919128418,
+  "note": "Section at x=0, normal to trench, expanded to span full trench height."
+}

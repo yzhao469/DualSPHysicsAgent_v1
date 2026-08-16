@@ -1,0 +1,14 @@
+Boundary file used: PartBound_0050.vtk
+Chosen barrier x-range near y=10 m: [81.794983, 83.075317] m
+Barrier center x: 82.435150 m
+Barrier thickness in x: 1.280334 m
+Barrier z-span near y=10 m: 10.500000 m
+First-contact face (upstream face) x: 81.794983 m
+Downstream face x: 83.075317 m
+Estimated first contact time at upstream face: 7.272102 s
+Estimated crossing time at barrier center: 7.402164 s
+Estimated crossing time at downstream face: 7.471013 s
+
+Candidate interior structures (xc, x_left, x_right, npts, zspan):
+(np.float32(79.4477), np.float32(78.80753), np.float32(80.08787), 198, np.float32(10.5))
+(np.float32(82.43515), np.float32(81.79498), np.float32(83.07532), 198, np.float32(10.5))

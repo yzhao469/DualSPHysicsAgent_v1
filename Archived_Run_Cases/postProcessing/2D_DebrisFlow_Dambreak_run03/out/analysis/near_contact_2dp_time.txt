@@ -1,0 +1,8 @@
+inner_wall_x=100.0
+dp=0.5
+threshold_x=99.0
+first_output_time=7.2
+first_output_front_x=99.078331
+previous_output_time=7.0
+previous_output_front_x=98.891563
+interpolated_time=7.11611946371969

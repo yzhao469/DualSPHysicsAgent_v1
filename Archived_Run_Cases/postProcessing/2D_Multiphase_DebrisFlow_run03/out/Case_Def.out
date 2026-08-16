@@ -1,0 +1,122 @@
+
+
+ <GENCASE>  Copyright (c) 2020 by Dr Jose M. Dominguez
+ All rights reserved.
+
+ DualSPHysics is an international collaboration between University of Vigo 
+ (Spain) and University of Manchester (UK). 
+
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions
+ are met:
+ * Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+ * Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+ * Neither the name of the DualSPHysics nor the names of its contributors
+   may be used to endorse or promote products derived from this software
+   without specific prior written permission.
+
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER BE LIABLE FOR ANY
+ DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+
+
+GenCase v5.0.222 (16-11-2020) 
+===============================
+OmpThreads: 16
+
+[LoadXMLInit]
+List: MAIN
+
+Total operations: 14
+[LoadXMLInit-End  time:0.001s]
+
+[Draw]
+List of available variables: Gravity_x=[0]  Gravity_y=[0]  Gravity_z=[-9.81]  Rhop0=[1600]  Dp=[0.0064]  PosMin_x=[-4]  PosMin_y=[0]  PosMin_z=[-1]  PosMax_x=[4]  PosMax_y=[0]  PosMax_z=[4]  CaseName=["Case_Def"]  Data2D=[1]  Data2DPosy=[0]  H=[0.00905097]  MassBound=[0.065536]  MassFluid=[0.065536]
+
+Mk size: 1 bytes
+Case limits: (-4,0,-1) - (4,0,4)
+Distance between points (Dp): 0.0064
+Case domain: (0,0,0)-(1249,0,780)
+Domain points: 1250 x 1 x 781 = 976250
+Case parts: 1 x 781z
+Memory: 0.00Gb 0.93Mb (976250)
+
+> MAIN
+FileShapes> Box_Dp.vtk  shapes:24  points:60   (time:0.003s)
+<MAIN (Operations= 9+5+1 = 15)
+
+Triangles: 80 (0 ignored)
+[Draw-End  time:0.011s]
+
+[LoadsXMLConfig]
+Execution parameters.
+Initials configuration.
+Floating bodies configuration.
+Properties configuration.
+Predefined motion configuration.
+[LoadsXMLConfig-End  time:0.000s]
+
+[PreparePoints]
+Computing Vtk-Cells data...  (time:0.002s)
+BitSizeTot: 23 (2 + 11+1+9)
+Points loaded: 25557
+Sorting points by Z...
+Sorting points by Mk...
+
+List of Points:
+Points -> Fixed-Boundary particles:
+  block[  0] (mk: 11):   2036  -->    2036
+  block[  1] (mk: 12):   1697  -->    1697
+Points -> Fluid particles:
+  block[  2] (mk:  1):   7316  -->    7316
+  block[  3] (mk:  2):  14508  -->   14508
+
+Particle summary:
+  Fixed....: 3733  id:(0-3732)   MKs:2 (11-12)
+  Moving...: 0
+  Floating.: 0
+  Fluid....: 21824  id:(3733-25556)   MKs:2 (1-2)
+
+Total particles: 25557 (bound=3733 (fx=3733 mv=0 ft=0) fluid=21824)
+Total MK blocks: 4 (bound=2 (fx=2 mv=0 ft=0) fluid=2)
+
+Maximum depth: 0.2176 (automatic)
+Speed of system: 1 (fixed)
+Speed of sound: max(coefsound*speedsystem,10*sqrt(g*depth))
+Speed of sound: 14.6105 max(10,14.6105)
+Speed of sound: 14.6105 (automatic)
+
+Coefh:1.000000 (hdp:1.414214)
+
+[PreparePoints-End  time:0.004s]
+
+[SaveCase2D]
+/home/yzhao52/DualSPHysics/DualSPHysics_NN_v5.0.1-danrong-mcp-simulation-agent/dualsphysics-maf/runs/run_20260408_225444/out/Case_Def_MkCells.vtk  (time:0.000s, shapes:381, points:1524)
+/home/yzhao52/DualSPHysics/DualSPHysics_NN_v5.0.1-danrong-mcp-simulation-agent/dualsphysics-maf/runs/run_20260408_225444/out/Case_Def.bi4<double>  (time:0.001s)
+/home/yzhao52/DualSPHysics/DualSPHysics_NN_v5.0.1-danrong-mcp-simulation-agent/dualsphysics-maf/runs/run_20260408_225444/out/Case_Def_All.vtk  (time: 0.001s)
+/home/yzhao52/DualSPHysics/DualSPHysics_NN_v5.0.1-danrong-mcp-simulation-agent/dualsphysics-maf/runs/run_20260408_225444/out/Case_Def_Bound.vtk  (time: 0.000s)
+/home/yzhao52/DualSPHysics/DualSPHysics_NN_v5.0.1-danrong-mcp-simulation-agent/dualsphysics-maf/runs/run_20260408_225444/out/Case_Def_Fluid.vtk  (time: 0.001s)
+/home/yzhao52/DualSPHysics/DualSPHysics_NN_v5.0.1-danrong-mcp-simulation-agent/dualsphysics-maf/runs/run_20260408_225444/out/Case_Def.xml  (time:0.001s)
+
+Save files time: 0.003s
+
+Particle limits:
+  X range: -3.5392 to 3.0144 [m]
+  Y range: 0 to 0 [m]
+  Z range: -0.2128 to 1.5024 [m]
+
+[SaveCase2D-End  time:0.005s]
+
+
+Finished execution (code=0).
+

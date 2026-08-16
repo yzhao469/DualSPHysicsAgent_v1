@@ -1,0 +1,5 @@
+Identified bottom phase mk: 2
+Identified top phase mk: 1
+Initial mean z by mk: {1: 0.9745154747744669, 2: -0.0975999997870968}
+Initial top of bottom phase z: -0.00160000 m
+Max sinking depth: 0.03907454 m at t=8.000 s

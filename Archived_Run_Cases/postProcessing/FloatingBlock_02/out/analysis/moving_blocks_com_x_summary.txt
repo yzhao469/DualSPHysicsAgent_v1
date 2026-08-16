@@ -1,0 +1,9 @@
+Moving blocks detected by non-constant COM_x over time.
+Total mk groups: 7
+Reported groups: 6
+mk=60: x0=43.000000, x_end=64.575317, dx=21.575317
+mk=61: x0=43.000000, x_end=83.037552, dx=40.037552
+mk=62: x0=43.000000, x_end=91.052917, dx=48.052917
+mk=63: x0=43.000000, x_end=63.136929, dx=20.136929
+mk=64: x0=43.000000, x_end=73.910355, dx=30.910355
+mk=65: x0=43.000000, x_end=71.574760, dx=28.574760

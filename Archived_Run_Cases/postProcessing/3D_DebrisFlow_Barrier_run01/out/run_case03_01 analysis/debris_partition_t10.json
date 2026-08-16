@@ -1,0 +1,30 @@
+{
+  "time_s": 10.0,
+  "total_particles": 70196,
+  "particle_mass_kg": 212.5,
+  "total_mass_kg": 14916650.0,
+  "barrier_region_x_m": [
+    79.0,
+    83.0
+  ],
+  "barrier_lateral_span_y_m": [
+    -1.0,
+    21.0
+  ],
+  "assumed_barrier_crest_z_m": 6.0,
+  "trapped_upstream": {
+    "particles": 67378,
+    "mass_kg": 14317825.0,
+    "percent": 95.98552624081144
+  },
+  "overtopped_barrier": {
+    "particles": 394,
+    "mass_kg": 83725.0,
+    "percent": 0.5612855433358026
+  },
+  "leaked_at_sides_or_gaps": {
+    "particles": 2424,
+    "mass_kg": 515100.0,
+    "percent": 3.453188215852755
+  }
+}

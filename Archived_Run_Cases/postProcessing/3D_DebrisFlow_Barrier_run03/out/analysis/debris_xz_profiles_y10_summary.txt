@@ -1,0 +1,6 @@
+Generated x-z debris shape profiles at y = 10 m for selected times.
+t=0.0 s, step=0, file=IsoSliceY10_0000.vtk, n_points=720, n_cells=360
+t=2.4 s, step=12, file=IsoSliceY10_0012.vtk, n_points=1200, n_cells=600
+t=5.0 s, step=25, file=IsoSliceY10_0025.vtk, n_points=1812, n_cells=906
+t=7.6 s, step=38, file=IsoSliceY10_0038.vtk, n_points=1850, n_cells=925
+t=10.0 s, step=50, file=IsoSliceY10_0050.vtk, n_points=1856, n_cells=928

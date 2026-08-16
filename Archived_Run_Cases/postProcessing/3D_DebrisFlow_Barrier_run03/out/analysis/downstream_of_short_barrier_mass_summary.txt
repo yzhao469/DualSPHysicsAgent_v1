@@ -1,0 +1,10 @@
+Downstream threshold x > 83.000 m
+Inferred particle spacing: dx=0.500000, dy=0.500000, dz=0.500000 m
+Particle volume = 0.125 m^3
+Particle mass = 212.5 kg
+Initial fluid particle count = 70200
+Initial total mass = 14917500 kg
+Final downstream particle count = 2818
+Final downstream mass = 598825 kg
+Final downstream mass fraction = 0.040142
+Final frame used = PartFluidCSV_0050.csv

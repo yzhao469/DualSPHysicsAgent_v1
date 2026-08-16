@@ -1,0 +1,8 @@
+Estimated impact time: 1.800 s (idx=9)
+Selected snapshots and extracted bottom-plate profile ranges:
+t=1.800 s, bottom-band=0.0358, x=[-0.074,0.014], y=[-0.121,0.125]
+t=3.000 s, bottom-band=0.0354, x=[-0.067,0.238], y=[-0.214,0.215]
+t=4.200 s, bottom-band=0.0349, x=[-0.070,0.302], y=[-0.242,0.260]
+t=5.600 s, bottom-band=0.0341, x=[-0.064,0.342], y=[-0.284,0.281]
+t=6.800 s, bottom-band=0.0332, x=[-0.064,0.366], y=[-0.295,0.300]
+t=8.000 s, bottom-band=0.0318, x=[-0.064,0.385], y=[-0.311,0.310]

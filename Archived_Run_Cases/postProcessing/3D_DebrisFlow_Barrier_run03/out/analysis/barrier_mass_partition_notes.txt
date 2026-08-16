@@ -1,0 +1,12 @@
+Barrier x-range: [79.0, 83.0] m
+Barrier crest z: 11.0 m
+Barrier y-range used for overtopping test: [-1.0, 21.0] m
+Particle mass: 212.5 kg
+Initial total mass: 14917500.0 kg
+Final frame: PartFluidCSV_0050.csv
+
+Interpretation:
+- upstream_of_barrier_final: particles with final x < upstream face
+- downstream_via_overtopping_final: final x > downstream face and particle ever had z >= crest while within barrier x-y footprint
+- downstream_via_side_leakage_final: final x > downstream face and never satisfied overtopping criterion
+- within_barrier_x_range_final: particles with final x between barrier faces; not included in the three requested categories

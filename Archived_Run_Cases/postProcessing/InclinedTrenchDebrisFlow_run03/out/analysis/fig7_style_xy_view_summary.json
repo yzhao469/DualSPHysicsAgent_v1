@@ -1,0 +1,49 @@
+{
+  "method": "Plan-view x-y footprint envelopes from fluid particles; for each x-bin, y_min/y_max taken as 5th/95th percentiles and overlaid for multiple times after impact.",
+  "impact_time_s": 1.80013,
+  "requested_relative_times_s": [
+    0.0,
+    0.4,
+    0.8,
+    1.2,
+    2.0,
+    3.0
+  ],
+  "selected_snapshots": [
+    {
+      "t_rel_s": 0.0,
+      "t_actual_s": 1.80013,
+      "file": "PartFluidCsv_0009.csv"
+    },
+    {
+      "t_rel_s": 0.4,
+      "t_actual_s": 2.2001,
+      "file": "PartFluidCsv_0011.csv"
+    },
+    {
+      "t_rel_s": 0.8,
+      "t_actual_s": 2.60006,
+      "file": "PartFluidCsv_0013.csv"
+    },
+    {
+      "t_rel_s": 1.2,
+      "t_actual_s": 3.00003,
+      "file": "PartFluidCsv_0015.csv"
+    },
+    {
+      "t_rel_s": 2.0,
+      "t_actual_s": 3.80005,
+      "file": "PartFluidCsv_0019.csv"
+    },
+    {
+      "t_rel_s": 3.0,
+      "t_actual_s": 4.80006,
+      "file": "PartFluidCsv_0024.csv"
+    }
+  ],
+  "x_range_m": [
+    -0.2,
+    1.2
+  ],
+  "dx_m": 0.01
+}

@@ -1,0 +1,8 @@
+Plane normal n = [0.843658, 0.000000, -0.536881]
+In-plane basis e1 = [0.000000, 1.000000, 0.000000]
+In-plane basis e2 = [0.536881, -0.000000, 0.843658]
+Channel span at x=0: y=[-1.424000,1.424000]
+Plane thickness used = 0.055426 m
+target=2.0s, used=2.0s, particles=1453, u=[-0.135,0.139], v=[0.026,0.063]
+target=3.0s, used=3.0s, particles=2783, u=[-0.196,0.195], v=[0.025,0.102]
+target=5.0s, used=5.0s, particles=3592, u=[-0.257,0.259], v=[0.025,0.106]

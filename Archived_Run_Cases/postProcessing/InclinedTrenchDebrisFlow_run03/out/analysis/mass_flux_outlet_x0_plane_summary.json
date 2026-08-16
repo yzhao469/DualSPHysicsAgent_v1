@@ -1,0 +1,28 @@
+{
+  "outlet_location_constraint": "x = 0 m",
+  "trench_axis_assumption": "axis rotated 23 deg about global Y from +X",
+  "axis_unit_vector": [
+    0.9205048534524404,
+    0.0,
+    0.39073112848927377
+  ],
+  "plane_point_xyz": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "particle_mass_kg": 0.0004456448,
+  "slab_half_thickness_m": 0.08,
+  "cross_section_eta_range_m": [
+    0.32705292487,
+    0.70070398573
+  ],
+  "cross_section_zeta_range_m": [
+    757205.7048298913,
+    827271.2338442701
+  ],
+  "verification_frame_time_s": 0.0,
+  "n_particles_in_window_at_verification_frame": 0,
+  "peak_mass_flux_kg_s": 0.0,
+  "peak_mass_flux_time_s": 0.0
+}

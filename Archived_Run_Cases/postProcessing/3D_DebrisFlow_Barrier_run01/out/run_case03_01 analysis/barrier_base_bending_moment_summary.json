@@ -1,0 +1,11 @@
+{
+  "axis_definition": "momentaxis:81:0:0:81:1:0",
+  "n_samples": 51,
+  "time_start_s": 0.0,
+  "time_end_s": 10.000795,
+  "max_moment_Nm": 0.0,
+  "min_moment_Nm": -120024644.7826,
+  "final_moment_Nm": -39810245.9922,
+  "time_of_max_moment_s": 0.0,
+  "time_of_min_moment_s": 4.200237
+}

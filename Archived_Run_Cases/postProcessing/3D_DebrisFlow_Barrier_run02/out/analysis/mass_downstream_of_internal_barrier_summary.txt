@@ -1,0 +1,9 @@
+Barrier downstream face x = 83.0 m
+Barrier y-span = [2.0, 18.0] m
+Estimated particle spacing dp = 0.5 m
+Estimated particle mass = 212.5 kg
+Final time = 10.0 s
+Final downstream count (x > 83) = 2818
+Final downstream mass using rho = 599143.9672125 kg
+Final downstream count within barrier y-span = 2459
+Final downstream mass within barrier y-span using rho = 522815.0829125 kg

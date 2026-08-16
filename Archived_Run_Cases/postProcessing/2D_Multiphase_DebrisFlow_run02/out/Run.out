@@ -1,0 +1,278 @@
+
+
+ <DUALSPHYSICS5-NNEWTONIAN> Copyright (c) 2020 by
+ Dr Jose M. Dominguez Alonso, Dr Alejandro Crespo,
+ Prof. Moncho Gomez Gesteira, Prof. Benedict Rogers,
+ Dr Georgios Fourtakas, Prof. Peter Stansby,
+ Dr Renato Vacondio, Dr Corrado Altomare, Dr Angelo Tafuni,
+ Orlando Garcia Feal, Ivan Martinez Estevez
+
+ EPHYSLAB Environmental Physics Laboratory, Universidade de Vigo
+ School of Mechanical, Aerospace and Civil Engineering, University of Manchester
+
+ DualSPHysics is free software: you can redistribute it and/or
+ modify it under the terms of the GNU Lesser General Public License
+ as published by the Free Software Foundation, either version 2.1 of
+ the License, or (at your option) any later version.
+
+ DualSPHysics is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU Lesser General Public License for more details.
+
+ You should have received a copy of the GNU Lesser General Public License
+ along with DualSPHysics. If not, see <http://www.gnu.org/licenses/>.
+
+
+DualSPHysics5-NNewtonian v1.005 (v5.0.164) (21-11-2020)
+========================================================
+[Select CUDA Device]
+[CUDA Capable device(s)]
+  Detected 1 CUDA Capable device(s)
+  CUDA Driver Version / Runtime Version: 12.8 / 9.2
+ 
+Device 0: "NVIDIA RTX A1000"
+  CUDA Capability Major....: 8.6
+  Global memory............: 8188 MBytes
+  CUDA Cores...............: 0 (18 Multiprocessors,   0 CUDA Cores/MP)
+  GPU Max Clock rate.......: 1462 MHz (1.46 GHz)
+  Memory Clock rate........: 6001 Mhz
+  Memory Bus Width.........: 128-bit
+  L2 Cache Size............: 2048 KBytes
+  Constant memory..........: 64 KBytes
+  Shared memory per block..: 48 KBytes
+  Registers per block......: 65536
+  Maximum threads per MP...: 1536
+  Maximum threads per block: 1024
+  Concurrent copy and kernel execution....: Yes with 1 copy engine(s)
+  Run time limit on kernels...............: Yes
+  Integrated GPU sharing Host Memory......: No
+  Support host page-locked memory mapping.: Yes
+  Device has ECC support..................: Disabled
+  Device supports Unified Addressing (UVA): Yes
+  Device PCI (Domain / Bus / location)....: 0 / 1 / 0
+  Device supports P2P and RDMA............: Yes
+  Device supports P2P from/to GPUs........: 
+ 
+[GPU Hardware]
+Device default: 0  "NVIDIA RTX A1000"
+Compute capability: 8.6
+Memory global: 8187 MB
+Memory shared: 49152 Bytes
+[Initialising JSphGpuSingle  08-04-2026 16:53:30]
+ProgramFile=".../bin/linux/DualSPHysics5.0_NNewtonian_linux64"
+ExecutionDir=".../DualSPHysics/DualSPHysics_NN_v5.0.1-danrong-mcp-simulation-agent/dualsphysics-maf"
+XmlFile=".../run_20260408_215318/out/Case_Def.xml"
+OutputDir=".../runs/run_20260408_215318/out"
+OutputDataDir=".../run_20260408_215318/out/data"
+XML-Vars (uservars + ctes): CaseName=["Case_Def"]  Data2D=[1]  Data2DPosy=[0]  H=[0.00905097]  KernelSize=[0.0181019]  B=[48792.1]  Gamma=[7]  Rhop0=[1600]  Dp=[0.0064]  Gravity_x=[0]  Gravity_y=[0]  Gravity_z=[-9.81]  MassFluid=[0.065536]  MassBound=[0.065536]
+XML-Vars (parameters): TimeMax=[8]  TimeOut=[0.2]
+
+[Multi-phase configuration]
+
+==: PhaseCount:2
+PhaseCount:2
+Phase 0
+  Rho......: 1600.000000
+  Gamma....: 7.000000
+  Viscosity: 0.007000
+  Tau_yield: 0.100000
+  Papanastasiou *n* parammeter: 1.500000
+  Papanastasiou *m* parammeter: 10.000000
+Phase 1
+  Rho......: 1800.000000
+  Gamma....: 7.000000
+  Viscosity: 0.007000
+  Tau_yield: 1.000000
+  Papanastasiou *n* parammeter: 0.800000
+  Papanastasiou *m* parammeter: 10.000000
+Dt relaxation parameter: 0.200000
+
+**Basic case configuration is loaded
+**Special case configuration is loaded
+Loading initial state of particles...
+Loaded particles: 25557
+MapRealPos(border)=(-3.53965,-0.000452548,-0.213253)-(3.01485,0.000452548,1.50285)
+MapRealPos(final)=(-3.53965,-0.000452548,-0.213253)-(3.01485,0.000452548,2.36091)
+**Initial state of particles is loaded
+**2D-Simulation parameters:
+CaseName="Case_Def"
+RunName="Case_Def"
+Simulate2DPosY=0
+Symmetry=False
+SavePosDouble=False
+SaveFtAce=False
+SvTimers=True
+Boundary="DBC"
+StepAlgorithm="Symplectic"
+RelologyModel="NN-MultiPhase"
+VelocityGradients="SPH approach"
+Kernel="Wendland"
+  Wendland.awen=6799.315918
+  Wendland.bwen=-3756396.500000
+Viscosity="Laminar+SPS"
+  Visco=0.100000
+  ViscoBoundFactor=1.000000
+DensityDiffusion="Fourtakas et al 2019 (full)"
+  DensityDiffusionValue=0.100000
+Shifting="Full"
+  ShiftCoef=-10.000000
+  ShiftTFS=1.500000
+  ShiftDomain="Full"
+RigidAlgorithm="None"
+FloatingCount=0
+CaseNp=25557
+CaseNbound=3733
+CaseNfixed=3733
+CaseNmoving=0
+CaseNfloat=0
+CaseNfluid=21824
+PeriodicActive="None"
+Dp=0.0064
+KernelH=0.009051  (CoefficientH=1; H/Dp=1.41421)
+KernelSize=0.018102
+CteB=48792.136719
+Gamma=7.000000
+RhopZero=1600.000000
+Cs0=14.6105
+CFLnumber=0.200000
+DtIni=0.000619485
+DtMin=3.09743e-10
+DtAllParticles=False
+MassFluid=0.065536
+MassBound=0.065536
+SpsSmag=0.000000
+SpsBlin=0.000000
+TimeMax=8
+TimePart=0.2
+Gravity=(0.000000,0.000000,-9.810000)
+NpMinimum=3733
+RhopOut=True
+RhopOutMin=1300.000000
+RhopOutMax=2000.000000
+WrnPartsOut=True
+**Requested GPU memory for 25685 particles: 7.2 MB (0 times).
+CellMode="Full"
+ScellDiv=1
+MapCells=(363,1,143)
+DomCells=(363,1,143)
+DomCellCode="15_6_12"
+PosCellCode="13_10_9 (8192,1024,512)"
+PosCellSize=0.018102  (1 x KernelSize)
+ 
+BlockSize calculation mode: Fixed.
+  BsForcesBound=128 (48 regs)
+  BsForcesFluid=128 (72 regs)
+ 
+**CellDiv: Requested gpu memory for 26962 particles: 0.2 MB.
+**CellDiv: Requested gpu memory for 57316 cells (CellMode=Full): 0.9 MB.
+ 
+RunMode="Pos-Cell - Single-Gpu, HostName:LCEEO-PKI206D02"
+ 
+Particle summary:
+  Fixed....: 3733  id:(0-3732)   MKs:2 (11-12)
+  Moving...: 0
+  Floating.: 0
+  Fluid....: 21824  id:(3733-25556)   MKs:2 (1-2)
+
+Total particles: 25557 (bound=3733 (fx=3733 mv=0 ft=0) fluid=21824)
+Total MK blocks: 4 (bound=2 (fx=2 mv=0 ft=0) fluid=2)
+ 
+Allocated memory in CPU: 2460470 (2.35 MB)
+Allocated memory in GPU: 8636404 (8.24 MB)
+Part_0000        25557 particles successfully stored
+
+[Initialising simulation (v3iv9pbk)  08-04-2026 16:53:30]
+PART       PartTime      TotalSteps    Steps    Time/Sec   Finish time        
+=========  ============  ============  =======  =========  ===================
+Part_0001      0.200007         12067    12067     121.36  08-04-2026 17:09:41
+Part_0002      0.400001         24157    12090     121.70  08-04-2026 17:09:42
+Part_0003      0.600014         36245    12088     122.71  08-04-2026 17:09:45
+Part_0004      0.800013         48331    12086     123.14  08-04-2026 17:09:48
+Part_0005      1.000001         60416    12085     123.73  08-04-2026 17:09:50
+Part_0006      1.200009         72501    12085     125.82  08-04-2026 17:09:54
+Part_0007      1.400007         84575    12074     126.93  08-04-2026 17:09:58
+Part_0008      1.600012         96645    12070     127.56  08-04-2026 17:10:03
+Part_0009      1.800008        108712    12067     126.64  08-04-2026 17:10:05
+Part_0010      2.000009        120781    12069     126.51  08-04-2026 17:10:06
+Part_0011      2.200006        132852    12071     126.14  08-04-2026 17:10:08
+Part_0012      2.400009        144923    12071     126.21  08-04-2026 17:10:09
+Part_0013      2.600006        156994    12071     124.84  08-04-2026 17:10:09
+Part_0014      2.800015        169067    12073     124.02  08-04-2026 17:10:09
+Part_0015      3.000004        181140    12073     123.59  08-04-2026 17:10:07
+Part_0016      3.200007        193214    12074     122.64  08-04-2026 17:10:07
+Part_0017      3.400000        205288    12074     123.56  08-04-2026 17:10:06
+Part_0018      3.600001        217361    12073     126.14  08-04-2026 17:10:07
+Part_0019      3.800012        229436    12075     129.94  08-04-2026 17:10:09
+Part_0020      4.000016        241511    12075     127.13  08-04-2026 17:10:10
+Part_0021      4.200000        253585    12074     130.93  08-04-2026 17:10:13
+Part_0022      4.400000        265660    12075     125.43  08-04-2026 17:10:13
+Part_0023      4.600014        277735    12075     124.00  08-04-2026 17:10:11
+Part_0024      4.800013        289810    12075     125.05  08-04-2026 17:10:11
+Part_0025      5.000010        301885    12075     125.99  08-04-2026 17:10:12
+Part_0026      5.200005        313961    12076     126.88  08-04-2026 17:10:12
+Part_0027      5.400011        326039    12078     126.39  08-04-2026 17:10:12
+Part_0028      5.600006        338115    12076     124.05  08-04-2026 17:10:12
+Part_0029      5.800013        350193    12078     128.58  08-04-2026 17:10:13
+Part_0030      6.000008        362270    12077     127.45  08-04-2026 17:10:14
+Part_0031      6.200005        374348    12078     126.57  08-04-2026 17:10:14
+Part_0032      6.400013        386425    12077     126.23  08-04-2026 17:10:14
+Part_0033      6.600001        398504    12079     126.95  08-04-2026 17:10:14
+Part_0034      6.800003        410583    12079     127.83  08-04-2026 17:10:15
+Part_0035      7.000016        422663    12080     127.75  08-04-2026 17:10:15
+Part_0036      7.200014        434744    12081     128.34  08-04-2026 17:10:16
+Part_0037      7.400016        446824    12080     127.16  08-04-2026 17:10:16
+Part_0038      7.600010        458902    12078     127.06  08-04-2026 17:10:17
+Part_0039      7.800014        470982    12080     127.11  08-04-2026 17:10:17
+Part_0040      8.000017        483061    12079     126.79  08-04-2026 17:10:18
+
+[Simulation finished  08-04-2026 17:10:18]
+Particles of simulation (initial): 25557
+DTs adjusted to DtMin............: 0
+Excluded particles...............: 0
+Total Runtime....................: 1007.377563 sec.
+Simulation Runtime...............: 1007.369446 sec.
+Runtime per physical second......: 125.920929 sec.
+Steps per second.................: 479.527161
+Steps of simulation..............: 483061
+PART files.......................: 41
+Maximum number of particles......: 25557
+Maximum number of cells..........: 28248
+CPU Memory.......................: 2460470 (2.35 MB)
+GPU Memory.......................: 8636404 (8.24 MB)
+ 
+[GPU Timers]
+VA-Init..........................: 0.008093 sec.
+NL-Limits........................: 44.692059 sec.
+NL-PreSort.......................: 21.108265 sec.
+NL-RadixSort.....................: 140.271210 sec.
+NL-CellBegin.....................: 63.131271 sec.
+NL-SortData......................: 60.505386 sec.
+NL-OutCheck......................: 3.480566 sec.
+CF-PreForces.....................: 109.710548 sec.
+CF-Forces........................: 303.358887 sec.
+SU-Shifting......................: 36.245785 sec.
+SU-ComputeStep...................: 51.822586 sec.
+SU-Floating......................: 0.000000 sec.
+SU-Motion........................: 0.000000 sec.
+SU-Periodic......................: 0.000000 sec.
+SU-ResizeNp......................: 0.000000 sec.
+SU-DownData......................: 0.014049 sec.
+SU-SavePart......................: 0.028339 sec.
+SU-Chrono........................: 0.000000 sec.
+SU-BoundCorr.....................: 0.000000 sec.
+SU-InOut.........................: 0.000000 sec.
+ 
+[Output files]
+- CfgInit_Domain.vtk...: Saves the limits of the case and the simulation domain limits.
+- CfgInit_MapCells.vtk.: Saves the cell division of the simulation domain.
+- Run.csv..............: One line CSV file with execution parameters and other simulation data.
+- Run.out..............: Log file of the simulation.
+- data/PartInfo.ibi4...: Binary file with execution information for each instant (input for PartInfo program).
+- data/PartOut_???.obi4: Binary file with particles excluded during simulation (input for PartVtkOut program).
+- data/Part_????.bi4...: Binary file with particle data in different instants.
+- data/Part_Head.ibi4..: Binary file with basic information of simulation data.
+ 
+
+Finished execution (code=0).
+

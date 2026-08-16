@@ -1,0 +1,9 @@
+Final time = 10.0 s
+Barrier: x=[79.0,83.0], y=[2.0,18.0], z_top=11.0
+dp=0.5, particle_volume=0.125
+total_mass=14950244.010775
+upstream_mass=14351100.043562502, upstream_percent=95.99241345639122
+overtop_mass=25701.155437499998, overtop_percent=0.17191127729404657
+side_leak_mass=76328.8843, side_leak_percent=0.5105527658611321
+other_downstream_mass=497113.927475, other_downstream_percent=3.3251225004536247
+counts: upstream=67378, overtop=121, side=359, other_down=2338

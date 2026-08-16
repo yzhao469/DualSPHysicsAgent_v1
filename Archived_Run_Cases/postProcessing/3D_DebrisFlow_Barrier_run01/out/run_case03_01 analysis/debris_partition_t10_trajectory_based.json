@@ -1,0 +1,92 @@
+{
+  "time_s": 10.0,
+  "classification_method": "trajectory_based_first_crossing_of_barrier_back_face",
+  "barrier_back_x_m": 83.0,
+  "assumed_barrier_span_y_m": [
+    6.0,
+    14.0
+  ],
+  "assumed_barrier_crest_z_m": 6.0,
+  "total_particles_present_at_t10": 70196,
+  "trapped_upstream": {
+    "particles": 67378,
+    "mass_kg": 14317825.0,
+    "percent": 95.98552624081144
+  },
+  "overtopped_barrier": {
+    "particles": 1049,
+    "mass_kg": 222912.5,
+    "percent": 1.494387144566642
+  },
+  "side_or_gap_leakage": {
+    "particles": 1769,
+    "mass_kg": 375912.5,
+    "percent": 2.5200866146219156
+  },
+  "crossing_examples": {
+    "overtopped": [
+      {
+        "idp": 218504,
+        "t_cross": 7.42952236251442,
+        "y_cross": 7.007291189136397,
+        "z_cross": 11.974458228790658
+      },
+      {
+        "idp": 218862,
+        "t_cross": 8.896969158514878,
+        "y_cross": 10.891937701342785,
+        "z_cross": 12.496850344176515
+      },
+      {
+        "idp": 211727,
+        "t_cross": 7.49229211219741,
+        "y_cross": 8.839231198144944,
+        "z_cross": 12.90844246456129
+      },
+      {
+        "idp": 211905,
+        "t_cross": 7.5472307137048915,
+        "y_cross": 13.828338723982363,
+        "z_cross": 12.080826058377435
+      },
+      {
+        "idp": 214066,
+        "t_cross": 9.527799277181522,
+        "y_cross": 6.18915518400225,
+        "z_cross": 12.491097536146405
+      }
+    ],
+    "leaked": [
+      {
+        "idp": 215917,
+        "t_cross": 5.701237461217404,
+        "y_cross": 1.0186255590182693,
+        "z_cross": 1.8300942255442356
+      },
+      {
+        "idp": 215977,
+        "t_cross": 8.260362282735064,
+        "y_cross": 1.015008548300152,
+        "z_cross": 1.1343985336140534
+      },
+      {
+        "idp": 216097,
+        "t_cross": 9.779325632848359,
+        "y_cross": 1.0090992697334957,
+        "z_cross": 2.1991059812089184
+      },
+      {
+        "idp": 216937,
+        "t_cross": 7.393829559748428,
+        "y_cross": 18.993486774902514,
+        "z_cross": 1.1986356344405658
+      },
+      {
+        "idp": 216997,
+        "t_cross": 6.63638357409153,
+        "y_cross": 18.9724531078688,
+        "z_cross": 1.1984240343685508
+      }
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "section_center": [
+    0.08564694539210216,
+    0.0,
+    0.18999030410157186
+  ],
+  "flat_plate_z": -0.012480000033974648,
+  "trench_top_z": 0.42719998955726624,
+  "estimated_full_trench_height": 0.4396799895912409,
+  "half_width_y_m": 1.482399959564209,
+  "half_height_w_m": 0.24983999479562044,
+  "particle_spacing_estimate_m": 0.006399989128112793,
+  "particle_mass_estimate_kg": 0.000445642528910108,
+  "max_net_mass_flux_kg_s": 3.3801985817831692,
+  "time_of_max_net_s": 2.3000000000000003,
+  "max_positive_mass_flux_kg_s": 3.3801985817831692,
+  "time_of_max_positive_s": 2.3000000000000003,
+  "note": "Approximate particle-crossing-based flux through full-height section at x=0."
+}

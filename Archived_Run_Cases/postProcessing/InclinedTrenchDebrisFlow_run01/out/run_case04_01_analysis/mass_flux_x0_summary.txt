@@ -1,0 +1,8 @@
+Estimated particle spacing dp = 0.021226 m
+Estimated particle mass mp = 0.016258 kg
+Inferred channel y-span at x=0: [-1.424000, 1.424000] m (width=2.848000 m)
+Section thickness dx = 0.053066 m
+Section normal (projected downslope direction) = [0.843658, 0.000000, -0.536881]
+Average mass flux over all times = 42.288188 kg/s
+Average mass flux over active times = 54.181741 kg/s
+Final cumulative mass crossing section = 344.595822 kg

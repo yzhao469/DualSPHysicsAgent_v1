@@ -1,0 +1,7 @@
+Estimated impact time: 1.800 s (idx=9)
+t=1.800 s, x_tip=0.014, y_tip=-0.0021, x_range=[-0.129,0.014]
+t=3.000 s, x_tip=0.238, y_tip=-0.0007, x_range=[-0.118,0.238]
+t=4.200 s, x_tip=0.300, y_tip=-0.0012, x_range=[-0.115,0.300]
+t=5.600 s, x_tip=0.338, y_tip=-0.0034, x_range=[-0.115,0.338]
+t=6.800 s, x_tip=0.364, y_tip=-0.0015, x_range=[-0.110,0.364]
+t=8.000 s, x_tip=0.383, y_tip=-0.0023, x_range=[-0.110,0.383]

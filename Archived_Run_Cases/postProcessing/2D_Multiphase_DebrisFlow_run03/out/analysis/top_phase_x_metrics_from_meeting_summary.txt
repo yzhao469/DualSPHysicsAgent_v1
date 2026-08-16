@@ -1,0 +1,10 @@
+Bottom phase mk: 2
+Top phase mk: 1
+Initial top-phase front x: -1.305600
+Original top of bottom phase z: -0.001600
+First meeting detected at t = 1.400000 s (frame index 7)
+Used files: 41
+Skipped files: 1
+Skipped list: PartFluidCsv_stats.csv
+Max runoff distance after meeting: 2.561318 m
+x-position of deepest point range after meeting: 0.046586 to 0.151667 m

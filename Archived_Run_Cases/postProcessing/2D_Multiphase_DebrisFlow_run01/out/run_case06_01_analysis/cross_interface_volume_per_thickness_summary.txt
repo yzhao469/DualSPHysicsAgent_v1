@@ -1,0 +1,7 @@
+Identified bottom phase mk: 2
+Identified top phase mk: 1
+Initial interface z: -0.00160000 m
+Inferred particle spacing dp: 0.00640000 m
+Particle area (2D volume per thickness per particle): 0.0000409600 m^2
+Max top-phase sunk volume/thickness: 0.01572864 m^2 at t=8.000 s
+Max bottom-phase bulged volume/thickness: 0.01146880 m^2 at t=8.000 s

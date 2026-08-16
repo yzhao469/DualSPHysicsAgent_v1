@@ -1,0 +1,4 @@
+Identified bottom-phase mk: 2
+Identified top-phase mk: 1
+Original top of bottom phase z at t=0: -0.001600
+Max sinking depth: 0.197397 at t=8.200 s

@@ -1,0 +1,8 @@
+{
+  "time_s": 10.0,
+  "estimated_short_barrier_x_m": 99.5,
+  "estimated_dp_m": 0.5,
+  "particle_mass_kg": 212.5,
+  "n_leaked_particles": 0,
+  "estimated_leaked_mass_kg": 0.0
+}

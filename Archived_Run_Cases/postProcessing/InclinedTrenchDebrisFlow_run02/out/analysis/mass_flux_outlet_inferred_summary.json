@@ -1,0 +1,20 @@
+{
+  "particle_spacing_estimate_m": 0.006399989128112793,
+  "particle_mass_estimate_kg": 0.000445642528910108,
+  "max_mass_flux_kg_s": 0.14037739660668402,
+  "min_mass_flux_kg_s": 0.0,
+  "time_of_max_s": 7.5,
+  "plane_center": [
+    0.3340374827384949,
+    0.0,
+    0.02080312930047512
+  ],
+  "plane_normal": [
+    0.9209893965098476,
+    0.0,
+    -0.3895876429205974
+  ],
+  "half_width_y_m": 0.2,
+  "half_height_w_m": 0.15,
+  "note": "Approximate flux from particle crossings between saved frames, not FlowTool output."
+}

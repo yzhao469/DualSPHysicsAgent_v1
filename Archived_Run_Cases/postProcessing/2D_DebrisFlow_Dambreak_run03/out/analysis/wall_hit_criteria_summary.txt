@@ -1,0 +1,12 @@
+dp=0.500000
+right_outer_x=101.000000
+right_inner_x=100.500000
+wall_thickness=0.500000
+max_front_x=99.120728
+max_front_time=7.600000
+strict_output_time=None
+strict_interp_time=None
+near1dp_output_time=None
+near1dp_interp_time=None
+near2dp_output_time=None
+near2dp_interp_time=None

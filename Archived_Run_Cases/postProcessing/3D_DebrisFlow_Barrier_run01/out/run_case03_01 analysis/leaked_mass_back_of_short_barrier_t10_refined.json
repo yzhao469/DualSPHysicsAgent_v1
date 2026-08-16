@@ -1,0 +1,12 @@
+{
+  "time_s": 10.0,
+  "assumed_short_barrier_region_x_m": [
+    79.0,
+    83.0
+  ],
+  "barrier_back_x_m": 83.0,
+  "estimated_barrier_crest_z_m": 39.0,
+  "particle_mass_kg": 212.5,
+  "n_leaked_particles_below_crest": 2818,
+  "estimated_leaked_mass_kg": 598825.0
+}

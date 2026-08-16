@@ -1,0 +1,72 @@
+{
+  "fluid_vtk_files": [
+    "../particles/PartFluid_0000.vtk",
+    "../particles/PartFluid_0001.vtk",
+    "../particles/PartFluid_0002.vtk",
+    "../particles/PartFluid_0003.vtk",
+    "../particles/PartFluid_0004.vtk",
+    "../particles/PartFluid_0005.vtk",
+    "../particles/PartFluid_0006.vtk",
+    "../particles/PartFluid_0007.vtk",
+    "../particles/PartFluid_0008.vtk",
+    "../particles/PartFluid_0009.vtk",
+    "../particles/PartFluid_0010.vtk",
+    "../particles/PartFluid_0011.vtk",
+    "../particles/PartFluid_0012.vtk",
+    "../particles/PartFluid_0013.vtk",
+    "../particles/PartFluid_0014.vtk",
+    "../particles/PartFluid_0015.vtk",
+    "../particles/PartFluid_0016.vtk",
+    "../particles/PartFluid_0017.vtk",
+    "../particles/PartFluid_0018.vtk",
+    "../particles/PartFluid_0019.vtk",
+    "../particles/PartFluid_0020.vtk",
+    "../particles/PartFluid_0021.vtk",
+    "../particles/PartFluid_0022.vtk",
+    "../particles/PartFluid_0023.vtk",
+    "../particles/PartFluid_0024.vtk",
+    "../particles/PartFluid_0025.vtk",
+    "../particles/PartFluid_0026.vtk",
+    "../particles/PartFluid_0027.vtk",
+    "../particles/PartFluid_0028.vtk",
+    "../particles/PartFluid_0029.vtk",
+    "../particles/PartFluid_0030.vtk",
+    "../particles/PartFluid_0031.vtk",
+    "../particles/PartFluid_0032.vtk",
+    "../particles/PartFluid_0033.vtk",
+    "../particles/PartFluid_0034.vtk",
+    "../particles/PartFluid_0035.vtk",
+    "../particles/PartFluid_0036.vtk",
+    "../particles/PartFluid_0037.vtk",
+    "../particles/PartFluid_0038.vtk",
+    "../particles/PartFluid_0039.vtk",
+    "../particles/PartFluid_0040.vtk"
+  ],
+  "bounds": {
+    "min": [
+      -1.4799816608428955,
+      -0.3221246898174286,
+      0.007796985562890768
+    ],
+    "max": [
+      0.385210782289505,
+      0.32328739762306213,
+      0.7728000283241272
+    ]
+  },
+  "pca_xz_direction": {
+    "vector": [
+      0.9209893965098476,
+      -0.3895876429205974
+    ],
+    "angle_deg_from_x": -22.9288437760804
+  },
+  "outlet_candidate_center": [
+    0.3340374827384949,
+    -8.56785336509347e-05,
+    0.02080312930047512
+  ],
+  "outlet_candidate_count": 1413,
+  "estimated_width_y": 0.3681572771072388,
+  "suggested_thickness": 0.10079896450042725
+}

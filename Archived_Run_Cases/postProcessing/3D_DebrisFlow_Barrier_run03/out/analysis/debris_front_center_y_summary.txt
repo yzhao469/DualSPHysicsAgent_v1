@@ -1,0 +1,10 @@
+Initial y-range: [0.5, 19.5]
+Center-y plane: 10
+Band half-width used: 0.38
+Valid frames: 51 / 52
+Skipped/unparsed frames: 1
+Skipped files:
+  PartFluidCSV_stats.csv
+Max front x: 99.235245 m at t=9.2 s (step 46)
+Initial front x: 15 m at t=0 s
+Final front x: 98.880829 m at t=10 s

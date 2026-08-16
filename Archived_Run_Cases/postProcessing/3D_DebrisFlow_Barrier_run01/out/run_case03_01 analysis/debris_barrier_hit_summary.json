@@ -1,0 +1,14 @@
+{
+  "estimated_barrier_x_m": -1.0,
+  "contact_threshold_x_m": -1.5,
+  "tolerance_m": 0.5,
+  "first_hit_frame": 0,
+  "first_hit_time_s": 0.0,
+  "first_hit_max_fluid_x_m": 15.0,
+  "first_hit_gap_to_barrier_m": -16.0,
+  "max_runout_frame": 46,
+  "max_runout_time_s": 9.200000000000001,
+  "max_runout_x_m": 99.327583,
+  "min_gap_to_barrier_m": -100.327583,
+  "n_frames": 51
+}

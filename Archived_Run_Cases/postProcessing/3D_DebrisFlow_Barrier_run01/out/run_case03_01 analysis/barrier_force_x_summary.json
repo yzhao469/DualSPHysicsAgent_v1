@@ -1,0 +1,9 @@
+{
+  "n_samples": 51,
+  "time_start_s": 0.0,
+  "time_end_s": 10.000795,
+  "max_force_x_N": 26224893.35547,
+  "min_force_x_N": 0.0,
+  "final_force_x_N": 9564922.859316,
+  "time_of_max_force_x_s": 4.200237
+}

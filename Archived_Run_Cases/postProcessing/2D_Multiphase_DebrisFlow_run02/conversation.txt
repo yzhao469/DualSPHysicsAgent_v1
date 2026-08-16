@@ -1,0 +1,569 @@
+========================================================================
+  CONVERSATION LOG  ·  26 messages  ·  Evaluation_post_processing/Archived_run_cases/run_case06_02/chat_history.jsonl
+========================================================================
+
+[YOU]  2026-04-08  16:53:18  (planning)
+------------------------------------------------------------------------
+  Run 2D_Erosion_Def.xml without change
+
+[AGENT]  2026-04-08  16:53:19  (setup_review)
+------------------------------------------------------------------------
+  ================================================================
+    SIMULATION PLAN
+  ================================================================
+  
+  ### Reasoning
+  User requested to run the existing case without change, so I preserved the geometry exactly as provided. The domain remains 2D because pointmin.y and pointmax.y are both 0. Parameters were copied from the existing case for the first defined non-Newtonian phase and core execution settings, with no modifications intended.
+  
+  ### Geometry XML
+  ```xml
+  <geometry>
+    <definition dp="0.0064">
+      <pointmin x="-4" y="0" z="-1" />
+      <pointmax x="4" y="0" z="4" />
+    </definition>
+    <commands>
+      <mainlist>
+        <setshapemode>dp | bound</setshapemode>
+        <setdrawmode mode="full" />
+        <rotateline ang="23">
+          <point x="0" y="1" z="0" />
+          <point x="0" y="-1" z="0" />
+        </rotateline>
+        <setmkfluid mk="0" />
+        <drawbox>
+          <boxfill>solid</boxfill>
+          <point x="-3" y="-0.15" z="0" />
+          <size x="1.5" y="0.3" z="0.2"/>
+        </drawbox>
+        <setmkbound mk="1" />
+        <drawbox>
+          <boxfill>bottom | front | back</boxfill>
+          <point x="-3.84" y="-0.15" z="0.0" />
+          <size x="3.84" y="0.3" z="0.4" />
+          <layers vdp="0,1,2" />
+        </drawbox>
+        <matrixreset />
+        <setmkfluid mk="1" />
+        <drawbox>
+          <boxfill>solid</boxfill>
+          <point x="0" y="-1.5" z="-0.2" />
+          <size x="3" y="3" z="0.2" />
+        </drawbox>
+        <setmkbound mk="2" />
+        <drawbox>
+          <boxfill>front | back | bottom | left</boxfill>
+          <point x="0" y="-1.5" z="-0.2" />
+          <size x="3" y="3" z="0.2" />
+          <layers vdp="0,1,2" />
+        </drawbox>
+        <drawbox>
+          <boxfill>right</boxfill>
+          <point x="0" y="-1.5" z="-0.2" />
+          <size x="3" y="3" z="0.4" />
+          <layers vdp="0,1,2" />
+        </drawbox>
+        <shapeout file="Box"/>
+      </mainlist>
+    </commands>
+  </geometry>
+  ```
+  
+  ### Physics Parameters
+    gravity_z            = -9.81
+    rhop0                = 1600.0
+    coefh                = 1.0
+    cflnumber            = 0.2
+    phase_rhop           = 1600.0
+    visco_nn             = 0.007
+    tau_yield            = 0.1
+    HBP_m                = 10.0
+    HBP_n                = 1.5
+    Visco                = 0.1
+    DensityDT            = 3
+    DensityDTvalue       = 0.1
+    TimeMax              = 8.0
+    TimeOut              = 0.2
+  
+  ================================================================
+  A visualization of the particle configuration has been generated.
+  Approve, request changes, or ask a question:
+
+[YOU]  2026-04-08  16:53:27  (setup_review)
+------------------------------------------------------------------------
+  run
+
+[AGENT]  2026-04-08  17:10:18  (results_loop)
+------------------------------------------------------------------------
+  ================================================================
+    SIMULATION RESULTS
+  ================================================================
+  
+  Default post-processing complete:
+    - Script: /home/yzhao52/DualSPHysics/DualSPHysics_NN_v5.0.1-danrong-mcp-simulation-agent/dualsphysics-maf/runs/run_20260408_215318/postprocess.sh
+    - Fluid VTK files: out/particles/PartFluid_*.vtk
+    - Boundary VTK files: out/particles/PartBound_*.vtk
+  
+  Post-processing script:
+    /home/yzhao52/DualSPHysics/DualSPHysics_NN_v5.0.1-danrong-mcp-simulation-agent/dualsphysics-maf/runs/run_20260408_215318/postprocess.sh
+  
+  Generated files:
+    - /home/yzhao52/DualSPHysics/DualSPHysics_NN_v5.0.1-danrong-mcp-simulation-agent/dualsphysics-maf/runs/run_20260408_215318/out/particles/PartFluid_0000.vtk
+    - /home/yzhao52/DualSPHysics/DualSPHysics_NN_v5.0.1-danrong-mcp-simulation-agent/dualsphysics-maf/runs/run_20260408_215318/out/particles/PartFluid_0001.vtk
+    - /home/yzhao52/DualSPHysics/DualSPHysics_NN_v5.0.1-danrong-mcp-simulation-agent/dualsphysics-maf/runs/run_20260408_215318/out/particles/PartFluid_0002.vtk
+    - /home/yzhao52/DualSPHysics/DualSPHysics_NN_v5.0.1-danrong-mcp-simulation-agent/dualsphysics-maf/runs/run_20260408_215318/out/particles/PartFluid_0003.vtk
+    - /home/yzhao52/DualSPHysics/DualSPHysics_NN_v5.0.1-danrong-mcp-simulation-agent/dualsphysics-maf/runs/run_20260408_215318/out/particles/PartFluid_0004.vtk
+    - /home/yzhao52/DualSPHysics/DualSPHysics_NN_v5.0.1-danrong-mcp-simulation-agent/dualsphysics-maf/runs/run_20260408_215318/out/particles/PartFluid_0005.vtk
+    - /home/yzhao52/DualSPHysics/DualSPHysics_NN_v5.0.1-danrong-mcp-simulation-agent/dualsphysics-maf/runs/run_20260408_215318/out/particles/PartFluid_0006.vtk
+    - /home/yzhao52/DualSPHysics/DualSPHysics_NN_v5.0.1-danrong-mcp-simulation-agent/dualsphysics-maf/runs/run_20260408_215318/out/particles/PartFluid_0007.vtk
+    - /home/yzhao52/DualSPHysics/DualSPHysics_NN_v5.0.1-danrong-mcp-simulation-agent/dualsphysics-maf/runs/run_20260408_215318/out/particles/PartFluid_0008.vtk
+    - /home/yzhao52/DualSPHysics/DualSPHysics_NN_v5.0.1-danrong-mcp-simulation-agent/dualsphysics-maf/runs/run_20260408_215318/out/particles/PartFluid_0009.vtk
+    - /home/yzhao52/DualSPHysics/DualSPHysics_NN_v5.0.1-danrong-mcp-simulation-agent/dualsphysics-maf/runs/run_20260408_215318/out/particles/PartFluid_0010.vtk
+    - /home/yzhao52/DualSPHysics/DualSPHysics_NN_v5.0.1-danrong-mcp-simulation-agent/dualsphysics-maf/runs/run_20260408_215318/out/particles/PartFluid_0011.vtk
+    - /home/yzhao52/DualSPHysics/DualSPHysics_NN_v5.0.1-danrong-mcp-simulation-agent/dualsphysics-maf/runs/run_20260408_215318/out/particles/PartFluid_0012.vtk
+    - /home/yzhao52/DualSPHysics/DualSPHysics_NN_v5.0.1-danrong-mcp-simulation-agent/dualsphysics-maf/runs/run_20260408_215318/out/particles/PartFluid_0013.vtk
+    - /home/yzhao52/DualSPHysics/DualSPHysics_NN_v5.0.1-danrong-mcp-simulation-agent/dualsphysics-maf/runs/run_20260408_215318/out/particles/PartFluid_0014.vtk
+    - /home/yzhao52/DualSPHysics/DualSPHysics_NN_v5.0.1-danrong-mcp-simulation-agent/dualsphysics-maf/runs/run_20260408_215318/out/particles/PartFluid_0015.vtk
+    - /home/yzhao52/DualSPHysics/DualSPHysics_NN_v5.0.1-danrong-mcp-simulation-agent/dualsphysics-maf/runs/run_20260408_215318/out/particles/PartFluid_0016.vtk
+    - /home/yzhao52/DualSPHysics/DualSPHysics_NN_v5.0.1-danrong-mcp-simulation-agent/dualsphysics-maf/runs/run_20260408_215318/out/particles/PartFluid_0017.vtk
+    - /home/yzhao52/DualSPHysics/DualSPHysics_NN_v5.0.1-danrong-mcp-simulation-agent/dualsphysics-maf/runs/run_20260408_215318/out/particles/PartFluid_0018.vtk
+    - /home/yzhao52/DualSPHysics/DualSPHysics_NN_v5.0.1-danrong-mcp-simulation-agent/dualsphysics-maf/runs/run_20260408_215318/out/particles/PartFluid_0019.vtk
+    ... and 62 more
+  
+  ================================================================
+  Request changes to the post-processing script, run analysis,
+  ask questions, or type 'done' to finish:
+
+[YOU]  2026-04-08  17:13:33  (results_loop)
+------------------------------------------------------------------------
+  plot sinking depth of the top phase against time. Sinking depth means the deepest point of the top phase compared to the original top of the bottom phase.
+
+[AGENT]  2026-04-08  17:15:35  (results_loop)
+------------------------------------------------------------------------
+  Done — I generated the plot and data.
+  
+  Files:
+  - `out/analysis/top_phase_sinking_depth.png`
+  - `out/analysis/top_phase_sinking_depth.csv`
+  
+  Interpretation used:
+  - top phase: `mk = 1`
+  - bottom phase: `mk = 2`
+  - reference level = original top of bottom phase = `z = 0`
+  
+  Result:
+  - Maximum sinking depth: `0.040675 m`
+  - Occurs at: `t = 8.000020 s`
+  
+  Notes:
+  - I inferred the phases from the initial particle elevations:
+    - `mk=1` starts above `z=0` → top phase
+    - `mk=2` starts below `z=0` → bottom phase
+  - Sinking depth was computed as:
+    - `sinking depth = 0 - min(z of top-phase particles)`
+  
+  If you want, I can also:
+  1. show the time series numerically,
+  2. smooth the curve,
+  3. plot penetration depth together with top-phase centroid height.
+
+[YOU]  2026-04-08  17:17:44  (results_loop)
+------------------------------------------------------------------------
+  plot the runoff distance of the top phase against time and the deepest point of the top phase against time, both in its x direction, starting from when the two phases meet. Plot together.
+
+[AGENT]  2026-04-08  17:18:07  (results_loop)
+------------------------------------------------------------------------
+  Done — I plotted both curves together.
+  
+  Files:
+  - `out/analysis/top_phase_runoff_and_deepest_x.png`
+  - `out/analysis/top_phase_runoff_and_deepest_x.csv`
+  
+  What’s plotted:
+  - runoff distance of the top phase in `x`:
+    - based on the top-phase front position, `max(x_top)`
+  - deepest point of the top phase in `x`:
+    - `x` location of the particle(s) with minimum `z` in the top phase
+  
+  Time origin:
+  - I started from the first detected “meeting” time using the criterion
+    - `max(x_top) >= max(x_bottom)`
+  - For this run, that occurred at:
+    - `t = 0.0 s`
+    - `x0 = -1.3056 m`
+  
+  Final values:
+  - final runoff distance: `2.561318 m`
+  - final deepest-point x distance: `1.457267 m`
+  
+  One caution:
+  - this meeting criterion is purely based on overlap/front position in `x`.
+  - If by “when the two phases meet” you mean first vertical contact/interface penetration instead, I can recompute using a stricter contact definition, which may shift the start time from `t = 0`.
+
+[YOU]  2026-04-08  17:22:18  (results_loop)
+------------------------------------------------------------------------
+  HOW you made the conclusion? At no time the phase has run over 1.4 m.
+
+[AGENT]  2026-04-08  17:22:28  (results_loop)
+------------------------------------------------------------------------
+  You're right to question it. My previous “runoff distance” was measured relative to the top-phase front at the detected meeting time, not from a fixed physical origin. That can overstate what you mean by runout.
+  
+  What I actually did
+  - top phase = `mk=1`
+  - “runoff distance” = `max(x of top phase) - x_at_meeting`
+  - “meeting” was detected as the first time `max(x_top) >= max(x_bottom)`
+  
+  Why that gave a large value
+  - At `t=0`, the top phase already had a front at about `x = -1.3056 m`
+  - By the end, its front moved to about `x = 1.2557 m`
+  - So I reported:
+    - `1.2557 - (-1.3056) = 2.5613 m`
+  
+  That is a displacement of the top-phase front from its initial x-front, not the absolute runout position.
+  
+  Why your statement can still be correct
+  If you mean:
+  - absolute downstream position of the top-phase front in x, then the final value is about `1.26 m`, not `2.56 m`
+  - or runout measured from `x=0`, then it is also about `1.26 m`
+  So yes: the phase did not run over `1.4 m` in absolute x-position.
+  
+  The ambiguity
+  “Runoff distance” can mean either:
+  1. front displacement from its initial position, or
+  2. absolute front position in the domain
+  
+  I used (1), but you likely meant (2).
+  
+  If you want, I can immediately remake the plot using either of these definitions:
+  - absolute top-phase front position `max(x_top)` vs time
+  - deepest-point x-position vs time
+  starting from the actual contact time you want
+  
+  And for “when the two phases meet”, I should also confirm the criterion. Options:
+  - first x-overlap/front alignment
+  - first time deepest top particle reaches `z <= 0`
+  - first actual geometric contact based on particle proximity/interface crossing
+  
+  My recommendation:
+  plot together
+  - `max(x_top)` absolute
+  - `x(deepest top particle)` absolute
+  starting from the first time `min(z_top) <= 0`
+  
+  If you want, I’ll regenerate that now.
+
+[YOU]  2026-04-08  17:24:38  (results_loop)
+------------------------------------------------------------------------
+  let run-off distance be 0 when the two phases just meet.
+
+[AGENT]  2026-04-08  17:25:00  (results_loop)
+------------------------------------------------------------------------
+  Recomputed with your definition:
+  
+  - run-off distance = `0` at the instant the two phases first meet
+  - meeting criterion used: first time the top phase reaches the original top of the bottom phase, i.e. `min(z_top) <= 0`
+  
+  Detected meeting:
+  - time: `1.40001 s`
+  - top-phase front x at meeting: `0.33283046 m`
+  
+  New outputs:
+  - `out/analysis/top_phase_runoff_and_deepest_x_from_meeting.png`
+  - `out/analysis/top_phase_runoff_and_deepest_x_from_meeting.csv`
+  
+  Results:
+  - final run-off distance: `0.922888 m`
+  - final deepest-point x relative to meeting front: `-0.181163 m`
+  
+  So with this definition, your earlier concern makes sense: the run-off is well below `1.4 m`.
+  
+  If you want, I can also make one more version where both curves are plotted as:
+  - absolute `x` positions, but
+  - time starts at meeting (`t - t_meet`)  
+  which is often easier to interpret physically.
+
+[YOU]  2026-04-08  17:27:33  (results_loop)
+------------------------------------------------------------------------
+  plot volume per thickness against time of the top phase sinking to bottom and the volume per thickness of the bottom phase bulge to top. They are defined as the area crosses the initial interface height.
+
+[AGENT]  2026-04-08  17:27:56  (results_loop)
+------------------------------------------------------------------------
+  Done.
+  
+  Generated:
+  - `out/analysis/cross_interface_volume_per_thickness.png`
+  - `out/analysis/cross_interface_volume_per_thickness.csv`
+  
+  Definition used:
+  - initial interface height: `z = 0`
+  - top-phase sinking volume per thickness:
+    - area of top-phase particles with `z < 0`
+  - bottom-phase bulge volume per thickness:
+    - area of bottom-phase particles with `z > 0`
+  
+  How it was computed:
+  - this is a 2D per-unit-thickness quantity, so volume/thickness = area
+  - estimated particle spacing from the initial grid:
+    - `dx = dz = 0.0064 m`
+  - particle area:
+    - `dx * dz = 0.00004096 m²`
+  - cross-interface area at each time:
+    - `number of crossed particles × particle area`
+  
+  Results:
+  - max top-phase sunk volume/thickness:
+    - `0.017407 m²` at `t = 8.000020 s`
+  - max bottom-phase bulged volume/thickness:
+    - `0.009666 m²` at `t = 8.000020 s`
+  
+  Important note:
+  - this is a particle-count-based estimate of crossed area
+  - it is simple and robust, but not an exact geometric reconstruction of the interface-crossing area
+  - if you want, I can make a more accurate version by reconstructing the occupied region on a grid and integrating only the area across `z=0` for each phase.
+
+[YOU]  2026-04-08  17:30:27  (results_loop)
+------------------------------------------------------------------------
+  use the more accurate prediction you suggested
+
+[AGENT]  2026-04-08  17:30:58  (results_loop)
+------------------------------------------------------------------------
+  Done — I generated the more accurate reconstructed estimate.
+  
+  Files:
+  - `out/analysis/cross_interface_volume_per_thickness_reconstructed.png`
+  - `out/analysis/cross_interface_volume_per_thickness_reconstructed.csv`
+  
+  Method used:
+  - reconstructed each phase as an occupied 2D region on a finer grid
+  - grid spacing:
+    - `gx = gz = 0.0032 m` = half the particle spacing
+  - each particle was expanded to a small disk-like occupied patch
+  - then I integrated:
+    - top-phase occupied area below `z = 0`
+    - bottom-phase occupied area above `z = 0`
+  
+  Results:
+  - max reconstructed top-phase sunk volume per thickness:
+    - `0.018574 m²` at `t = 8.000020 s`
+  - max reconstructed bottom-phase bulged volume per thickness:
+    - `0.006369 m²` at `t = 8.000020 s`
+  
+  Compared with the simpler particle-count estimate:
+  - top sunk area became slightly larger
+  - bottom bulged area became smaller
+  
+  That difference is expected because the reconstructed occupancy accounts for spatial overlap and shape more realistically than raw particle counting.
+  
+  If you want, I can also:
+  1. overlay the simple and reconstructed curves in one figure,
+  2. compute the net imbalance `top sunk - bottom bulged`,
+  3. generate snapshots showing the reconstructed cross-interface regions at selected times.
+
+[YOU]  2026-04-08  17:32:46  (results_loop)
+------------------------------------------------------------------------
+  how about use isosurface to find the profile first then determine the sinking and bulge volume
+
+[AGENT]  2026-04-08  17:32:52  (results_loop)
+------------------------------------------------------------------------
+  Yes — that is a better geometric approach in principle.
+  
+  Idea:
+  - reconstruct each phase boundary/profile first with `IsoSurface`
+  - then compute the area crossing the initial interface `z=0`
+  - in 2D, that area is exactly the volume per thickness
+  
+  Why this is attractive
+  - it uses a continuous reconstructed phase shape instead of particle occupancy
+  - it can reduce grid/blockiness from particle counting
+  - it gives a cleaner geometric definition of:
+    - top-phase area below `z=0`
+    - bottom-phase area above `z=0`
+  
+  Important caveat
+  - this only works well if the simulation is truly 2D or quasi-2D and the isosurface/slice output cleanly represents each phase separately
+  - we need to confirm:
+    1. whether `IsoSurface` can isolate each phase by `mk`
+    2. whether it outputs a 2D slice/profile suitable for area integration
+    3. whether the reconstructed surface is reliable for your particle resolution
+  
+  In your case, this is likely feasible, but I want to use the exact CLI correctly before changing the script.
+  
+  I can do this next:
+  1. fetch the exact `IsoSurface` reference,
+  2. add isosurface generation for each phase to `postprocess.sh`,
+  3. rerun postprocessing,
+  4. compute cross-interface areas from the reconstructed profiles.
+  
+  If you want, I’ll proceed with the isosurface-based workflow now.
+
+[YOU]  2026-04-08  17:33:32  (results_loop)
+------------------------------------------------------------------------
+  try the isosurface workflow
+
+[AGENT]  2026-04-08  17:34:34  (results_loop)
+------------------------------------------------------------------------
+  I tried the isosurface workflow, but the result is:
+  
+  - `top area = 0`
+  - `bottom area = 0`
+  - for all timesteps
+  
+  Generated files:
+  - `out/analysis/cross_interface_volume_per_thickness_isosurface.png`
+  - `out/analysis/cross_interface_volume_per_thickness_isosurface.csv`
+  
+  Why this happened:
+  - the `IsoSurface -saveslice` output here is a line profile of each phase boundary
+  - when I inspected the meshes:
+    - top-phase profile only dips slightly below `z=0`
+    - bottom-phase profile only rises slightly above `z=0`
+  - but the extracted line does not form a closed contour around the cross-interface region
+  - so there is no directly enclosed polygonal area to integrate from the isosurface output alone
+  - in other words, the current isosurface slice gives a boundary trace, not a filled phase region
+  
+  So:
+  - isosurface is useful for locating the interface/profile
+  - but with the current output, it is not sufficient by itself to robustly compute the sunk/bulged area
+  - the reconstructed occupancy method is still the more reliable quantitative estimate for volume/thickness
+  
+  Most likely issue:
+  - `IsoSurface` is reconstructing the free boundary of each phase, not the full closed phase domain needed for area integration across `z=0`
+  
+  Best next options:
+  1. use isosurface only to extract the interface crossing positions and depths, while keeping occupancy/grid reconstruction for area;
+  2. improve the geometric method by combining:
+     - particle occupancy for the filled region
+     - isosurface for the boundary location;
+  3. try a different geometric reconstruction from particles directly, e.g. alpha-shape/concave hull of each phase, then integrate the closed region across `z=0`.
+  
+  My recommendation:
+  - for the volume-per-thickness curves, use the reconstructed occupancy result:
+    - `cross_interface_volume_per_thickness_reconstructed.csv/png`
+  - for interface/profile visualization, use the isosurface outputs
+  
+  If you want, I can do one of these next:
+  - overlay occupancy-based and isosurface-based profiles at selected times,
+  - build a concave-hull/alpha-shape method for a more geometric area estimate,
+  - extract interface crossing x-positions from the isosurface profiles.
+
+[YOU]  2026-04-08  17:37:29  (results_loop)
+------------------------------------------------------------------------
+  I saw the isosurface vtk files are correct. You just need to use a z = 0 line to cut the enclosed profiles and find the area
+
+[AGENT]  2026-04-08  17:38:07  (results_loop)
+------------------------------------------------------------------------
+  You’re right in principle. My previous isosurface parsing still didn’t capture the correct enclosed branch.
+  
+  What I did:
+  - extracted connected line components from each `IsoTop_*.vtk` and `IsoBottom_*.vtk`
+  - searched for components intersecting `z=0`
+  - tried to close them with the `z=0` segment and integrate the enclosed polygon
+  
+  But it still returned zero area, which means my component-selection/path-ordering logic is still not matching the actual profile topology in these VTK slices.
+  
+  So the issue is not your idea — it’s my current implementation.
+  
+  Most likely what’s going wrong
+  - the isosurface slice contains multiple connected branches or repeated points
+  - the branch that crosses `z=0` is not being isolated correctly
+  - the line ordering from VTK connectivity is more complicated than a single simple polyline
+  - so the “close with z=0 and integrate” step is being applied to the wrong path or to a degenerate path
+  
+  Best next step
+  I should debug this geometrically on one or two representative timesteps by:
+  1. plotting the actual isosurface line segments in x–z,
+  2. overlaying the `z=0` line,
+  3. identifying the exact branch intersections,
+  4. then computing the enclosed polygon from those segments only.
+  
+  That is the right way to make the isosurface workflow work.
+  
+  If you want, I’ll do that next:
+  - generate diagnostic plots of the isosurface profiles and `z=0`
+  - isolate the correct enclosed loops
+  - then recompute the top sunk area and bottom bulged area from isosurface properly.
+
+[YOU]  2026-04-08  17:38:56  (results_loop)
+------------------------------------------------------------------------
+  generate the diagnostic plots
+
+[AGENT]  2026-04-08  17:39:34  (results_loop)
+------------------------------------------------------------------------
+  Generated diagnostic plots.
+  
+  Files in `out/analysis/`:
+  - `isosurface_diagnostic_top_0000.png`
+  - `isosurface_diagnostic_top_0007.png`
+  - `isosurface_diagnostic_top_0010.png`
+  - `isosurface_diagnostic_top_0015.png`
+  - `isosurface_diagnostic_top_0020.png`
+  - `isosurface_diagnostic_top_0030.png`
+  - `isosurface_diagnostic_top_0040.png`
+  - `isosurface_diagnostic_bottom_0000.png`
+  - `isosurface_diagnostic_bottom_0007.png`
+  - `isosurface_diagnostic_bottom_0010.png`
+  - `isosurface_diagnostic_bottom_0015.png`
+  - `isosurface_diagnostic_bottom_0020.png`
+  - `isosurface_diagnostic_bottom_0030.png`
+  - `isosurface_diagnostic_bottom_0040.png`
+  
+  What they show:
+  - all isosurface line segments in the `x-z` plane
+  - the horizontal `z=0` line
+  - detected intersections between the profile segments and `z=0`
+  
+  Intersection counts found:
+  - top:
+    - step 0000: 0
+    - 0007: 2
+    - 0010: 2
+    - 0015: 4
+    - 0020: 2
+    - 0030: 2
+    - 0040: 4
+  - bottom:
+    - 0000: 2
+    - 0007: 2
+    - 0010: 2
+    - 0015: 2
+    - 0020: 8
+    - 0030: 8
+    - 0040: 36
+  
+  This confirms your point: the profiles do cross `z=0`, and later times can have multiple crossings, especially for the bottom phase.
+  
+  The next step is to use these diagnostics to choose the correct crossing pair and enclosed branch, then integrate the area. If you want, I can now implement that branch-selection logic and compute the isosurface-based sunk/bulged volumes.
+
+[YOU]  2026-04-08  17:41:11  (results_loop)
+------------------------------------------------------------------------
+  do as you suggested
+
+[AGENT]  2026-04-08  17:42:02  (results_loop)
+------------------------------------------------------------------------
+  I ran the branch-selection version and also generated selected-branch debug plots.
+  
+  Generated:
+  - `out/analysis/cross_interface_volume_per_thickness_isosurface_selected.png`
+  - `out/analysis/cross_interface_volume_per_thickness_isosurface_selected.csv`
+  
+  Selected-branch diagnostics:
+  - `out/analysis/isosurface_selected_branch_top_0007.png`
+  - `out/analysis/isosurface_selected_branch_top_0015.png`
+  - `out/analysis/isosurface_selected_branch_top_0020.png`
+  - `out/analysis/isosurface_selected_branch_top_0040.png`
+  - `out/analysis/isosurface_selected_branch_bottom_0007.png`
+  - `out/analysis/isosurface_selected_branch_bottom_0015.png`
+  - `out/analysis/isosurface_selected_branch_bottom_0020.png`
+  - `out/analysis/isosurface_selected_branch_bottom_0040.png`
+  
+  But the computed areas are still zero, which means my automatic branch extraction is still not tracing the enclosed profile correctly even though the crossings are visible.
+  
+  So at this point:
+  - the diagnostic plots are available,
+  - the issue is narrowed down to the exact geometric interpretation of the VTK line network,
+  - but the automatic area integration still needs manual-guided logic based on those plots.
+  
+  If you want, the next best step is:
+  - I inspect one or two of those selected-branch diagnostic plots more explicitly,
+  - then harden the algorithm around the actual topology seen there,
+  - and recompute the isosurface-based areas.

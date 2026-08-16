@@ -1,0 +1,7 @@
+Barrier upstream face x = 79.000 m
+Barrier slab used: |y-10| <= 0.600 m, 0.000 <= z <= 11.200 m
+Contact tolerance in x = 0.350 m
+Front-crossing hit time = 7.815438534174602
+Direct contact/proximity hit time = nan
+Final chosen hit time = 7.815438534174602
+Final method = front crossing of upstream face

@@ -1,0 +1,24 @@
+{
+  "axis_unit_vector": [
+    8.399442350736169e-08,
+    -3.4874543282104047e-06,
+    0.9999999999939153
+  ],
+  "plane_point_xyz": [
+    0.07504993022943297,
+    -3.1160783428388594,
+    893510.8676875266
+  ],
+  "slab_half_thickness_m": 1398.058200003677,
+  "cross_section_eta_range_m": [
+    -0.08012207642137742,
+    0.22983968312115557
+  ],
+  "cross_section_zeta_range_m": [
+    -3.731332067045078,
+    -3.4308098298301566
+  ],
+  "estimated_particle_spacing_dp_m": 21.00009233791446,
+  "estimated_particle_volume_m3": 9261.122163597987,
+  "method": "Plane perpendicular to PCA-inferred trench axis at downstream trench end; slab-based particle flux estimate."
+}

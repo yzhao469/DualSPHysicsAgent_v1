@@ -1,0 +1,4 @@
+Final file used: PartFluidCSV_0050.csv
+trapped,67378
+overtop_downstream,2428
+sideleak_downstream,390

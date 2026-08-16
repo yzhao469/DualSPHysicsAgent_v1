@@ -1,0 +1,9 @@
+ComputeForces run with onlymk:11
+Force x column: ForceFluid_x_N
+Moment yy column: Moment_Nm
+Max |Fx| = 26235303.79744 N at t = 4.200237 s
+Min Fx = 0.0 N
+Max Fx = 26235303.79744 N
+Max |My| = -146408715.7795 N*m at t = 4.200237 s
+Min My = -146408715.7795 N*m
+Max My = 0.0 N*m

@@ -1,0 +1,10 @@
+Top phase mk: 1
+Bottom phase mk: 2
+Initial interface z: -0.001600 m
+Estimated dx: 0.006400 m
+Estimated dz: 0.006400 m
+Particle area / unit thickness: 0.00004096 m^2
+Skipped files: 1
+Skipped list: PartFluidCsv_stats.csv
+Max top-phase sunk volume/thickness: 0.015728 m^2
+Max bottom-phase bulged volume/thickness: 0.011468 m^2

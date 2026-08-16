@@ -1,0 +1,15 @@
+{
+  "transition_center": [
+    0.0,
+    0.0,
+    -0.01152000017464161
+  ],
+  "particle_spacing_estimate_m": 0.006399989128112793,
+  "particle_mass_estimate_kg": 0.000445642528910108,
+  "max_mass_flux_kg_s": 3.3801985817831692,
+  "min_mass_flux_kg_s": 0.0,
+  "time_of_max_s": 2.1,
+  "half_width_y_m": 0.25,
+  "half_height_w_m": 0.15,
+  "note": "Approximate flux from particle crossings between saved frames through inferred trench-flat transition plane at x\u22480."
+}

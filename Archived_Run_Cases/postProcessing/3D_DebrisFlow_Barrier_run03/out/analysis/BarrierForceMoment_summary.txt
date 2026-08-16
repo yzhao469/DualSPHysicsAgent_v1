@@ -1,0 +1,4 @@
+Max |Fx| = 26770472.89382 N
+Max |M_about_y| = 121022811.7082 N.m
+Final Fx = 9821872.565461 N
+Final M_about_y = -43834201.08358 N.m

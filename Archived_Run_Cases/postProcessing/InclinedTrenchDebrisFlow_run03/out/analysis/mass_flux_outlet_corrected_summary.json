@@ -1,0 +1,25 @@
+{
+  "particle_mass_kg": 0.0004456448,
+  "outlet_plane_point_xyz": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "axis_unit_vector": [
+    0.9205048534524404,
+    0.0,
+    0.39073112848927377
+  ],
+  "y_window_m": [
+    -0.158399989,
+    0.158399989
+  ],
+  "z_window_m": [
+    0.0,
+    0.13180034999999998
+  ],
+  "slab_half_thickness_m": 0.02,
+  "peak_mass_flux_kg_s": 4.358966305981818,
+  "peak_mass_flux_time_s": 2.00003,
+  "peak_frame_particles_in_window": 1795
+}

@@ -1,0 +1,8 @@
+TARGET_Y=10.0
+band_half_width=0.3
+xbin=0.5
+PartFluid_0000.csv: t_req=0.0, t_act=0.0, nsel=1800, band_used=0.3, profile_points=30, xmin=0.75, xmax=15.25, zmin=30.0, zmax=30.0
+PartFluid_0012.csv: t_req=2.4, t_act=2.4000000000000004, nsel=1800, band_used=0.3, profile_points=99, xmin=0.72211358, xmax=49.72211358, zmin=2.4778256, zmax=23.983969
+PartFluid_0025.csv: t_req=5.0, t_act=5.0, nsel=2039, band_used=0.3, profile_points=156, xmin=0.74089783, xmax=78.24089783, zmin=4.3257103, zmax=28.673876
+PartFluid_0038.csv: t_req=7.6, t_act=7.6000000000000005, nsel=2137, band_used=0.3, profile_points=168, xmin=0.7601825600000001, xmax=84.26018256000002, zmin=5.1578307, zmax=27.793596
+PartFluid_0050.csv: t_req=10.0, t_act=10.0, nsel=2207, band_used=0.3, profile_points=190, xmin=0.77594757, xmax=98.77594757, zmin=1.0456438, zmax=12.464567

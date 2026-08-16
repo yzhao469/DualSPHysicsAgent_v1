@@ -1,0 +1,7 @@
+ymin=0.0
+ymax=19.583504
+y_center=9.791752
+band_half_width=0.9791752000000001
+n_frames=52
+front_x_min=15.0
+front_x_max=99.235245
