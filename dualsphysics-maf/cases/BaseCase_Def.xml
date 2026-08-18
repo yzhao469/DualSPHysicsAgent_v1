@@ -6,7 +6,7 @@
             <rhop0 value="1000" comment="Reference density of the fluid" units_comment="kg/m3" />
             <hswl value="0" auto="true" comment="Maximum still water level to calculate speedofsound using coefsound" units_comment="metres (m)" />
             <gamma value="7" comment="Polytropic constant for water used in the state equation" />
-            <speedsystem value="1" auto="false" comment="Maximum system speed (by default the dam-break propagation is used)" />
+            <speedsystem value="1" auto="true" comment="Maximum system speed (by default the dam-break propagation is used)" />
             <coefsound value="20" comment="Coefficient to multiply speedsystem" />
             <speedsound value="0" auto="true" comment="Speed of sound to use in the simulation (by default speedofsound=coefsound*speedsystem)" />
             <coefh value="0.91924" comment="Coefficient to calculate the smoothing length (h=coefh*sqrt(3*dp^2) in 3D)" />
