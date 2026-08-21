@@ -10,10 +10,15 @@ LLM-assisted workflow for DualSPHysics non-Newtonian simulations.
    python3.12 -m venv .venv
    .venv/bin/pip install -e .
    ```
-2. Add your OpenAI API key to `dualsphysics-maf/.env`:
+2. Create your environment file from the template and add your OpenAI API key:
    ```bash
-   echo "OPENAI_API_KEY=your_key_here" > .env
+   cp .env.example .env
+   # then edit .env and set OPENAI_API_KEY
    ```
+   `.env.example` also pins the four per-role model variables to the settings
+   used for the published results. If you set only `OPENAI_API_KEY` and skip
+   the template, the code falls back to older default models and will **not**
+   reproduce those runs — see the comments in `.env.example`.
 3. Run the interactive workflow (choose **one**):
 
    **Terminal mode** (original CLI):
