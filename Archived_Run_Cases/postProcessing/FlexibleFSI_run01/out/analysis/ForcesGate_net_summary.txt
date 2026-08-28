@@ -1,0 +1,9 @@
+max_Fmag_N_per_m: 720.8718611795194
+time_at_max_Fmag_s: 2.000007
+Fx_at_max_N_per_m: 718.7480527252528
+Fy_at_max_N_per_m: -9.119594917744227e-32
+Fz_at_max_N_per_m: 55.29445672110018
+final_Fx_N_per_m: 718.7480527252528
+final_Fy_N_per_m: -9.119594917744227e-32
+final_Fz_N_per_m: 55.29445672110018
+final_Fmag_N_per_m: 720.8718611795194

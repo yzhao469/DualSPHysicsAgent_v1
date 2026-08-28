@@ -1,0 +1,8 @@
+User-specified initial gate location near x=0.520 m
+Using refined x-window centered at x=0.499211 m with half-width 0.015000 m
+t=0.00 s: 195 particles selected
+t=0.10 s: 74 particles selected
+t=0.20 s: 24 particles selected
+t=0.30 s: 14 particles selected
+t=0.40 s: 11 particles selected
+t=2.00 s: 255 particles selected

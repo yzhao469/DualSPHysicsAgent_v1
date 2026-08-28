@@ -1,0 +1,6 @@
+Net fluid force on flexible gate (sum of mk 11-15)
+Note: ComputeForces output units here are N/m.
+Peak |F| = 722.285 N/m at t = 2.00001 s
+Max Fx = 720.196 N/m, Min Fx = -533.409 N/m
+Max Fy = 8.39673e-32 N/m, Min Fy = -2.31974e-31 N/m
+Max Fz = 590.766 N/m, Min Fz = -48.0974 N/m

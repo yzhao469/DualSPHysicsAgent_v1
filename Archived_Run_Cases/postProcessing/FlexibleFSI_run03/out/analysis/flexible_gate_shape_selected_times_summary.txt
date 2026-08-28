@@ -1,0 +1,16 @@
+Detected boundary mk groups from first frame:
+mk=10, count=419, dx=2.0000, dy=0.0000, dz=1.0900, centroid=(1.0000,0.0000,0.2862)
+mk=11, count=60, dx=0.0300, dy=0.0000, dz=0.1400, centroid=(0.5150,0.0000,0.1200)
+mk=12, count=80, dx=0.0300, dy=0.0000, dz=0.1900, centroid=(0.5150,0.0000,0.2950)
+mk=13, count=80, dx=0.0300, dy=0.0000, dz=0.1900, centroid=(0.5150,0.0000,0.4950)
+mk=14, count=80, dx=0.0300, dy=0.0000, dz=0.1900, centroid=(0.5150,0.0000,0.6950)
+mk=15, count=84, dx=0.0300, dy=0.0000, dz=0.2000, centroid=(0.5150,0.0000,0.9000)
+
+Selected gate mk=15
+
+frame 0000, t=0.00 s, npts=84, extents dx=0.0300, dy=0.0000, dz=0.2000
+frame 0010, t=0.10 s, npts=84, extents dx=0.0330, dy=0.0000, dz=0.2004
+frame 0020, t=0.20 s, npts=84, extents dx=0.0482, dy=0.0000, dz=0.2019
+frame 0030, t=0.30 s, npts=84, extents dx=0.0682, dy=0.0000, dz=0.2020
+frame 0040, t=0.40 s, npts=84, extents dx=0.0776, dy=0.0000, dz=0.2013
+frame 0048, t=0.48 s, npts=84, extents dx=0.0778, dy=0.0000, dz=0.2013

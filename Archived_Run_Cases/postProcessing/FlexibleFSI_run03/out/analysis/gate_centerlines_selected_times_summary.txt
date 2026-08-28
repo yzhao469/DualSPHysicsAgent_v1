@@ -1,0 +1,14 @@
+Detected gate segment mks (bottom to top): 11, 12, 13, 14, 15
+mk=11, count=60, dx=0.0300, dz=0.1400, centroid=(0.5150,0.1200)
+mk=12, count=80, dx=0.0300, dz=0.1900, centroid=(0.5150,0.2950)
+mk=13, count=80, dx=0.0300, dz=0.1900, centroid=(0.5150,0.4950)
+mk=14, count=80, dx=0.0300, dz=0.1900, centroid=(0.5150,0.6950)
+mk=15, count=84, dx=0.0300, dz=0.2000, centroid=(0.5150,0.9000)
+
+Selected times:
+frame 0000, t=0.00 s
+frame 0010, t=0.10 s
+frame 0020, t=0.20 s
+frame 0030, t=0.30 s
+frame 0040, t=0.40 s
+frame 0048, t=0.48 s

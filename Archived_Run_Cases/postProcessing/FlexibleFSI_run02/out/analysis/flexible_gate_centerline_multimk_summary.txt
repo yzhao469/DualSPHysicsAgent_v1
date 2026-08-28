@@ -1,0 +1,14 @@
+Flexible gate centerline tracking using multiple mks
+Connected-component radius r = 0.016000 m
+Estimated spacing dx = 0.010000 m, dz = 0.010000 m
+Gate mks included = [11, 12, 13]
+Initial gate particle count = 152
+Initial x-range = [0.500000, 0.530000] m
+Initial z-range = [0.050000, 0.420000] m
+Centerline z-bin size = 0.012500 m
+file 0000: t=0.000 s, particles=152, centerline points=30
+file 0010: t=0.100 s, particles=152, centerline points=30
+file 0020: t=0.200 s, particles=152, centerline points=30
+file 0040: t=0.400 s, particles=152, centerline points=26
+file 0100: t=1.000 s, particles=152, centerline points=28
+file 0200: t=2.000 s, particles=152, centerline points=30

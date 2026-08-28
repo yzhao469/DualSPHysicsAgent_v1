@@ -1,0 +1,12 @@
+Flexible gate centerline tracking using mk 11-15
+Included mks = [11, 12, 13, 14, 15]
+Initial gate particle count = 384
+Initial x-range = [0.500000, 0.530000] m
+Initial z-range = [0.050000, 1.000000] m
+Centerline z-bin size = 0.012500 m
+file 0000: t=0.000 s, particles=384, centerline points=76
+file 0010: t=0.100 s, particles=384, centerline points=76
+file 0020: t=0.200 s, particles=384, centerline points=75
+file 0040: t=0.400 s, particles=384, centerline points=67
+file 0100: t=1.000 s, particles=384, centerline points=72
+file 0200: t=2.000 s, particles=384, centerline points=77

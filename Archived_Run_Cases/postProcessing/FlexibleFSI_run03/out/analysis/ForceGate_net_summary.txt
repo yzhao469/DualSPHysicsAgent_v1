@@ -1,0 +1,13 @@
+Corrected net force from ForceFluid components only.
+Input files and detected columns:
+ForceGate_mk11.csv: sep=';', time='Time [s]', Fx='ForceFluid.x [N/m]', Fy='ForceFluid.y [N/m]', Fz='ForceFluid.z [N/m]'
+ForceGate_mk12.csv: sep=';', time='Time [s]', Fx='ForceFluid.x [N/m]', Fy='ForceFluid.y [N/m]', Fz='ForceFluid.z [N/m]'
+ForceGate_mk13.csv: sep=';', time='Time [s]', Fx='ForceFluid.x [N/m]', Fy='ForceFluid.y [N/m]', Fz='ForceFluid.z [N/m]'
+ForceGate_mk14.csv: sep=';', time='Time [s]', Fx='ForceFluid.x [N/m]', Fy='ForceFluid.y [N/m]', Fz='ForceFluid.z [N/m]'
+ForceGate_mk15.csv: sep=';', time='Time [s]', Fx='ForceFluid.x [N/m]', Fy='ForceFluid.y [N/m]', Fz='ForceFluid.z [N/m]'
+
+Peak |F| = 720.872 N/m at t = 2.0000 s
+At peak: Fx = 718.748, Fy = -9.11959e-32, Fz = 55.2945 N/m
+Fx range: [-530.992, 718.748] N/m
+Fy range: [-2.34437e-31, 8.41658e-32] N/m
+Fz range: [-47.8747, 592.686] N/m

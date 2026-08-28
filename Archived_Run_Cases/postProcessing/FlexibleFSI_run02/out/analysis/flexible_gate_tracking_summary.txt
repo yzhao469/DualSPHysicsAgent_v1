@@ -1,0 +1,18 @@
+Flexible gate tracking by particle ID
+Seed region: x in [0.48, 0.56] m
+MK counts in seed region: mk=15: 84, mk=12: 80, mk=13: 80, mk=14: 80, mk=11: 60, mk=10: 8
+Chosen mk = 15
+Refined gate x-center = 0.501667 m, x-halfwidth = 0.010000 m
+Initial gate particle count = 42
+Initial top tip particle ID = 739
+Initial top tip position = (0.500000, 1.000000) m
+Final tip displacement = (0.000000, -0.000001) m at t=2.000 s
+Max |Δx| = 0.000000 m
+Max |Δz| = 0.000001 m
+Overlay times used:
+  file 0000: t=0.000 s, particles=42
+  file 0010: t=0.100 s, particles=42
+  file 0020: t=0.200 s, particles=42
+  file 0040: t=0.400 s, particles=42
+  file 0100: t=1.000 s, particles=42
+  file 0200: t=2.000 s, particles=42

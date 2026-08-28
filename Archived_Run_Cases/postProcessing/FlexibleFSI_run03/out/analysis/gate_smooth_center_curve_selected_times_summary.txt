@@ -1,0 +1,9 @@
+Gate segment mks: 11, 12, 13, 14, 15
+Curve definition: midpoint between min/max x across all gate particles at each z, then moving-average smoothing of x(z).
+
+frame 0000, t=0.00 s, n_curve_pts=96
+frame 0010, t=0.10 s, n_curve_pts=384
+frame 0020, t=0.20 s, n_curve_pts=384
+frame 0030, t=0.30 s, n_curve_pts=384
+frame 0040, t=0.40 s, n_curve_pts=384
+frame 0048, t=0.48 s, n_curve_pts=384

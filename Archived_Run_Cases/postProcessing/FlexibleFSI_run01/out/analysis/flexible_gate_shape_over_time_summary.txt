@@ -1,0 +1,8 @@
+Chosen gate mk: 15
+Point data keys: Idp, Vel, Rhop, Type, Mk
+t=0.00s, npts=84
+t=0.40s, npts=84
+t=0.80s, npts=84
+t=1.20s, npts=84
+t=1.60s, npts=84
+t=2.00s, npts=84

@@ -1,0 +1,9 @@
+Gate segment mks (bottom to top): 11, 12, 13, 14, 15
+Centerline definition: midpoint between min-x and max-x faces at each z level for each segment.
+
+frame 0000, t=0.00 s, n_centerline_pts=104
+frame 0010, t=0.10 s, n_centerline_pts=392
+frame 0020, t=0.20 s, n_centerline_pts=392
+frame 0030, t=0.30 s, n_centerline_pts=392
+frame 0040, t=0.40 s, n_centerline_pts=392
+frame 0048, t=0.48 s, n_centerline_pts=392
