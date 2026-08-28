@@ -1,0 +1,6 @@
+Phase volume over time estimated from particle counts by mk.
+For constant-mass SPH particles with equal density setup, volume is proportional to particle count.
+If exact particle mass or dp is needed, absolute physical volume can be reconstructed from setup data.
+
+Initial counts: mk=1 -> 4224, mk=2 -> 4224
+Counts remain constant? mk=1 unique counts=[4224], mk=2 unique counts=[4224]

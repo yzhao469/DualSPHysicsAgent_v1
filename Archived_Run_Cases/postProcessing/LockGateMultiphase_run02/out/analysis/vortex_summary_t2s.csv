@@ -1,0 +1,2 @@
+time_s,n_particles,velocity_mean_mps,velocity_max_mps,vorticity_mean_1ps,vorticity_mean_abs_1ps,vorticity_max_abs_1ps,strongest_vortex_x_m,strongest_vortex_z_m,strongest_signed_vorticity_1ps
+2.0,8448,0.163051045714168,0.5718231340495965,-0.3312005074660749,1.5642291961313342,37.35451947055687,0.11957208059999999,0.9168775756375,-37.35451947055687

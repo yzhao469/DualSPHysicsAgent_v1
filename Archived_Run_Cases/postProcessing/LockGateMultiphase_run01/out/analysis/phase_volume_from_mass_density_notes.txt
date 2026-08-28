@@ -1,0 +1,10 @@
+Phase volume computed as V_phase(t)=sum_i m_i/rho_i(t).
+Assumed constant particle mass from initial spacing and rho0=1200.0 kg/m^3.
+Inferred dp_x=0.00999999 m, dp_z=0.00999999 m, representative dp=0.00999999 m.
+Particle volume at reference state=9.9999800000e-05 m^3/m (unit width).
+Particle mass=1.1999976000e-01 kg/m (unit width).
+Volumes reported as m^3 per meter out-of-plane width because this is a 2D case.
+
+Initial and final volumes:
+mk=1: initial=0.42239916, final=0.42173918
+mk=2: initial=0.50687899, final=0.50652295

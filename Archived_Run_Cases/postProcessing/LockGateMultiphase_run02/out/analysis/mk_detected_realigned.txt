@@ -1,0 +1,1 @@
+Detected fluid mk values across usable CSV timesteps: 1, 2

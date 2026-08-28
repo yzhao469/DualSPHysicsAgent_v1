@@ -1,0 +1,8 @@
+dx=0.00999999, dz=0.00999999, cell_area=9.9999800000e-05 m^2
+ mk  n_particles  mean_rho  nx_unique  nz_unique  geom_vol_count_m3_per_m  bbox_vol_centers_m3_per_m  bbox_extent_vol_m3_per_m  particle_mass_if_phase_density_used  total_mass_if_geom_truth  vol_from_m_over_rho_using_phase_density_mass
+  1         4224    1200.0         44         96                 0.422399                   0.422399                    0.4224                                 0.12                506.878986                                      0.422399
+  2         4224    1000.0         44         96                 0.422399                   0.422399                    0.4224                                 0.10                422.399155                                      0.422399
+
+Interpretation:
+Geometric occupied volume per unit width is determined by particle layout, not density.
+If both phases occupy the same number of lattice sites with same spacing, their initial geometric volumes are equal.

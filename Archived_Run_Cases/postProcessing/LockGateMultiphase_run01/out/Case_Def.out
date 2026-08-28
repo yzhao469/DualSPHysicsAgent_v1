@@ -1,0 +1,123 @@
+
+
+ <GENCASE>  Copyright (c) 2020 by Dr Jose M. Dominguez
+ All rights reserved.
+
+ DualSPHysics is an international collaboration between University of Vigo 
+ (Spain) and University of Manchester (UK). 
+
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions
+ are met:
+ * Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+ * Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+ * Neither the name of the DualSPHysics nor the names of its contributors
+   may be used to endorse or promote products derived from this software
+   without specific prior written permission.
+
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER BE LIABLE FOR ANY
+ DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+
+
+GenCase v5.0.222 (16-11-2020) 
+===============================
+OmpThreads: 16
+
+[LoadXMLInit]
+List: MAIN
+
+Total operations: 12
+[LoadXMLInit-End  time:0.009s]
+
+[Draw]
+List of available variables: Gravity_x=[0]  Gravity_y=[0]  Gravity_z=[-9.81]  Rhop0=[1200]  Dp=[0.01]  PosMin_x=[-0.1]  PosMin_y=[0]  PosMin_z=[-0.1]  PosMax_x=[1.1]  PosMax_y=[0]  PosMax_z=[1.3]  CaseName=["Case_Def"]  Data2D=[1]  Data2DPosy=[0]  H=[0.0141421]  MassBound=[0.12]  MassFluid=[0.12]
+
+Mk size: 1 bytes
+Case limits: (-0.1,0,-0.1) - (1.1,0,1.3)
+Distance between points (Dp): 0.01
+Case domain: (0,0,0)-(119,0,139)
+Domain points: 120 x 1 x 140 = 16800
+Case parts: 1 x 140z
+Memory: 0.00Gb 0.02Mb (16800)
+
+> MAIN
+FileShapes> _Actual.vtk  shapes:24  points:32   (time:0.015s)
+<MAIN (Operations= 6+6+1 = 13)
+
+Triangles: 64 (0 ignored)
+[Draw-End  time:0.022s]
+
+[LoadsXMLConfig]
+Execution parameters.
+Initials configuration.
+Floating bodies configuration.
+Properties configuration.
+Predefined motion configuration.
+[LoadsXMLConfig-End  time:0.003s]
+
+[PreparePoints]
+Computing Vtk-Cells data...  (time:0.003s)
+BitSizeTot: 17 (2 + 7+1+7)
+Points loaded: 10393
+Sorting points by Z...
+Sorting points by Mk...
+
+List of Points:
+Points -> Fixed-Boundary particles:
+  block[  0] (mk: 10):   1340  -->    1340
+Points -> Moving-Boundary particles:
+  block[  1] (mk: 11):    605  -->     605
+Points -> Fluid particles:
+  block[  2] (mk:  1):   4224  -->    4224
+  block[  3] (mk:  2):   4224  -->    4224
+
+Particle summary:
+  Fixed....: 1340  id:(0-1339)   MKs:1 (10)
+  Moving...: 605  id:(1340-1944)   MKs:1 (11)
+  Floating.: 0
+  Fluid....: 8448  id:(1945-10392)   MKs:2 (1-2)
+
+Total particles: 10393 (bound=1945 (fx=1340 mv=605 ft=0) fluid=8448)
+Total MK blocks: 4 (bound=2 (fx=1 mv=1 ft=0) fluid=2)
+
+Maximum depth: 0.95 (automatic)
+Speed of system: 3.05279 (automatic)
+Speed of sound: max(coefsound*speedsystem,10*sqrt(g*depth))
+Speed of sound: 61.0557 max(61.0557,30.5279)
+Speed of sound: 61.0557 (automatic)
+
+Coefh:1.000000 (hdp:1.414214)
+
+[PreparePoints-End  time:0.014s]
+
+[SaveCase2D]
+/mnt/c/Users/yzhao52/OneDrive - University of Nebraska/Student Research/Undergraduates research/AI-agent DualSPHysics Debris Flow/agent_v1/Github/dualsphysics-maf/runs/run_20260818_201907/out/Case_Def_MkCells.vtk  (time:0.009s, shapes:6, points:24)
+/mnt/c/Users/yzhao52/OneDrive - University of Nebraska/Student Research/Undergraduates research/AI-agent DualSPHysics Debris Flow/agent_v1/Github/dualsphysics-maf/runs/run_20260818_201907/out/Case_Def.bi4<double>  (time:0.006s)
+/mnt/c/Users/yzhao52/OneDrive - University of Nebraska/Student Research/Undergraduates research/AI-agent DualSPHysics Debris Flow/agent_v1/Github/dualsphysics-maf/runs/run_20260818_201907/out/Case_Def_All.vtk  (time: 0.017s)
+/mnt/c/Users/yzhao52/OneDrive - University of Nebraska/Student Research/Undergraduates research/AI-agent DualSPHysics Debris Flow/agent_v1/Github/dualsphysics-maf/runs/run_20260818_201907/out/Case_Def_Bound.vtk  (time: 0.014s)
+/mnt/c/Users/yzhao52/OneDrive - University of Nebraska/Student Research/Undergraduates research/AI-agent DualSPHysics Debris Flow/agent_v1/Github/dualsphysics-maf/runs/run_20260818_201907/out/Case_Def_Fluid.vtk  (time: 0.013s)
+/mnt/c/Users/yzhao52/OneDrive - University of Nebraska/Student Research/Undergraduates research/AI-agent DualSPHysics Debris Flow/agent_v1/Github/dualsphysics-maf/runs/run_20260818_201907/out/Case_Def.xml  (time:0.012s)
+
+Save files time: 0.071s
+
+Particle limits:
+  X range: 0 to 1 [m]
+  Y range: 0 to 0 [m]
+  Z range: 0 to 1.24 [m]
+
+[SaveCase2D-End  time:0.077s]
+
+
+Finished execution (code=0).
+

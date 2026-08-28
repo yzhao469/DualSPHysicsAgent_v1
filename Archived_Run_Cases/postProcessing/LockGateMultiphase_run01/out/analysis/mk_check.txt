@@ -1,0 +1,3 @@
+Headers: Pos.x [m]; Pos.y [m]; Pos.z [m]; Idp; Vel.x [m/s]; Vel.y [m/s]; Vel.z [m/s]; Rhop [kg/m^3]; Press [Pa]; Type; Mk
+Unique fluid mk values across all files: 1, 2
+Number of distinct fluid mk values: 2

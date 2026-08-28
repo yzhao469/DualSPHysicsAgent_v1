@@ -1,0 +1,7 @@
+Estimated interface between mk=1 and mk=2 using x-bin envelope midpoint method
+step 0: no overlapping x-bins with both mk groups found
+step 10 (t=1.0s): interface points=17, x-range=(0.471,0.538), z-range=(0.096,0.732)
+step 20 (t=2.0s): interface points=146, x-range=(0.121,0.744), z-range=(0.129,0.914)
+step 30 (t=3.0s): interface points=200, x-range=(0.040,0.883), z-range=(0.131,0.914)
+step 40 (t=4.0s): interface points=208, x-range=(0.040,0.912), z-range=(0.140,0.894)
+step 48 (t=4.8s): interface points=210, x-range=(0.040,0.921), z-range=(0.137,0.894)

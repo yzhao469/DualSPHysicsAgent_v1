@@ -1,0 +1,24 @@
+Vortex-related analysis at t = 4.0 s (step 40)
+Particles: 8448
+Domain x:[0.0391,0.9608] z:[0.0383,0.9590]
+Grid: nx=140, nz=100, dx=0.00658, dz=0.00921
+Mean |vorticity|: 0.523543 1/s
+RMS vorticity: 0.850408 1/s
+Max vorticity: 11.233845 1/s
+Min vorticity: -8.196851 1/s
+95th percentile |vorticity|: 1.641159 1/s
+Positive circulation proxy: 1.452960e-01 m^2/s
+Negative circulation proxy: -1.212306e-01 m^2/s
+Absolute circulation proxy: 2.665266e-01 m^2/s
+
+Top 10 strongest vortical cells (x,z,omega,speed,count):
+0.91140, 0.35596, 11.233845, 0.140587, 1
+0.95748, 0.32834, -8.196851, 0.020041, 1
+0.95748, 0.30993, -7.877933, 0.039608, 1
+0.90482, 0.23627, -7.835514, 0.073379, 1
+0.95748, 0.52167, 7.409494, 0.050285, 1
+0.95748, 0.13500, 7.264891, 0.052759, 1
+0.95748, 0.19945, -7.090533, 0.030667, 1
+0.94432, 0.49405, -6.989736, 0.044950, 1
+0.95748, 0.28231, -6.466339, 0.049978, 1
+0.92457, 0.35596, -6.350586, 0.139164, 1

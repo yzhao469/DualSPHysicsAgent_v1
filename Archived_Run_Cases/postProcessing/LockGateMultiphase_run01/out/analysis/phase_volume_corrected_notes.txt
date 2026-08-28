@@ -1,0 +1,15 @@
+Corrected phase volume computation for multiphase case.
+Each phase uses its own constant particle mass inferred from initial geometric particle volume and that phase's initial density.
+Then V_phase(t)=sum_i m_phase/rho_i(t).
+
+dx=0.00999999 m, dz=0.00999999 m, particle geometric volume=9.9999800000e-05 m^3/m
+mk=1: initial density=1200.000000 kg/m^3, particle mass=1.1999976000e-01 kg/m
+mk=2: initial density=1000.000000 kg/m^3, particle mass=9.9999800000e-02 kg/m
+
+Initial volumes:
+mk=1: 0.42239916 m^3/m
+mk=2: 0.42239916 m^3/m
+
+Final volumes:
+mk=1: 0.42173918 m^3/m
+mk=2: 0.42210245 m^3/m

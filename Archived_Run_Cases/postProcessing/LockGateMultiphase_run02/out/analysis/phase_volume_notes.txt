@@ -1,0 +1,3 @@
+Volumes are computed from particle counts by mk.
+Because particle mass/volume was not explicitly exported, the plotted quantity is normalized volume proportional to particle count.
+Initial counts: mk=1 -> 4224, mk=2 -> 4224

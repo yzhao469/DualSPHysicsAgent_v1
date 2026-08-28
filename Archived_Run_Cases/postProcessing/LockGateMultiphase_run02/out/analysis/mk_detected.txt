@@ -1,0 +1,1 @@
+Detected fluid mk values across all timesteps: 

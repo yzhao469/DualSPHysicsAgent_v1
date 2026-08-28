@@ -1,0 +1,4 @@
+mk=1: dp=0.0099999900 m, particle_volume=9.999970000030e-07 m^3, particle_mass=1.199996400004e-03 kg, initial_count=4224, initial_volume=4.223987328013e-03 m^3
+mk=2: dp=0.0099999900 m, particle_volume=9.999970000030e-07 m^3, particle_mass=1.199996400004e-03 kg, initial_count=4224, initial_volume=5.068784793615e-03 m^3
+Volume at each timestep computed as sum(m_phase / rhop_i) over particles in each phase.
+Particle mass is phase-specific and derived from exact initial particle spacing within each phase.

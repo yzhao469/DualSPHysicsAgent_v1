@@ -1,0 +1,4 @@
+Estimated particle spacing dp = 0.00999999 m
+Estimated particle mass = 1.19999640e-03 kg
+Phase volume computed as sum(m_p / rho_p) over particles in each mk group.
+Particle mass inferred from dp^3 * rho0 using dp estimated from nearest-neighbor spacing at t=0.

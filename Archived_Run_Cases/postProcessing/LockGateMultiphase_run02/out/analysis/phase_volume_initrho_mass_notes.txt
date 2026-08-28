@@ -1,0 +1,4 @@
+mk=1: dp=0.0099999900 m, particle_volume=9.999970000030e-07 m^3, mean_initial_rho=1200.000000000000 kg/m^3, particle_mass=1.199996400004e-03 kg
+mk=2: dp=0.0099999900 m, particle_volume=9.999970000030e-07 m^3, mean_initial_rho=1000.000000000000 kg/m^3, particle_mass=9.999970000030e-04 kg
+Volume at each timestep computed as sum(m_phase / rhop_i) over particles in each phase.
+Particle mass is constant in time and inferred from initial phase density times initial particle volume.

@@ -1,0 +1,10 @@
+time_s: 2.0
+n_particles: 8448
+velocity_mean_mps: 0.163051045714168
+velocity_max_mps: 0.5718231340495965
+vorticity_mean_1ps: -0.3312005074660749
+vorticity_mean_abs_1ps: 1.5642291961313342
+vorticity_max_abs_1ps: 37.35451947055687
+strongest_vortex_x_m: 0.11957208059999999
+strongest_vortex_z_m: 0.9168775756375
+strongest_signed_vorticity_1ps: -37.35451947055687
