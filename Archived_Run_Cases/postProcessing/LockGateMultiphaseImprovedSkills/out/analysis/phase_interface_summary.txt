@@ -1,0 +1,6 @@
+Using phase labels mk=1 and mk=2
+t=0.0s: no vertically overlapping interface detected; phases may be side-by-side in x-z projection
+t=0.5s: no vertically overlapping interface detected; phases may be side-by-side in x-z projection
+t=1.0s: interface points=30, x=[0.477,0.534], z=[0.103,0.527]
+t=1.5s: interface points=101, x=[0.326,0.633], z=[0.111,0.914]
+t=2.0s: interface points=115, x=[0.123,0.742], z=[0.129,0.914]

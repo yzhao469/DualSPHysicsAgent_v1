@@ -1,0 +1,14 @@
+Vortex-related analysis at t=2.0 s
+Particles: 8448
+Domain x-range: [0.0389, 0.9607] m
+Domain z-range: [0.0386, 0.9591] m
+Mean velocity magnitude: 0.163051 m/s
+Max velocity magnitude: 0.571823 m/s
+Mean |vorticity|: 1.610951 1/s
+RMS vorticity: 2.234051 1/s
+Max signed vorticity: 9.096057 1/s at x=0.9550 m, z=0.2975 m
+95th percentile |vorticity| threshold: 4.272400 1/s
+Fraction of valid grid cells in strongest 5%: 0.057471
+Phase-wise velocity stats (mk, count, mean|v|, max|v|):
+  1, 4224, 0.139235, 0.238191
+  2, 4224, 0.186867, 0.571823

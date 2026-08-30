@@ -1,0 +1,4 @@
+Estimated spacing: dpx=0.00999999, dpy=0.00999999, dpz=0.00999999
+Estimated initial particle volume: 9.99997000e-07 m^3
+mk=1: rho0~1200.000 kg/m^3, initial=4.22398733e-03, final=4.21830642e-03, min=4.21569014e-03, max=4.22398733e-03
+mk=2: rho0~1000.000 kg/m^3, initial=4.22398733e-03, final=4.21990553e-03, min=4.21418210e-03, max=4.22398733e-03
