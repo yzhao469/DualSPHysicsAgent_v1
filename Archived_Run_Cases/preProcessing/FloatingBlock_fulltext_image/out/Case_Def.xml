@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<case app="GenCase v5.0.222 (16-11-2020)" date="12-08-2026 22:32:27">
+<case app="GenCase v5.0.222 (16-11-2020)" date="29-08-2026 14:12:51">
     <casedef>
         <constantsdef>
             <gravity x="0" y="0" z="-9.81" comment="Gravitational acceleration" units_comment="m/s^2" />
@@ -15,8 +15,8 @@
         <mkconfig boundcount="240" fluidcount="9" />
         <geometry>
             <definition dp="0.5">
-                <pointmin x="-2" y="-2" z="-2" />
-                <pointmax x="102" y="22" z="50" />
+                <pointmin x="-1" y="-1" z="-1" />
+                <pointmax x="101" y="21" z="41" />
             </definition>
             <commands>
                 <mainlist>
@@ -38,37 +38,37 @@
                     <setmkbound mk="50" />
                     <drawbox>
                         <boxfill>solid</boxfill>
-                        <point x="58" y="2.0" z="0.5" />
+                        <point x="58" y="2.5" z="0" />
                         <size x="2" y="5" z="5" />
                     </drawbox>
                     <setmkbound mk="51" />
                     <drawbox>
                         <boxfill>solid</boxfill>
-                        <point x="58" y="7.5" z="0.5" />
+                        <point x="58" y="7.5" z="0" />
                         <size x="2" y="5" z="5" />
                     </drawbox>
                     <setmkbound mk="52" />
                     <drawbox>
                         <boxfill>solid</boxfill>
-                        <point x="58" y="13.0" z="0.5" />
+                        <point x="58" y="12.5" z="0" />
                         <size x="2" y="5" z="5" />
                     </drawbox>
                     <setmkbound mk="53" />
                     <drawbox>
                         <boxfill>solid</boxfill>
-                        <point x="58" y="2.0" z="6.0" />
+                        <point x="58" y="2.5" z="5" />
                         <size x="2" y="5" z="5" />
                     </drawbox>
                     <setmkbound mk="54" />
                     <drawbox>
                         <boxfill>solid</boxfill>
-                        <point x="58" y="7.5" z="6.0" />
+                        <point x="58" y="7.5" z="5" />
                         <size x="2" y="5" z="5" />
                     </drawbox>
                     <setmkbound mk="55" />
                     <drawbox>
                         <boxfill>solid</boxfill>
-                        <point x="58" y="13.0" z="6.0" />
+                        <point x="58" y="12.5" z="5" />
                         <size x="2" y="5" z="5" />
                     </drawbox>
                     <shapeout file="" />
@@ -77,22 +77,22 @@
         </geometry>
         <floatings>
             <floating mkbound="50">
-                <massbody value="151250" />
+                <massbody value="34000" />
             </floating>
             <floating mkbound="51">
-                <massbody value="151250" />
+                <massbody value="34000" />
             </floating>
             <floating mkbound="52">
-                <massbody value="151250" />
+                <massbody value="34000" />
             </floating>
             <floating mkbound="53">
-                <massbody value="151250" />
+                <massbody value="34000" />
             </floating>
             <floating mkbound="54">
-                <massbody value="151250" />
+                <massbody value="34000" />
             </floating>
             <floating mkbound="55">
-                <massbody value="151250" />
+                <massbody value="34000" />
             </floating>
         </floatings>
     </casedef>
@@ -143,54 +143,54 @@
                 <posmax x="default" y="default" z="default" />
             </simulationdomain>
         </parameters>
-        <particles np="218625" nb="148425" nbf="144795" mkboundfirst="10" mkfluidfirst="1">
+        <particles np="197428" nb="127228" nbf="123973" mkboundfirst="10" mkfluidfirst="1">
             <_summary>
                 <positions units_comment="metres (m)">
                     <posmin x="-1" y="-1" z="-1" />
-                    <posmax x="101" y="21" z="40" />
+                    <posmax x="100.5" y="20.5" z="40" />
                 </positions>
-                <fixed count="144795" id="0-144794" mkcount="1" mkvalues="10" />
-                <floating count="3630" id="144795-148424" mkcount="6" mkvalues="60-65" />
-                <fluid count="70200" id="148425-218624" mkcount="1" mkvalues="1" />
+                <fixed count="123973" id="0-123972" mkcount="1" mkvalues="10" />
+                <floating count="3255" id="123973-127227" mkcount="6" mkvalues="60-65" />
+                <fluid count="70200" id="127228-197427" mkcount="1" mkvalues="1" />
             </_summary>
-            <fixed mkbound="0" mk="10" begin="0" count="144795" />
-            <floating mkbound="50" mk="60" begin="144795" count="605">
-                <massbody value="151250" units_comment="kg" />
+            <fixed mkbound="0" mk="10" begin="0" count="123973" />
+            <floating mkbound="50" mk="60" begin="123973" count="500">
+                <massbody value="34000" units_comment="kg" />
                 <masspart value="212.5" units_comment="kg" />
-                <center x="59" y="4.5" z="3" units_comment="metres (m)" />
-                <inertia x="756250" y="453750" z="453750" units_comment="kg*m^2" />
+                <center x="59" y="4.75" z="2.25" units_comment="metres (m)" />
+                <inertia x="140250" y="87125" z="87125" units_comment="kg*m^2" />
             </floating>
-            <floating mkbound="51" mk="61" begin="145400" count="605">
-                <massbody value="151250" units_comment="kg" />
+            <floating mkbound="51" mk="61" begin="124473" count="500">
+                <massbody value="34000" units_comment="kg" />
                 <masspart value="212.5" units_comment="kg" />
-                <center x="59" y="10" z="3" units_comment="metres (m)" />
-                <inertia x="756250" y="453750" z="453750" units_comment="kg*m^2" />
+                <center x="59" y="9.75" z="2.25" units_comment="metres (m)" />
+                <inertia x="140250" y="87125" z="87125" units_comment="kg*m^2" />
             </floating>
-            <floating mkbound="52" mk="62" begin="146005" count="605">
-                <massbody value="151250" units_comment="kg" />
+            <floating mkbound="52" mk="62" begin="124973" count="550">
+                <massbody value="34000" units_comment="kg" />
                 <masspart value="212.5" units_comment="kg" />
-                <center x="59" y="15.5" z="3" units_comment="metres (m)" />
-                <inertia x="756250" y="453750" z="453750" units_comment="kg*m^2" />
+                <center x="59" y="15" z="2.25" units_comment="metres (m)" />
+                <inertia x="155125" y="87125" z="102000" units_comment="kg*m^2" />
             </floating>
-            <floating mkbound="53" mk="63" begin="146610" count="605">
-                <massbody value="151250" units_comment="kg" />
+            <floating mkbound="53" mk="63" begin="125523" count="550">
+                <massbody value="34000" units_comment="kg" />
                 <masspart value="212.5" units_comment="kg" />
-                <center x="59" y="4.5" z="8.5" units_comment="metres (m)" />
-                <inertia x="756250" y="453750" z="453750" units_comment="kg*m^2" />
+                <center x="59" y="4.75" z="7.5" units_comment="metres (m)" />
+                <inertia x="155125" y="102000" z="87125" units_comment="kg*m^2" />
             </floating>
-            <floating mkbound="54" mk="64" begin="147215" count="605">
-                <massbody value="151250" units_comment="kg" />
+            <floating mkbound="54" mk="64" begin="126073" count="550">
+                <massbody value="34000" units_comment="kg" />
                 <masspart value="212.5" units_comment="kg" />
-                <center x="59" y="10" z="8.5" units_comment="metres (m)" />
-                <inertia x="756250" y="453750" z="453750" units_comment="kg*m^2" />
+                <center x="59" y="9.75" z="7.5" units_comment="metres (m)" />
+                <inertia x="155125" y="102000" z="87125" units_comment="kg*m^2" />
             </floating>
-            <floating mkbound="55" mk="65" begin="147820" count="605">
-                <massbody value="151250" units_comment="kg" />
+            <floating mkbound="55" mk="65" begin="126623" count="605">
+                <massbody value="34000" units_comment="kg" />
                 <masspart value="212.5" units_comment="kg" />
-                <center x="59" y="15.5" z="8.5" units_comment="metres (m)" />
-                <inertia x="756250" y="453750" z="453750" units_comment="kg*m^2" />
+                <center x="59" y="15" z="7.5" units_comment="metres (m)" />
+                <inertia x="170000" y="102000" z="102000" units_comment="kg*m^2" />
             </floating>
-            <fluid mkfluid="0" mk="1" begin="148425" count="70200" />
+            <fluid mkfluid="0" mk="1" begin="127228" count="70200" />
         </particles>
         <constants>
             <data2d value="false" />

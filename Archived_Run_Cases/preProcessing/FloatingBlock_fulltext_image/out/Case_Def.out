@@ -41,22 +41,22 @@ Total operations: 19
 [LoadXMLInit-End  time:0.000s]
 
 [Draw]
-List of available variables: Gravity_x=[0]  Gravity_y=[0]  Gravity_z=[-9.81]  Rhop0=[1700]  Dp=[0.5]  PosMin_x=[-2]  PosMin_y=[-2]  PosMin_z=[-2]  PosMax_x=[102]  PosMax_y=[22]  PosMax_z=[50]  CaseName=["Case_Def"]  Data2D=[0]  Data2DPosy=[0]  H=[0.866025]  MassBound=[212.5]  MassFluid=[212.5]
+List of available variables: Gravity_x=[0]  Gravity_y=[0]  Gravity_z=[-9.81]  Rhop0=[1700]  Dp=[0.5]  PosMin_x=[-1]  PosMin_y=[-1]  PosMin_z=[-1]  PosMax_x=[101]  PosMax_y=[21]  PosMax_z=[41]  CaseName=["Case_Def"]  Data2D=[0]  Data2DPosy=[0]  H=[0.866025]  MassBound=[212.5]  MassFluid=[212.5]
 
 Mk size: 1 bytes
-Case limits: (-2,-2,-2) - (102,22,50)
+Case limits: (-1,-1,-1) - (101,21,41)
 Distance between points (Dp): 0.5
-Case domain: (0,0,0)-(207,47,103)
-Domain points: 208 x 48 x 104 = 1038336
-Case parts: 1 x 104z
-Memory: 0.00Gb 0.99Mb (1038336)
+Case domain: (0,0,0)-(203,43,83)
+Domain points: 204 x 44 x 84 = 753984
+Case parts: 1 x 84z
+Memory: 0.00Gb 0.72Mb (753984)
 
 > MAIN
 FileShapes> _Dp.vtk  shapes:51  points:72   (time:0.000s)
 <MAIN (Operations= 11+8+1 = 20)
 
 Triangles: 142 (0 ignored)
-[Draw-End  time:0.005s]
+[Draw-End  time:0.065s]
 
 [LoadsXMLConfig]
 Execution parameters.
@@ -67,32 +67,32 @@ Predefined motion configuration.
 [LoadsXMLConfig-End  time:0.000s]
 
 [PreparePoints]
-Computing Vtk-Cells data...  (time:0.021s)
+Computing Vtk-Cells data...  (time:0.018s)
 BitSizeTot: 24 (3 + 8+6+7)
-Points loaded: 218625
+Points loaded: 197428
 Sorting points by Z...
 Sorting points by Mk...
 
 List of Points:
 Points -> Fixed-Boundary particles:
-  block[  0] (mk: 10): 144795  -->  144795
+  block[  0] (mk: 10): 123973  -->  123973
 Points -> Floating-Boundary particles:
-  block[  1] (mk: 60):    605  -->     605
-  block[  2] (mk: 61):    605  -->     605
-  block[  3] (mk: 62):    605  -->     605
-  block[  4] (mk: 63):    605  -->     605
-  block[  5] (mk: 64):    605  -->     605
+  block[  1] (mk: 60):    500  -->     500
+  block[  2] (mk: 61):    500  -->     500
+  block[  3] (mk: 62):    550  -->     550
+  block[  4] (mk: 63):    550  -->     550
+  block[  5] (mk: 64):    550  -->     550
   block[  6] (mk: 65):    605  -->     605
 Points -> Fluid particles:
   block[  7] (mk:  1):  70200  -->   70200
 
 Particle summary:
-  Fixed....: 144795  id:(0-144794)   MKs:1 (10)
+  Fixed....: 123973  id:(0-123972)   MKs:1 (10)
   Moving...: 0
-  Floating.: 3630  id:(144795-148424)   MKs:6 (60-65)
-  Fluid....: 70200  id:(148425-218624)   MKs:1 (1)
+  Floating.: 3255  id:(123973-127227)   MKs:6 (60-65)
+  Fluid....: 70200  id:(127228-197427)   MKs:1 (1)
 
-Total particles: 218625 (bound=148425 (fx=144795 mv=0 ft=3630) fluid=70200)
+Total particles: 197428 (bound=127228 (fx=123973 mv=0 ft=3255) fluid=70200)
 Total MK blocks: 8 (bound=7 (fx=1 mv=0 ft=6) fluid=1)
 
 Maximum depth: 29.5 (automatic)
@@ -103,24 +103,24 @@ Speed of sound: 170.116 (automatic)
 
 Coefh:1.000000 (hdp:1.732051)
 
-[PreparePoints-End  time:0.034s]
+[PreparePoints-End  time:0.029s]
 
 [SaveCase3D]
-/home/danrong/projects/DualSPHysics_NN_v5.0.1/dualsphysics-maf/runs/run_20260813_051420/out/Case_Def_MkCells.vtk  (time:0.000s, shapes:56, points:224)
-/home/danrong/projects/DualSPHysics_NN_v5.0.1/dualsphysics-maf/runs/run_20260813_051420/out/Case_Def.bi4<double>  (time:0.010s)
-/home/danrong/projects/DualSPHysics_NN_v5.0.1/dualsphysics-maf/runs/run_20260813_051420/out/Case_Def_All.vtk  (time: 0.021s)
-/home/danrong/projects/DualSPHysics_NN_v5.0.1/dualsphysics-maf/runs/run_20260813_051420/out/Case_Def_Bound.vtk  (time: 0.011s)
-/home/danrong/projects/DualSPHysics_NN_v5.0.1/dualsphysics-maf/runs/run_20260813_051420/out/Case_Def_Fluid.vtk  (time: 0.004s)
-/home/danrong/projects/DualSPHysics_NN_v5.0.1/dualsphysics-maf/runs/run_20260813_051420/out/Case_Def.xml  (time:0.001s)
+/home/danrong/projects/DualSPHysics_NN_v5.0.1/dualsphysics-maf/runs/run_20260829_211251/out/Case_Def_MkCells.vtk  (time:0.000s, shapes:64, points:256)
+/home/danrong/projects/DualSPHysics_NN_v5.0.1/dualsphysics-maf/runs/run_20260829_211251/out/Case_Def.bi4<double>  (time:0.009s)
+/home/danrong/projects/DualSPHysics_NN_v5.0.1/dualsphysics-maf/runs/run_20260829_211251/out/Case_Def_All.vtk  (time: 0.014s)
+/home/danrong/projects/DualSPHysics_NN_v5.0.1/dualsphysics-maf/runs/run_20260829_211251/out/Case_Def_Bound.vtk  (time: 0.007s)
+/home/danrong/projects/DualSPHysics_NN_v5.0.1/dualsphysics-maf/runs/run_20260829_211251/out/Case_Def_Fluid.vtk  (time: 0.004s)
+/home/danrong/projects/DualSPHysics_NN_v5.0.1/dualsphysics-maf/runs/run_20260829_211251/out/Case_Def.xml  (time:0.001s)
 
-Save files time: 0.048s
+Save files time: 0.036s
 
 Particle limits:
-  X range: -1 to 101 [m]
-  Y range: -1 to 21 [m]
+  X range: -1 to 100.5 [m]
+  Y range: -1 to 20.5 [m]
   Z range: -1 to 40 [m]
 
-[SaveCase3D-End  time:0.057s]
+[SaveCase3D-End  time:0.047s]
 
 
 Finished execution (code=0).

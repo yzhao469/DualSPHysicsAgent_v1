@@ -15,8 +15,8 @@
         <mkconfig boundcount="240" fluidcount="9" />
         <geometry>
             <definition dp="0.5">
-                <pointmin x="-2" y="-2" z="-2" />
-                <pointmax x="102" y="22" z="50" />
+                <pointmin x="-1" y="-1" z="-1" />
+                <pointmax x="101" y="21" z="41" />
             </definition>
             <commands>
                 <mainlist>
@@ -38,37 +38,37 @@
                     <setmkbound mk="50" />
                     <drawbox>
                         <boxfill>solid</boxfill>
-                        <point x="58" y="2.0" z="0.5" />
+                        <point x="58" y="2.5" z="0" />
                         <size x="2" y="5" z="5" />
                     </drawbox>
                     <setmkbound mk="51" />
                     <drawbox>
                         <boxfill>solid</boxfill>
-                        <point x="58" y="7.5" z="0.5" />
+                        <point x="58" y="7.5" z="0" />
                         <size x="2" y="5" z="5" />
                     </drawbox>
                     <setmkbound mk="52" />
                     <drawbox>
                         <boxfill>solid</boxfill>
-                        <point x="58" y="13.0" z="0.5" />
+                        <point x="58" y="12.5" z="0" />
                         <size x="2" y="5" z="5" />
                     </drawbox>
                     <setmkbound mk="53" />
                     <drawbox>
                         <boxfill>solid</boxfill>
-                        <point x="58" y="2.0" z="6.0" />
+                        <point x="58" y="2.5" z="5" />
                         <size x="2" y="5" z="5" />
                     </drawbox>
                     <setmkbound mk="54" />
                     <drawbox>
                         <boxfill>solid</boxfill>
-                        <point x="58" y="7.5" z="6.0" />
+                        <point x="58" y="7.5" z="5" />
                         <size x="2" y="5" z="5" />
                     </drawbox>
                     <setmkbound mk="55" />
                     <drawbox>
                         <boxfill>solid</boxfill>
-                        <point x="58" y="13.0" z="6.0" />
+                        <point x="58" y="12.5" z="5" />
                         <size x="2" y="5" z="5" />
                     </drawbox>
                     <shapeout file="" />
@@ -77,22 +77,22 @@
         </geometry>
         <floatings>
             <floating mkbound="50">
-                <massbody value="151250" />
+                <massbody value="34000" />
             </floating>
             <floating mkbound="51">
-                <massbody value="151250" />
+                <massbody value="34000" />
             </floating>
             <floating mkbound="52">
-                <massbody value="151250" />
+                <massbody value="34000" />
             </floating>
             <floating mkbound="53">
-                <massbody value="151250" />
+                <massbody value="34000" />
             </floating>
             <floating mkbound="54">
-                <massbody value="151250" />
+                <massbody value="34000" />
             </floating>
             <floating mkbound="55">
-                <massbody value="151250" />
+                <massbody value="34000" />
             </floating>
         </floatings>
     </casedef>
