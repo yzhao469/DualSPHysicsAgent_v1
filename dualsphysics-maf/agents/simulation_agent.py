@@ -51,7 +51,17 @@ def make_simulation_agent() -> Agent:
 
     client = OpenAIChatClient(model=os.getenv("PLANNER_MODEL", "gpt-4o"))
 
-    skills_provider = SkillsProvider.from_paths(str(_SKILLS_DIR))
+    # SkillsProvider registers its tools with approval_mode="always_require" by
+    # default, so every load_skill / read_skill_resource call would raise a
+    # function-approval request.  The workflow has exactly one intended
+    # confirmation point -- the setup review before the simulation runs -- and
+    # both skill dirs are read-only Markdown, so opt these two tools out.
+    # run_skill_script is deliberately left requiring approval.
+    skills_provider = SkillsProvider.from_paths(
+        str(_SKILLS_DIR),
+        disable_load_skill_approval=True,
+        disable_read_skill_resource_approval=True,
+    )
 
     return Agent(
         client=client,
