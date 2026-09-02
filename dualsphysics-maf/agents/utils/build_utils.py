@@ -5,7 +5,11 @@ import logging
 from agent_framework import MCPStdioTool
 
 from agents.tools.visualize_geometry import visualize_geometry
-from agents.utils.mcp_tools import mcp_tool_result_text, parse_mcp_tool_result
+from agents.utils.mcp_tools import (
+    check_mcp_tool_result,
+    mcp_tool_result_text,
+    parse_mcp_tool_result,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -22,12 +26,14 @@ async def rebuild_gencase_viz(mcp: MCPStdioTool, run_dir: str) -> None:
         xml_path=f"{run_dir}/Case_Def",
         output_dir=f"{run_dir}/out",
     )
-    result = parse_mcp_tool_result(r)
-    if not isinstance(result, dict):
+    # Newer framework versions can return Content lists rather than JSON, and
+    # check_mcp_tool_result falls back to plain-text matching on anything it
+    # cannot parse -- which would wave an unrecognized payload through as a
+    # success. Reject that shape here first.
+    if not isinstance(parse_mcp_tool_result(r), dict):
         raise RuntimeError(f"run_gencase returned unrecognized response: {mcp_tool_result_text(r)}")
-    if result.get("returncode", -1) != 0:
-        err = result.get("stderr") or result.get("stdout") or mcp_tool_result_text(r)
-        raise RuntimeError(f"run_gencase failed: {err}")
+    # Covers returncode != 0 and GenCase's zero-particle case, which exits 0.
+    check_mcp_tool_result("run_gencase", r)
     logger.info("run_gencase OK")
 
     # Visualize

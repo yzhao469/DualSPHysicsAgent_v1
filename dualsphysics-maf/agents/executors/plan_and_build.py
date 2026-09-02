@@ -260,6 +260,12 @@ class PlanAndBuildExecutor(Executor):
         if scenario:
             log_message(run_dir, "user", scenario, phase="planning")
 
+        # Log any datalake input images/meshes so the HTML report can embed them
+        for rel in ctx.get_state("datalake_image_paths") or []:
+            log_message(run_dir, "user", f"[input-image] {rel}", phase="planning")
+        for abs_mesh in ctx.get_state("datalake_mesh_paths") or []:
+            log_message(run_dir, "user", f"[input-mesh] {abs_mesh}", phase="planning")
+
         # Run build pipeline
         build_error: str | None = None
         try:

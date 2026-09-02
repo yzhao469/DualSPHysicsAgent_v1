@@ -10,6 +10,11 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+# GenCase exits with code 0 even when the geometry yields no particles — it only
+# prints this warning. On that path it also writes no VTK files, so the previous
+# build's output survives and the visualizer silently re-renders stale geometry.
+GENCASE_NO_PARTICLES = "No particles were created in the defined domain"
+
 
 def _to_json_dict(value: Any) -> dict[str, Any] | None:
     """Best-effort conversion of *value* into a JSON dict."""
@@ -102,6 +107,15 @@ def check_mcp_tool_result(tool_name: str, response: Any) -> None:
         if result.get("returncode", 0) != 0:
             error_detail = result.get("stderr") or result.get("stdout") or str(response)
             raise RuntimeError(f"{tool_name} failed: {error_detail}")
+        if "gencase" in tool_name.lower():
+            stdout = result.get("stdout") or ""
+            if GENCASE_NO_PARTICLES in stdout:
+                raise RuntimeError(
+                    f"{tool_name} failed: GenCase created zero particles. The shapes "
+                    "were parsed but nothing was drawn into the domain, so no VTK "
+                    "output was written and any existing visualization is stale.\n\n"
+                    f"{stdout}"
+                )
         return
 
     # Fall back to plain-text error detection
@@ -136,6 +150,7 @@ BUILD_DIAGNOSTICS: list[tuple[str, str]] = [
     ("no such file", "File not found — a referenced mesh or input file may be missing from the run directory."),
     ("boundary error", "Boundary definition error — check that all boundaries are properly enclosed and non-overlapping."),
     ("particle generation", "Particle generation error — verify dp spacing and that geometry volumes are valid."),
+    ("zero particles", "No particles drawn — a transform element such as <rotate> may be wrapping the draw commands instead of preceding them, or no setmkbound/setmkfluid is active when the shape is drawn."),
     ("out of memory", "Out of memory during GenCase — reduce particle count by increasing dp or shrinking the domain."),
     ("permission denied", "Permission denied — check file/directory write permissions in the run directory."),
 ]
